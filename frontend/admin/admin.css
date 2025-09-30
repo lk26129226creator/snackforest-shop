@@ -1,0 +1,124 @@
+/* Admin-specific styles for SnackForest 管理端 */
+:root{
+    --admin-bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --muted: #6c757d;
+    --accent: #0d6efd;
+}
+
+/* Layout tweaks */
+body .main-content{
+    max-width: 1100px;
+    margin: 100px auto 60px; /* account for fixed navbar */
+    padding: 20px;
+}
+
+/* Top search input for product list */
+#product-search{ max-width: 420px; }
+
+.admin-section{ display: none; }
+.admin-section.active{ display: block; }
+
+/* Headings */
+.admin-section h1{ font-size: 1.5rem; margin-bottom: 0.75rem; }
+.admin-section h2{ font-size: 1.125rem; margin-top: 1rem; margin-bottom: .6rem; }
+
+/* Forms */
+form#product-form, form#category-form{ background: var(--card-bg); border-radius: 6px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.form-label{ font-weight: 600; }
+
+/* Image preview grid */
+#p-image-preview-container, #edit-p-image-preview-container{
+    display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem;
+}
+.image-preview-item{ width: 96px; height: 96px; overflow: hidden; border-radius: 6px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative; }
+.image-preview-item img{ width: 100%; height: 100%; object-fit: cover; display: block; }
+.image-preview-item .btn{ padding: .15rem .35rem; font-size: .9rem; }
+.image-preview-item.clickable{ cursor: pointer; }
+.image-preview-item.clickable:hover{ transform: translateY(-2px); transition: transform .12s ease; }
+
+/* Product table tweaks */
+.table-product-img{ width: 72px; height: 48px; object-fit: cover; border-radius: 4px; }
+.table-actions button{ margin-right: .25rem; }
+.table-responsive{ margin-top: .75rem; }
+
+/* Navigation active state */
+.navbar .nav-link.active{ font-weight: 700; color: var(--accent) !important; }
+
+/* Modal image viewer */
+#imageViewModal .modal-body{ padding: 0; background: #fff; }
+
+#imageViewModal .modal-dialog{ max-width: 920px; margin: 1.2rem auto; }
+#imageViewModal .modal-content{ background: #fff; border-radius: 6px; overflow: visible; }
+
+/* Image viewer layout */
+ #imageViewModal .image-viewer .iv-wrapper{ display:flex; align-items:stretch; min-height:48vh; max-width:820px; margin: 0 auto; }
+ #imageViewModal .image-viewer{ background: #fff; }
+ #imageViewModal .image-viewer .iv-main{ flex: 1 1 auto; display:flex; align-items:stretch; justify-content:center; background: #fff; flex-direction:column; }
+ #imageViewModal .image-viewer .iv-main-img-wrap{ width:100%; max-height:60vh; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#fff; padding-bottom:8px; position:relative; }
+ #imageViewModal .image-viewer .iv-main img{ width:100%; height:auto; max-height:60vh; object-fit:contain; display:block; background:#fff; }
+ #imageViewModal .image-viewer .iv-sidebar{ width: 90px; background: transparent; border-left: 0; padding: 12px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+ #imageViewModal .image-viewer .iv-controls{ margin-top:4px; }
+ #imageViewModal .iv-thumbs-wrapper{ display:flex; align-items:center; gap:8px; position:relative; margin: 0 auto; }
+ /* Make the thumbnail area show a single large preview that matches the main image width.
+     The other thumbnails remain in the DOM (for fast switching) but are visually hidden. */
+ /* Thumbnail strip shown under main image: JS will mark up to N thumbnails with .visible */
+ #imageViewModal .image-viewer .iv-thumbs{ margin-top:8px; width:100%; display:flex; justify-content:center; overflow:hidden; padding:6px 12px; gap:8px; }
+ #imageViewModal .image-viewer .iv-thumbs::-webkit-scrollbar{ height:8px; }
+ #imageViewModal .image-viewer .iv-thumbs .iv-thumb{ display:none; width:72px; height:72px; border-radius:6px; overflow:hidden; cursor:pointer; border:2px solid transparent; flex: 0 0 auto; }
+ #imageViewModal .image-viewer .iv-thumbs .iv-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+ #imageViewModal .image-viewer .iv-thumbs .iv-thumb.visible{ display:inline-block; }
+ #imageViewModal .image-viewer .iv-thumbs .iv-thumb.active{ border-color: var(--accent); }
+
+/* only show up to 5 thumbnails - hide the rest visually (keeps DOM for potential pagination) */
+/* Removed nth-child hide rule so thumbnails can overflow and the thumb nav can scroll */
+
+            /* when arrows are inside the thumbs wrapper they behave like inline controls
+               - fixed: do not animate or translate
+               - hover: darken (grey) instead of brightening */
+            #imageViewModal .iv-thumbs-wrapper .thumb-nav{
+                width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center;
+                border-radius:50%; position:relative; transform:none !important; z-index:10;
+                background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+                transition: none !important; cursor: pointer; border: 1px solid rgba(0,0,0,0.04);
+            }
+            #imageViewModal .iv-thumbs-wrapper .thumb-nav svg, #imageViewModal .iv-thumbs-wrapper .thumb-nav i{ pointer-events:none; }
+            /* hover: make it grey (反灰) and do not animate */
+            #imageViewModal .iv-thumbs-wrapper .thumb-nav:hover{
+                background: #efefef !important; color: #222 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.04) !important; transform: none !important;
+            }
+ #imageViewModal .thumb-nav.disabled, #imageViewModal .thumb-nav:disabled{ opacity: 0.45; pointer-events: none; }
+
+ /* remove any hover/active translate movement to avoid 'jumping' */
+ #imageViewModal .thumb-nav:hover, #imageViewModal .thumb-nav:active{ transform:none !important; }
+
+@media (max-width: 900px){
+    .image-viewer .iv-wrapper{ flex-direction:column; }
+    .image-viewer .iv-sidebar{ width:100%; flex-direction:row; gap:8px; padding:8px; overflow:auto; order:2; }
+    .image-viewer .iv-thumbs{ flex-direction:row; height:72px; overflow-x:auto; }
+    .image-viewer .iv-thumbs .iv-thumb{ width:72px; height:72px; }
+}
+
+/* Small utilities */
+.btn-primary{ background-color: var(--accent); border-color: var(--accent); }
+
+/* Responsive adjustments */
+@media (max-width: 768px){
+    body .main-content{ margin: 80px 12px 40px; padding: 12px; }
+    .image-preview-item{ width: 72px; height: 72px; }
+}
+
+/* Improve product table on small widths */
+@media (max-width: 540px){
+    .table-product-img{ width: 56px; height: 40px; }
+    .table .btn{ font-size: .8rem; padding: .25rem .45rem; }
+}
+
+/* Improve spacing for table cells */
+.table td, .table th{ vertical-align: middle; }
+
+/* Make file input more friendly on small screens */
+input[type="file"]{ cursor: pointer; }
+
+/* subtle hover for table rows */
+.table-hover tbody tr:hover{ background: rgba(13,110,253,0.03); }

@@ -1,0 +1,44 @@
+{
+    // 使用 IntelliSense 以得知可用的屬性。
+    // 暫留以檢視現有屬性的描述。
+    // 如需詳細資訊，請瀏覽: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "App",
+            "request": "launch",
+            "mainClass": "App",
+            "projectName": "snackforest商店專案_dbcf9b07"
+        },
+        {
+            "type": "java",
+            "name": "DBConnect",
+            "request": "launch",
+            "mainClass": "DBConnect",
+            "projectName": "snackforest商店專案_dbcf9b07"
+        },
+        {
+            "type": "java",
+            "name": "Server",
+            "request": "launch",
+            "mainClass": "Server",
+            "projectName": "snackforest商店專案_dbcf9b07"
+        },
+        {
+            "type": "java",
+            "name": "Snackforest",
+            "request": "launch",
+            "mainClass": "Snackforest",
+            "projectName": "snackforest商店專案_dbcf9b07",
+            "vmArgs": "-cp \"lib/json-20230618.jar;lib/mysql-connector-j-9.3.0.jar;bin\" -Dfile.encoding=UTF-8",
+            "console": "internalConsole"
+        }
+    ]
+}

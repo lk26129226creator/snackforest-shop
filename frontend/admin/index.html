@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>SnackForest 管理端</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/frontend/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">SnackForest 管理後台</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="nav-products">商品管理</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="nav-categories">分類管理</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="nav-orders">訂單管理</a>
+                </li>
+            </ul>
+            <button class="btn btn-outline-light" onclick="logout()">登出</button>
+        </div>
+    </div>
+</nav>
+
+<div class="main-content">
+    <div id="products-section" class="admin-section">
+        <h1>商品管理</h1>
+        <section class="mb-4">
+            <h2>新增商品</h2>
+            <form id="product-form">
+                <div class="mb-3">
+                    <label for="p-name" class="form-label">商品名稱</label>
+                    <input id="p-name" class="form-control" placeholder="商品名稱" required>
+                </div>
+                <div class="mb-3">
+                    <label for="p-price" class="form-label">價格</label>
+                    <input id="p-price" class="form-control" placeholder="價格" type="number" required>
+                </div>
+                <div class="mb-3">
+                    <label for="p-category" class="form-label">分類</label>
+                    <select id="p-category" class="form-select"></select>
+                </div>
+        <div class="mb-3">
+          <label for="p-introduction" class="form-label">商品介紹</label>
+          <textarea id="p-introduction" class="form-control" rows="3" placeholder="輸入商品介紹"></textarea>
+        </div>
+    <div class="mb-3">
+      <label for="p-origin" class="form-label">產地</label>
+      <input id="p-origin" class="form-control" placeholder="輸入產地，例如：台灣">
+    </div>
+    <div class="row g-2">
+      <div class="col-md-6 mb-3">
+        <label for="p-production-date" class="form-label">生產日期</label>
+        <input id="p-production-date" type="date" class="form-control">
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="p-expiry-date" class="form-label">有效期限</label>
+        <input id="p-expiry-date" type="date" class="form-control">
+      </div>
+    </div>
+                <div class="mb-3">
+                    <label for="p-imageUrl" class="form-label">圖片</label>
+                    <input type="file" id="p-image-upload" class="form-control" accept="image/*" multiple>
+                    <input type="hidden" id="p-imageUrl" name="imageUrl">
+                    <div id="p-image-preview-container" class="mt-2 d-flex flex-wrap gap-2"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">新增商品</button>
+            </form>
+        </section>
+
+        <h2>商品列表</h2>
+    <div class="mb-3">
+      <input id="product-search" class="form-control" placeholder="搜尋商品名稱..." />
+    </div>
+    <div id="product-list">載入中...</div>
+    </div>
+
+    <div id="categories-section" class="admin-section">
+        <h1>分類管理</h1>
+        <section class="mb-4">
+            <h2>新增分類</h2>
+            <form id="category-form">
+                <div class="mb-3">
+                    <label for="c-name" class="form-label">分類名稱</label>
+                    <input id="c-name" class="form-control" placeholder="分類名稱" required>
+                </div>
+                <button type="submit" class="btn btn-primary">新增分類</button>
+            </form>
+        </section>
+
+        <h2>分類列表</h2>
+        <div id="category-list">載入中...</div>
+    </div>
+
+    <div id="orders-section" class="admin-section">
+        <h1>訂單管理</h1>
+        <h2>訂單列表</h2>
+        <div id="order-list">載入中...</div>
+    </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editProductModalLabel">編輯商品</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-product-form">
+          <input type="hidden" id="edit-p-id">
+          <div class="mb-3">
+            <label for="edit-p-name" class="form-label">商品名稱</label>
+            <input type="text" class="form-control" id="edit-p-name" required>
+          </div>
+          <div class="mb-3">
+            <label for="edit-p-price" class="form-label">價格</label>
+            <input type="number" class="form-control" id="edit-p-price" required>
+          </div>
+          <div class="mb-3">
+            <label for="edit-p-category" class="form-label">分類</label>
+            <select class="form-select" id="edit-p-category" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="edit-p-introduction" class="form-label">商品介紹</label>
+            <textarea id="edit-p-introduction" class="form-control" rows="3" placeholder="輸入商品介紹"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="edit-p-origin" class="form-label">產地</label>
+            <input id="edit-p-origin" class="form-control" placeholder="輸入產地，例如：台灣">
+          </div>
+          <div class="row g-2">
+            <div class="col-md-6 mb-3">
+                <label for="edit-p-production-date" class="form-label">生產日期</label>
+                <input id="edit-p-production-date" type="date" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="edit-p-expiry-date" class="form-label">有效期限</label>
+                <input id="edit-p-expiry-date" type="date" class="form-control">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="edit-p-imageUrl" class="form-label">圖片</label>
+            <input type="file" id="edit-p-image-upload" class="form-control" accept="image/*" multiple>
+            <input type="hidden" id="edit-p-imageUrl" name="imageUrl">
+            <div id="edit-p-image-preview-container" class="mt-2 d-flex flex-wrap gap-2"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="save-edit-product-btn">儲存變更</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editCategoryModalLabel">編輯分類</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-category-form">
+          <input type="hidden" id="edit-c-id">
+          <div class="mb-3">
+            <label for="edit-c-name" class="form-label">分類名稱</label>
+            <input type="text" class="form-control" id="edit-c-name" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="save-edit-category-btn">儲存變更</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Image View Modal (full viewer with thumbnails on the right) -->
+<div class="modal fade" id="imageViewModal" tabindex="-1" aria-labelledby="imageViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imageViewModalLabel">查看圖片</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="image-viewer">
+          <div class="iv-wrapper">
+            <div class="iv-main text-center d-flex flex-column">
+              <div class="iv-main-img-wrap flex-grow-1 d-flex align-items-center justify-content-center">
+                <img id="iv-main-img" src="" alt="產品圖片" />
+              </div>
+              <div class="iv-thumbs-wrapper mt-2 d-flex align-items-center justify-content-center">
+                <button id="iv-thumb-prev" class="btn btn-outline-secondary thumb-nav me-2" aria-label="上一張">◀</button>
+                <div class="iv-thumbs mt-0 d-flex align-items-center" id="iv-thumbs">
+                  <!-- thumbnails injected here (horizontal) -->
+                </div>
+                <button id="iv-thumb-next" class="btn btn-outline-secondary thumb-nav ms-2" aria-label="下一張">▶</button>
+              </div>
+            </div>
+            <aside class="iv-sidebar d-flex flex-column align-items-center">
+              <!-- operation buttons (download/delete) could go here -->
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="admin.js?v=20250920.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

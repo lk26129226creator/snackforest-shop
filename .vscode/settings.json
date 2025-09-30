@@ -1,0 +1,8 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "backend/lib/mysql-connector-j-9.3.0.jar",
+        "backend/lib/json-20230618.jar"
+    ],
+    "liveServer.settings.port": 5501
+}
