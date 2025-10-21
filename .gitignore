@@ -1,0 +1,20 @@
+# Java 編譯檔案
+*.class
+backend/bin/
+*.jar
+
+# IDE 檔案
+.vscode/
+.idea/
+*.iml
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+
+# 日誌檔案
+*.log
+
+# 暫存檔案
+*.tmp
+*.temp

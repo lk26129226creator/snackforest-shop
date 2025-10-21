@@ -6,10 +6,16 @@ import java.sql.SQLException;
  * 資料庫連線工具類別 DBConnect（放在預設 package，與專案其他檔案一致）
  */
 public class DBConnect {
-    // MySQL 連線資訊（加入 UTF-8 連線參數）
-    private static final String URL = "jdbc:mysql://localhost:3306/test0310?autoReconnect=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8";
-    private static final String USER = "root";
-    private static final String PASSWORD = "lkjh890612"; // 請視情況修改
+    // MySQL 連線資訊（支援環境變數，保留預設值以支援本機開發）
+    private static final String DB_HOST = System.getenv().getOrDefault("DB_HOST", "localhost");
+    private static final String DB_PORT = System.getenv().getOrDefault("DB_PORT", "3306");
+    private static final String DB_NAME = System.getenv().getOrDefault("DB_NAME", "test0310");
+    private static final String USER = System.getenv().getOrDefault("DB_USER", "root");
+    private static final String PASSWORD = System.getenv().getOrDefault("DB_PASSWORD", "lkjh890612");
+    private static final String URL = String.format(
+        "jdbc:mysql://%s:%s/%s?autoReconnect=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8",
+        DB_HOST, DB_PORT, DB_NAME
+    );
 
     static {
         try {

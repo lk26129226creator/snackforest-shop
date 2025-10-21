@@ -19,39 +19,53 @@ import org.json.JSONObject;
 
 public class Server {
 
-    public static void main(String[] args) throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
-
-        HttpContext productsCtx = server.createContext("/api/products", new ProductsHandler());
-        HttpContext dbDebugCtx = server.createContext("/api/debug/db", new DbDebugHandler());
-    HttpContext staticCtx = server.createContext("/frontend", new StaticHandler());
-    // serve root as static too so requests like /index.html or /cart.html work
-    HttpContext rootCtx = server.createContext("/", new StaticHandler());
-        HttpContext imagesCtx = server.createContext("/frontend/images/products/", new ImageFileHandler());
-        HttpContext pingCtx = server.createContext("/ping", exchange -> {
-            JSONObject resp = new JSONObject();
-            resp.put("status", "ok");
-            sendJsonResponse(exchange, resp.toString(), 200);
-        });
-        HttpContext categoryCtx = server.createContext("/api/category", new CategoryHandler());
-        HttpContext categoriesCtx = server.createContext("/api/categories", new CategoryHandler());
-        HttpContext orderCtx = server.createContext("/api/order", new OrderHandler());
-        HttpContext shipCtx = server.createContext("/api/shippingmethod", new ShippingMethodHandler());
-        HttpContext payCtx = server.createContext("/api/paymentmethod", new PaymentMethodHandler());
-        HttpContext loginCtx = server.createContext("/api/login", new LoginHandler());
-        HttpContext uploadCtx = server.createContext("/api/upload/image", new ImageUploadHandler());
-        HttpContext deleteCtx = server.createContext("/api/upload/image/delete", new ImageDeleteHandler());
-
-    HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx};
-        for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
-
-        server.start();
-        System.out.println("Server started at http://localhost:8000");
-        // Prevent main thread from exiting so HttpServer keeps running
+    public static void main(String[] args) {
         try {
-            while (true) Thread.sleep(60_000);
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
+            System.out.println("啟動 SnackForest 伺服器...");
+            
+            HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+
+            HttpContext productsCtx = server.createContext("/api/products", new ProductsHandler());
+            HttpContext dbDebugCtx = server.createContext("/api/debug/db", new DbDebugHandler());
+        HttpContext staticCtx = server.createContext("/frontend", new StaticHandler());
+        // serve root as static too so requests like /index.html or /cart.html work
+        HttpContext rootCtx = server.createContext("/", new StaticHandler());
+            HttpContext imagesCtx = server.createContext("/frontend/images/products/", new ImageFileHandler());
+            HttpContext pingCtx = server.createContext("/ping", exchange -> {
+                try {
+                    JSONObject resp = new JSONObject();
+                    resp.put("status", "ok");
+                    resp.put("timestamp", System.currentTimeMillis());
+                    sendJsonResponse(exchange, resp.toString(), 200);
+                } catch (Exception e) {
+                    System.err.println("處理 ping 請求時發生錯誤: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            });
+            HttpContext categoryCtx = server.createContext("/api/category", new CategoryHandler());
+            HttpContext categoriesCtx = server.createContext("/api/categories", new CategoryHandler());
+            HttpContext orderCtx = server.createContext("/api/order", new OrderHandler());
+            HttpContext shipCtx = server.createContext("/api/shippingmethod", new ShippingMethodHandler());
+            HttpContext payCtx = server.createContext("/api/paymentmethod", new PaymentMethodHandler());
+            HttpContext loginCtx = server.createContext("/api/login", new LoginHandler());
+            HttpContext uploadCtx = server.createContext("/api/upload/image", new ImageUploadHandler());
+            HttpContext deleteCtx = server.createContext("/api/upload/image/delete", new ImageDeleteHandler());
+
+        HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx};
+            for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
+
+            server.start();
+            System.out.println("✅ Server started at http://localhost:8000");
+            
+            // Prevent main thread from exiting so HttpServer keeps running
+            while (true) {
+                Thread.sleep(30_000);
+                System.out.println("伺服器運行中... " + new java.util.Date());
+            }
+        } catch (Exception e) {
+            System.err.println("❌ 伺服器啟動失敗: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
         }
     }
 
