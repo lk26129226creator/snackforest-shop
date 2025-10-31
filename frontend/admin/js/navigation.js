@@ -289,7 +289,7 @@
         } catch (_) {
             // ignore storage errors
         }
-        window.location.href = '../login.html';
+        window.location.href = '/snackforest-shop/frontend/login.html';
     };
 
     Admin.navigation = navigation;
