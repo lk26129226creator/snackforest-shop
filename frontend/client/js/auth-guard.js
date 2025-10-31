@@ -11,6 +11,8 @@
         if (!loginPath) {
             loginPath = window.location.pathname.includes('/client/') ? '../login.html' : 'login.html';
         }
-        window.location.replace(loginPath);
+            // 如果在 GitHub Pages，略過強制跳轉
+            if (window.location.hostname.endsWith('github.io')) return;
+            window.location.replace(loginPath);
     }, { once: true });
 })();
