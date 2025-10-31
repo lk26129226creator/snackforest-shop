@@ -24,6 +24,12 @@ public class Server {
             System.out.println("啟動 SnackForest 伺服器...");
             
             HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+            // Run light-weight DB migrations (safe if run multiple times)
+            try (Connection conn = DBConnect.getConnection()) {
+                ensureCustomerColumns(conn);
+            } catch (Exception e) {
+                System.err.println("啟動前資料庫欄位檢查/建立失敗（可稍後再試）：" + e.getMessage());
+            }
 
             HttpContext productsCtx = server.createContext("/api/products", new ProductsHandler());
             HttpContext dbDebugCtx = server.createContext("/api/debug/db", new DbDebugHandler());
@@ -31,6 +37,8 @@ public class Server {
         // serve root as static too so requests like /index.html or /cart.html work
         HttpContext rootCtx = server.createContext("/", new StaticHandler());
             HttpContext imagesCtx = server.createContext("/frontend/images/products/", new ImageFileHandler());
+            // New context to serve files saved under data/uploads/images
+            HttpContext uploadsCtx = server.createContext("/uploads/images/", new UploadsImageFileHandler());
             HttpContext pingCtx = server.createContext("/ping", exchange -> {
                 try {
                     JSONObject resp = new JSONObject();
@@ -50,8 +58,11 @@ public class Server {
             HttpContext loginCtx = server.createContext("/api/login", new LoginHandler());
             HttpContext uploadCtx = server.createContext("/api/upload/image", new ImageUploadHandler());
             HttpContext deleteCtx = server.createContext("/api/upload/image/delete", new ImageDeleteHandler());
+        HttpContext carouselCtx = server.createContext("/api/carousel", new CarouselHandler());
+        HttpContext siteConfigCtx = server.createContext("/api/site-config", new SiteConfigHandler());
+        HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
 
-        HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx};
+    HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, customerProfileCtx};
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
@@ -98,13 +109,45 @@ public class Server {
         if (e != null) e.printStackTrace();
     }
 
+    // --- DB migrations ---
+    static void ensureCustomerColumns(Connection conn) throws SQLException {
+        String dbName = null;
+        try (PreparedStatement ps = conn.prepareStatement("SELECT DATABASE()")) {
+            try (ResultSet rs = ps.executeQuery()) { if (rs.next()) dbName = rs.getString(1); }
+        }
+        if (dbName == null || dbName.isEmpty()) return;
+
+        String[][] columns = new String[][]{
+            {"Email", "VARCHAR(255) NULL"},
+            {"Address", "TEXT NULL"},
+            {"AvatarUrl", "VARCHAR(512) NULL"},
+            {"UpdatedAt", "DATETIME NULL"}
+        };
+
+        for (String[] col : columns) {
+            String name = col[0];
+            String ddl = col[1];
+            boolean exists = false;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='customers' AND COLUMN_NAME=?")) {
+                ps.setString(1, dbName);
+                ps.setString(2, name);
+                try (ResultSet rs = ps.executeQuery()) { if (rs.next()) exists = rs.getInt(1) > 0; }
+            }
+            if (!exists) {
+                String sql = "ALTER TABLE customers ADD COLUMN " + name + " " + ddl;
+                try (PreparedStatement alter = conn.prepareStatement(sql)) { alter.executeUpdate(); }
+            }
+        }
+    }
+
     // --- Simple CORS filter ---
     static class CorsFilter extends com.sun.net.httpserver.Filter {
         @Override
         public void doFilter(HttpExchange exchange, Chain chain) throws IOException {
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
             exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization, Slug");
+                exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization, Slug, slug");
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
@@ -118,6 +161,9 @@ public class Server {
 
     // --- Utility Methods ---
     private static final Path IMAGES_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
+    // New location for user uploads, outside of frontend so Live Server won't auto-reload
+    private static final Path UPLOADS_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
+    private static final Path DATA_DIR = Paths.get("..", "data").toAbsolutePath().normalize();
 
     private static List<String> cleanImageUrlList(List<String> raw) {
         List<String> out = new ArrayList<>();
@@ -136,22 +182,48 @@ public class Server {
     private static String normalizeImageUrl(String rawUrl) {
         if (rawUrl == null) return null;
         String trimmed = rawUrl.trim().replace('\\', '/');
-        String prefix = "/frontend/images/products/";
-        if (trimmed.startsWith(prefix)) {
-            String filename = trimmed.substring(prefix.length());
-            Path candidate = IMAGES_DIR.resolve(filename);
-            if (Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
+        if (trimmed.isEmpty()) return null;
+        final String productsPrefix = "/frontend/images/products/";
+        final String uploadsPrefix = "/uploads/images/";
+        // If already absolute path with known prefixes and file exists, return as-is
+        if (trimmed.startsWith(productsPrefix)) {
+            String filename = trimmed.substring(productsPrefix.length());
+            Path candidate = IMAGES_DIR.resolve(filename).normalize();
+            if (candidate.startsWith(IMAGES_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
         }
+        if (trimmed.startsWith(uploadsPrefix)) {
+            String filename = trimmed.substring(uploadsPrefix.length());
+            Path candidate = UPLOADS_DIR.resolve(filename).normalize();
+            if (candidate.startsWith(UPLOADS_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
+        }
+        // If it's an absolute path without known prefix, try to map filename to either directory
+        if (trimmed.startsWith("/")) {
+            String base = trimmed.substring(trimmed.lastIndexOf('/') + 1);
+            if (!base.isEmpty()) {
+                Path u = UPLOADS_DIR.resolve(base).normalize();
+                if (u.startsWith(UPLOADS_DIR) && Files.exists(u) && Files.isRegularFile(u)) return uploadsPrefix + base;
+                Path p = IMAGES_DIR.resolve(base).normalize();
+                if (p.startsWith(IMAGES_DIR) && Files.exists(p) && Files.isRegularFile(p)) return productsPrefix + base;
+            }
+        }
+        // Fallback: search by base name in uploads first, then products
         String filenameToSearch = trimmed;
         int lastSlash = trimmed.lastIndexOf('/');
         if (lastSlash > -1) filenameToSearch = trimmed.substring(lastSlash + 1);
         final String baseName = filenameToSearch;
-        if (filenameToSearch.isEmpty()) return null;
+        if (baseName.isEmpty()) return null;
         try {
-            if (!Files.exists(IMAGES_DIR) || !Files.isDirectory(IMAGES_DIR)) return null;
-            try (java.util.stream.Stream<Path> s = Files.list(IMAGES_DIR)) {
-                Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
-                if (found.isPresent()) return prefix + found.get().getFileName().toString();
+            if (Files.exists(UPLOADS_DIR) && Files.isDirectory(UPLOADS_DIR)) {
+                try (java.util.stream.Stream<Path> s = Files.list(UPLOADS_DIR)) {
+                    Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
+                    if (found.isPresent()) return uploadsPrefix + found.get().getFileName().toString();
+                }
+            }
+            if (Files.exists(IMAGES_DIR) && Files.isDirectory(IMAGES_DIR)) {
+                try (java.util.stream.Stream<Path> s = Files.list(IMAGES_DIR)) {
+                    Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
+                    if (found.isPresent()) return productsPrefix + found.get().getFileName().toString();
+                }
             }
         } catch (Exception e) {
             System.err.println(java.time.LocalDateTime.now() + " - Error in normalizeImageUrl: " + e.getMessage());
@@ -206,7 +278,7 @@ public class Server {
                 if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
                     JSONArray ordersArray = new JSONArray();
                     try (Connection conn = DBConnect.getConnection()) {
-                        String sql = "SELECT o.idOrders, o.OrderDate, o.TotalAmount, c.CustomerName, o.ShippingMethod, o.PaymentMethod, o.RecipientName, o.RecipientAddress, o.RecipientPhone FROM orders o JOIN customers c ON o.idCustomers = c.idCustomers ORDER BY o.OrderDate DESC";
+                        String sql = "SELECT o.idOrders, o.idCustomers, o.OrderDate, o.TotalAmount, c.CustomerName, o.ShippingMethod, o.PaymentMethod, o.RecipientName, o.RecipientAddress, o.RecipientPhone FROM orders o JOIN customers c ON o.idCustomers = c.idCustomers ORDER BY o.OrderDate DESC";
                         String detailSql = "SELECT od.idOrders, od.Quantity, od.PriceAtTimeOfPurchase, p.ProductName FROM order_details od JOIN products p ON od.idProducts = p.idProducts";
 
                         Map<Integer, JSONObject> ordersMap = new LinkedHashMap<>();
@@ -220,6 +292,7 @@ public class Server {
                                 String customerNameVal = rs.getString("CustomerName");
                                 if (customerNameVal == null) customerNameVal = "";
                                 order.put("customerName", customerNameVal);
+                                try { order.put("customerId", rs.getInt("idCustomers")); } catch (Exception __ignore) {}
                                 order.put("status", JSONObject.NULL);
                                 String ship = rs.getString("ShippingMethod");
                                 order.put("shippingMethod", ship == null ? "" : ship);
@@ -551,7 +624,11 @@ public class Server {
                         body = s.hasNext() ? s.next() : "";
                     }
                     JSONObject req = new JSONObject(body);
-                    String name = req.getString("name");
+                    String name = req.optString("name", "").trim();
+                    if (name.isEmpty()) {
+                        sendErrorResponse(exchange, 400, "Missing 'name' for category", null);
+                        return;
+                    }
                     model.Category newCategory = new model.Category(0, name); // ID will be generated by DB
                     int newId = categoryDAO.save(newCategory);
                     if (newId != -1) {
@@ -568,16 +645,22 @@ public class Server {
                         sendErrorResponse(exchange, 404, "Category not found for deletion", null);
                     }
                 } else if ("PUT".equalsIgnoreCase(method)) {
-                    String query = exchange.getRequestURI().getQuery();
+                    String path = exchange.getRequestURI().getPath();
                     int id = 0;
-                    if (query!=null && query.startsWith("id=")) id = Integer.parseInt(query.substring(3));
+                    try {
+                        id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
+                    } catch (Exception ignore) {
+                        // fallback to body field below
+                    }
                     String body;
                     try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
                         body = s.hasNext() ? s.next() : "";
                     }
                     JSONObject req = new JSONObject(body);
                     if (id==0) id = req.optInt("id", 0);
-                    String name = req.getString("name");
+                    String name = req.optString("name", "").trim();
+                    if (id <= 0) { sendErrorResponse(exchange, 400, "Missing category id", null); return; }
+                    if (name.isEmpty()) { sendErrorResponse(exchange, 400, "Missing 'name' for category", null); return; }
                     model.Category updatedCategory = new model.Category(id, name);
                     if (categoryDAO.update(updatedCategory)) {
                         sendNoContent(exchange, 200);
@@ -636,8 +719,8 @@ public class Server {
     }
 
     static class ImageUploadHandler implements HttpHandler {
-        // store uploads in the same directory ImageFileHandler reads from
-        private static final Path UPLOAD_DIR_PATH = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
+        // store uploads under data/uploads/images so Live Server won't reload
+        private static final Path UPLOAD_DIR_PATH = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -647,6 +730,9 @@ public class Server {
             }
             try {
                 String fileName = exchange.getRequestHeaders().getFirst("Slug");
+                if (fileName == null || fileName.trim().isEmpty()) {
+                    fileName = exchange.getRequestHeaders().getFirst("slug");
+                }
                 if (fileName == null || fileName.trim().isEmpty()) {
                     sendErrorResponse(exchange, 400, "Bad Request: Missing Slug header with filename", null);
                     return;
@@ -669,6 +755,16 @@ public class Server {
                 if (dotIndex > 0) {
                     fileExtension = fileName.substring(dotIndex);
                 }
+                if (fileExtension.isEmpty()) {
+                    String ct = exchange.getRequestHeaders().getFirst("Content-Type");
+                    if (ct != null) {
+                        String l = ct.toLowerCase(java.util.Locale.ROOT);
+                        if (l.contains("png")) fileExtension = ".png";
+                        else if (l.contains("jpeg") || l.contains("jpg")) fileExtension = ".jpg";
+                        else if (l.contains("gif")) fileExtension = ".gif";
+                    }
+                    if (fileExtension.isEmpty()) fileExtension = ".png";
+                }
 
                 String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
                 Files.createDirectories(UPLOAD_DIR_PATH);
@@ -676,7 +772,7 @@ public class Server {
                 Files.write(filePath, fileContent);
 
                 JSONObject responseJson = new JSONObject();
-                String imageUrl = "/frontend/images/products/" + uniqueFilename;
+                String imageUrl = "/uploads/images/" + uniqueFilename;
                 responseJson.put("imageUrl", imageUrl);
                 System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: saved " + filePath.toString() + " -> returning " + imageUrl);
                 sendJsonResponse(exchange, responseJson.toString(), 200);
@@ -689,7 +785,8 @@ public class Server {
     }
 
     static class ImageDeleteHandler implements HttpHandler {
-        private static final Path IMAGES_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
+        private static final Path LEGACY_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
+        private static final Path UPLOAD_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -717,12 +814,23 @@ public class Server {
                 }
                 // sanitize
                 filename = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
-                Path target = IMAGES_DIR.resolve(filename).normalize();
-                if (!target.startsWith(IMAGES_DIR) || !Files.exists(target)) {
+                // try uploads first
+                Path target = UPLOAD_DIR.resolve(filename).normalize();
+                boolean deleted = false;
+                if (target.startsWith(UPLOAD_DIR) && Files.exists(target)) {
+                    Files.delete(target);
+                    deleted = true;
+                } else {
+                    Path legacy = LEGACY_DIR.resolve(filename).normalize();
+                    if (legacy.startsWith(LEGACY_DIR) && Files.exists(legacy)) {
+                        Files.delete(legacy);
+                        deleted = true;
+                    }
+                }
+                if (!deleted) {
                     sendErrorResponse(exchange, 404, "File not found: " + filename, null);
                     return;
                 }
-                Files.delete(target);
                 JSONObject resp = new JSONObject();
                 resp.put("deleted", filename);
                 sendJsonResponse(exchange, resp.toString(), 200);
@@ -760,6 +868,31 @@ public class Server {
                 }
             } catch (Exception e) {
                 sendErrorResponse(exchange, 500, "Error serving image", e);
+            }
+        }
+    }
+
+    // Serve files from the new uploads directory under data/uploads/images
+    static class UploadsImageFileHandler implements HttpHandler {
+        private static final Path BASE_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                String uriPath = exchange.getRequestURI().getPath();
+                String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
+                Path imagePath = BASE_DIR.resolve(fileName).normalize();
+                if (!imagePath.startsWith(BASE_DIR) || !Files.exists(imagePath) || !Files.isReadable(imagePath)) {
+                    sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
+                    return;
+                }
+                String contentType = Files.probeContentType(imagePath);
+                if (contentType == null) contentType = "application/octet-stream";
+                exchange.getResponseHeaders().set("Content-Type", contentType);
+                exchange.sendResponseHeaders(200, Files.size(imagePath));
+                try (OutputStream os = exchange.getResponseBody()) { Files.copy(imagePath, os); }
+            } catch (Exception e) {
+                sendErrorResponse(exchange, 500, "Error serving upload image", e);
             }
         }
     }
@@ -818,6 +951,317 @@ public class Server {
             exchange.getResponseHeaders().set("Content-Type", contentType + "; charset=UTF-8");
             exchange.sendResponseHeaders(200, Files.size(resolved));
             try (OutputStream os = exchange.getResponseBody()) { Files.copy(resolved, os); }
+        }
+    }
+
+    // Carousel slides persistence (shared across site)
+    static class CarouselHandler implements HttpHandler {
+        private static final Path CAROUSEL_FILE = DATA_DIR.resolve("carousel.json");
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            try {
+                if ("GET".equalsIgnoreCase(method)) {
+                    String defaultJson = "[]";
+                    String json;
+                    if (Files.exists(CAROUSEL_FILE)) {
+                        json = Files.readString(CAROUSEL_FILE, java.nio.charset.StandardCharsets.UTF_8);
+                    } else {
+                        json = defaultJson;
+                    }
+                    sendJsonResponse(exchange, json, 200);
+                } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
+                    String body;
+                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
+                        body = s.hasNext() ? s.next() : "[]";
+                    }
+                    // Validate it's an array
+                    try { new org.json.JSONArray(body); } catch (Exception e) {
+                        sendErrorResponse(exchange, 400, "Invalid JSON array for carousel", e);
+                        return;
+                    }
+                    Files.createDirectories(CAROUSEL_FILE.getParent());
+                    Files.writeString(CAROUSEL_FILE, body, java.nio.charset.StandardCharsets.UTF_8,
+                            java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+                    sendNoContent(exchange, 200);
+                } else {
+                    sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+                }
+            } catch (Exception e) {
+                sendErrorResponse(exchange, 500, "Carousel handler error", e);
+            }
+        }
+    }
+
+    // Site config (hero/benefits/branding/footer)
+    static class SiteConfigHandler implements HttpHandler {
+        private static final Path CONFIG_FILE = DATA_DIR.resolve("site-config.json");
+
+        private static String readFileOrDefault(Path path, String defaultJson) throws IOException {
+            if (!Files.exists(path)) return defaultJson;
+            return Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        private static void writeJsonToFile(Path path, String json) throws IOException {
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, json, java.nio.charset.StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+        }
+
+        private static final String DEFAULT_CONFIG = new JSONObject()
+                .put("hero", new JSONObject()
+                        .put("title", "探索世界零食的靈感地圖")
+                        .put("subtitle", "精挑細選、快速到貨、安心付款。從人氣熱銷到限時新品，一鍵帶你吃遍全球風味。")
+                        .put("imageUrl", "/frontend/images/products/no-image.svg")
+                        .put("primaryText", "開始購物")
+                        .put("primaryLink", "product.html")
+                        .put("secondaryText", "逛逛全部")
+                        .put("secondaryLink", "product.html?category=all"))
+                .put("benefits", new JSONArray()
+                        .put(new JSONObject().put("icon", "truck-fast").put("title", "快速到貨").put("desc", "下單 24 小時內出貨"))
+                        .put(new JSONObject().put("icon", "shield-halved").put("title", "安全付款").put("desc", "多元支付、SSL 安全"))
+                        .put(new JSONObject().put("icon", "arrows-rotate").put("title", "七日鑑賞").put("desc", "不滿意可退換"))
+                        .put(new JSONObject().put("icon", "gift").put("title", "會員回饋").put("desc", "點數折抵更划算")))
+                .put("featuredProductIds", new JSONArray())
+                .put("branding", new JSONObject()
+                        .put("logoUrl", "")
+                        .put("brandName", "SnackForest")
+                        .put("tagline", "探索零食世界"))
+                .put("footer", new JSONObject().put("text", "© 2025 SnackForest. 保留所有權利。"))
+                .toString();
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            try {
+                if ("GET".equalsIgnoreCase(method)) {
+                    String json = readFileOrDefault(CONFIG_FILE, DEFAULT_CONFIG);
+                    sendJsonResponse(exchange, json, 200);
+                } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
+                    String body;
+                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
+                        body = s.hasNext() ? s.next() : DEFAULT_CONFIG;
+                    }
+                    // validate JSON object
+                    try { new JSONObject(body); } catch (Exception e) {
+                        sendErrorResponse(exchange, 400, "Invalid JSON object for site-config", e);
+                        return;
+                    }
+                    writeJsonToFile(CONFIG_FILE, body);
+                    sendNoContent(exchange, 200);
+                } else {
+                    sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+                }
+            } catch (Exception e) {
+                sendErrorResponse(exchange, 500, "Site config handler error", e);
+            }
+        }
+    }
+
+    // Customer profile: GET /api/customer-profile/{id}, PUT /api/customer-profile/{id}
+    static class CustomerProfileHandler implements HttpHandler {
+        private static final Path PROFILES_FILE = DATA_DIR.resolve("customer-profiles.json");
+
+        private static JSONObject readProfiles() {
+            try {
+                if (!Files.exists(PROFILES_FILE)) return new JSONObject();
+                String json = Files.readString(PROFILES_FILE, java.nio.charset.StandardCharsets.UTF_8);
+                return new JSONObject(json);
+            } catch (Exception e) {
+                System.err.println("readProfiles error: " + e.getMessage());
+                return new JSONObject();
+            }
+        }
+
+        private static void writeProfiles(JSONObject obj) throws IOException {
+            Files.createDirectories(PROFILES_FILE.getParent());
+            Files.writeString(PROFILES_FILE, obj.toString(), java.nio.charset.StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+        }
+
+        private static String getCustomerNameById(int id) {
+            try (Connection conn = DBConnect.getConnection()) {
+                try (PreparedStatement ps = conn.prepareStatement("SELECT CustomerName FROM customers WHERE idCustomers = ?")) {
+                    ps.setInt(1, id);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            String name = rs.getString(1);
+                            return name == null ? "" : name;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("getCustomerNameById error: " + e.getMessage());
+            }
+            return "";
+        }
+
+        private static String inferExtension(String fileName, String contentType) {
+            String ext = "";
+            if (fileName != null) {
+                int dot = fileName.lastIndexOf('.');
+                if (dot > -1) ext = fileName.substring(dot).toLowerCase(Locale.ROOT);
+            }
+            if (ext.isEmpty() && contentType != null) {
+                String ct = contentType.toLowerCase(Locale.ROOT);
+                if (ct.contains("png")) ext = ".png";
+                else if (ct.contains("jpeg")) ext = ".jpg";
+                else if (ct.contains("jpg")) ext = ".jpg";
+                else if (ct.contains("gif")) ext = ".gif";
+                else if (ct.contains("webp")) ext = ".webp";
+            }
+            if (ext.isEmpty()) ext = ".png";
+            return ext;
+        }
+
+        // use outer Server.ensureCustomerColumns for migrations
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            String path = exchange.getRequestURI().getPath();
+            // Expect /api/customer-profile/{id}
+            String[] parts = path.split("/");
+            if (parts.length < 4) {
+                sendErrorResponse(exchange, 400, "Missing customer id", null);
+                return;
+            }
+            int id;
+            try { id = Integer.parseInt(parts[3]); } catch (Exception e) {
+                sendErrorResponse(exchange, 400, "Invalid customer id", e);
+                return;
+            }
+
+            if ("GET".equalsIgnoreCase(method)) {
+                JSONObject store = readProfiles();
+                JSONObject profile = store.optJSONObject(String.valueOf(id));
+                if (profile == null) profile = new JSONObject();
+                profile.put("customerId", String.valueOf(id));
+
+                // Merge with DB values (DB takes precedence when present)
+                try (Connection conn = DBConnect.getConnection()) {
+                    Server.ensureCustomerColumns(conn);
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "SELECT CustomerName, Email, Phone, Address, AvatarUrl, UpdatedAt FROM customers WHERE idCustomers=?")) {
+                        ps.setInt(1, id);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) {
+                                String name = rs.getString("CustomerName");
+                                String email = rs.getString("Email");
+                                String phone = rs.getString("Phone");
+                                String address = rs.getString("Address");
+                                String avatar = rs.getString("AvatarUrl");
+                                java.sql.Timestamp updated = rs.getTimestamp("UpdatedAt");
+                                if (name != null && !name.isEmpty()) profile.put("displayName", name);
+                                if (email != null) profile.put("email", email); else if (!profile.has("email")) profile.put("email", JSONObject.NULL);
+                                if (phone != null) profile.put("phone", phone); else if (!profile.has("phone")) profile.put("phone", JSONObject.NULL);
+                                if (address != null) profile.put("address", address); else if (!profile.has("address")) profile.put("address", JSONObject.NULL);
+                                if (avatar != null) profile.put("avatarUrl", avatar); else if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
+                                if (updated != null) profile.put("updatedAt", updated.toInstant().toString());
+                            } else {
+                                // fallback if no row: seed with name if available
+                                String name = getCustomerNameById(id);
+                                if (name != null && !name.isEmpty()) profile.put("displayName", name);
+                                if (!profile.has("email")) profile.put("email", JSONObject.NULL);
+                                if (!profile.has("phone")) profile.put("phone", JSONObject.NULL);
+                                if (!profile.has("address")) profile.put("address", JSONObject.NULL);
+                                if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("GET customer-profile merge DB failed: " + e.getMessage());
+                    if (!profile.has("email")) profile.put("email", JSONObject.NULL);
+                    if (!profile.has("phone")) profile.put("phone", JSONObject.NULL);
+                    if (!profile.has("address")) profile.put("address", JSONObject.NULL);
+                    if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
+                }
+
+                sendJsonResponse(exchange, profile.toString(), 200);
+                return;
+            }
+
+            if ("PUT".equalsIgnoreCase(method)) {
+                String body;
+                try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
+                    body = s.hasNext() ? s.next() : "{}";
+                }
+                JSONObject req;
+                try { req = new JSONObject(body); } catch (Exception e) {
+                    sendErrorResponse(exchange, 400, "Invalid JSON", e);
+                    return;
+                }
+
+                JSONObject store = readProfiles();
+                JSONObject existing = store.optJSONObject(String.valueOf(id));
+                if (existing == null) existing = new JSONObject();
+
+                // Merge updatable fields
+                String displayName = req.optString("displayName", null);
+                String email = req.optString("email", null);
+                String phone = req.optString("phone", null);
+                String address = req.optString("address", null);
+
+                if (displayName != null && !displayName.isEmpty()) existing.put("displayName", displayName);
+                if (email != null) existing.put("email", email.isEmpty() ? JSONObject.NULL : email);
+                if (phone != null) existing.put("phone", phone.isEmpty() ? JSONObject.NULL : phone);
+                if (address != null) existing.put("address", address.isEmpty() ? JSONObject.NULL : address);
+
+                // Handle avatar upload if present
+                String avatarData = req.optString("avatarData", null);
+                String avatarFileName = req.optString("avatarFileName", null);
+                String avatarContentType = req.optString("avatarContentType", null);
+                String finalAvatarUrl = null;
+                if (avatarData != null && !avatarData.isEmpty()) {
+                    try {
+                        byte[] bytes = java.util.Base64.getDecoder().decode(avatarData);
+                        Files.createDirectories(UPLOADS_DIR);
+                        String ext = inferExtension(avatarFileName, avatarContentType);
+                        String unique = "customer-" + id + "-" + System.currentTimeMillis() + ext;
+                        Path target = UPLOADS_DIR.resolve(unique).normalize();
+                        if (!target.startsWith(UPLOADS_DIR)) throw new IOException("Invalid upload path");
+                        Files.write(target, bytes);
+                        String avatarUrl = "/uploads/images/" + unique;
+                        existing.put("avatarUrl", avatarUrl);
+                        finalAvatarUrl = avatarUrl;
+                    } catch (Exception e) {
+                        System.err.println("Failed to save avatar: " + e.getMessage());
+                        // Keep previous avatar on failure
+                    }
+                }
+
+                existing.put("customerId", String.valueOf(id));
+                existing.put("updatedAt", java.time.Instant.now().toString());
+                store.put(String.valueOf(id), existing);
+                writeProfiles(store);
+
+                // Persist into customers table
+                try (Connection conn = DBConnect.getConnection()) {
+                    Server.ensureCustomerColumns(conn);
+                    String sql = "UPDATE customers SET CustomerName = COALESCE(?, CustomerName), " +
+                            "Email = ?, Phone = ?, Address = ?, AvatarUrl = ?, UpdatedAt = NOW() WHERE idCustomers = ?";
+                    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                        ps.setString(1, displayName);
+                        ps.setString(2, email);
+                        ps.setString(3, phone);
+                        ps.setString(4, address);
+                        String avatarForDb = finalAvatarUrl != null ? finalAvatarUrl : existing.optString("avatarUrl", null);
+                        if (avatarForDb != null && avatarForDb.isEmpty()) avatarForDb = null;
+                        ps.setString(5, avatarForDb);
+                        ps.setInt(6, id);
+                        ps.executeUpdate();
+                    }
+                } catch (Exception e) {
+                    System.err.println("Persisting customer profile to DB failed: " + e.getMessage());
+                }
+                sendJsonResponse(exchange, existing.toString(), 200);
+                return;
+            }
+
+            sendErrorResponse(exchange, 405, "Method Not Allowed", null);
         }
     }
 }

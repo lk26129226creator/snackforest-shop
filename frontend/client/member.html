@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="SnackForest 會員中心">
+	<title>會員中心 - SnackForest</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-Avb2QiuDEEvB4bZJYdft2mNjVShBftLdPG8FJ0V7irTLQ8Uo0qcPxh4Plq7G5tGm0rU+1SPhVotteLpBERwTkw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+	<link rel="stylesheet" href="/frontend/client/css/client.css">
+	<link rel="icon" href="data:,">
+	<style>
+		.member-avatar {
+			width: 128px;
+			height: 128px;
+			border-radius: 50%;
+			background:
+				linear-gradient(180deg, #ffffff, #fbfbfb);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			position: relative;
+			overflow: hidden;
+			margin: 0 auto;
+			border: 1px solid rgba(148,163,184,0.35);
+			box-shadow: var(--shadow);
+			transition: box-shadow .2s ease, transform .18s ease, border-color .2s ease;
+		}
+
+		.member-avatar img {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+			object-position: center;
+			display: none;
+		}
+
+		.member-avatar.has-image img {
+			display: block;
+		}
+
+		.member-avatar.has-image .initial {
+			display: none;
+		}
+
+		.member-avatar .initial { font-size: 48px; color: var(--primary-600); }
+
+		.member-avatar:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); border-color: rgba(74,124,89,0.35); }
+		.member-avatar:focus-visible { outline: 2px solid var(--ring-color); outline-offset: 3px; }
+		/* hover 提示相機圖示 */
+		.member-avatar::after {
+			content: "\f030"; /* fa-camera */
+			font-family: "Font Awesome 6 Free"; font-weight: 900;
+			position: absolute; inset: auto 0 8px 0; margin: 0 auto; width: 36px; height: 36px;
+			background: rgba(0,0,0,0.55); color: #fff; border-radius: 10px;
+			display: grid; place-items: center; opacity: 0; transform: translateY(8px);
+			transition: opacity .18s ease, transform .18s ease;
+		}
+		.member-avatar:hover::after { opacity: 1; transform: translateY(0); }
+
+		#profile-feedback {
+			transition: opacity 0.2s ease-in-out;
+		}
+
+		.skeleton {
+			background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 37%, #f2f2f2 63%);
+			background-size: 400% 100%;
+			animation: skeleton-loading 1.4s ease infinite;
+		}
+
+		@keyframes skeleton-loading {
+			0% {
+				background-position: 200% 0;
+			}
+			100% {
+				background-position: -200% 0;
+			}
+		}
+
+		.badge-status {
+			font-size: 0.875rem;
+		}
+
+		.badge-status.processing {
+			background-color: rgba(13, 110, 253, 0.15);
+			color: #0d6efd;
+		}
+
+		.badge-status.shipped {
+			background-color: rgba(13, 202, 240, 0.15);
+			color: #0dcaf0;
+		}
+
+		.badge-status.completed {
+			background-color: rgba(25, 135, 84, 0.15);
+			color: #198754;
+		}
+
+		.member-tabs {
+			border-bottom: none;
+			gap: 0.5rem;
+		}
+
+		.member-tabs .nav-link {
+			border: none;
+			border-radius: 999px;
+			padding: 0.65rem 1.6rem;
+			background-color: rgba(74, 124, 89, 0.10);
+			color: #2f3a32;
+			font-weight: 600;
+			transition: background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease;
+		}
+
+		.member-tabs .nav-link:hover {
+			background-color: rgba(74, 124, 89, 0.24);
+			color: #1f2721;
+		}
+
+		.member-tabs .nav-link:focus-visible {
+			background-color: rgba(74, 124, 89, 0.24);
+			color: #1f2721;
+			outline: 2px solid rgba(32, 45, 35, 0.4);
+			outline-offset: 2px;
+		}
+
+		.member-tabs .nav-link:hover { box-shadow: 0 8px 20px rgba(15,23,42,0.10); transform: translateY(-1px); }
+		.member-tabs .nav-link.active {
+			background: linear-gradient(90deg, var(--primary-600), var(--secondary-color));
+			color: #fff;
+			box-shadow: 0 12px 24px rgba(15,23,42,0.16);
+		}
+
+		.member-card,
+		.orders-list .card {
+			border-radius: 1rem;
+			border: 1px solid rgba(0,0,0,0.06);
+			box-shadow: var(--shadow);
+			transition: transform .18s ease, box-shadow .18s ease;
+			background: #fff;
+		}
+		.member-card:hover,
+		.orders-list .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+
+		/* 訂單狀態徽章質感提升 */
+		.badge-status { border: 1px solid rgba(0,0,0,0.06); padding: .45em .6em; border-radius: .6rem; }
+		.badge-status.processing { background: rgba(13,110,253,0.12); color: #0d6efd; }
+		.badge-status.shipped { background: rgba(13,202,240,0.12); color: #0dcaf0; }
+		.badge-status.completed { background: rgba(25,135,84,0.12); color: #198754; }
+
+		/* 篩選列卡片間距微調 */
+		#orders-panel .card { border: 1px solid rgba(0,0,0,0.06); box-shadow: var(--shadow); }
+
+		/* 表單聚焦一致化（沿用全域色票） */
+		#profile-form .form-control:focus, #profile-form .form-select:focus { box-shadow: 0 0 0 3px var(--ring-color); border-color: var(--primary-500); }
+
+		/* 儲存提示條外觀 */
+		#profile-feedback.alert { border-radius: 12px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 10px 22px rgba(15,23,42,0.10); }
+	</style>
+</head>
+<body class="client-sidebar-collapsed">
+<script>
+(function () {
+	var BREAKPOINT = 992;
+	try {
+		if (!('localStorage' in window)) return;
+	} catch (_) {
+		return;
+	}
+	try {
+		var pref = window.localStorage.getItem('sf-client-sidebar-state');
+		if (pref === 'expanded' && window.innerWidth >= BREAKPOINT) {
+			document.body.classList.add('client-sidebar-expanded');
+			document.body.classList.remove('client-sidebar-collapsed');
+		}
+	} catch (_) {
+		// ignore storage access errors
+	}
+})();
+</script>
+
+<a class="visually-hidden-focusable" href="#main-content">跳到主要內容</a>
+
+<nav class="navbar navbar-expand-lg navbar-dark">
+	<div class="container-fluid">
+		<div class="d-flex align-items-center gap-3">
+			<button class="client-navbar-hamburger" id="client-menu-button" type="button" aria-label="開啟選單" aria-controls="client-sidebar" aria-expanded="false">
+				<span></span>
+				<span></span>
+				<span></span>
+			</button>
+			<a class="navbar-brand" href="index.html" aria-label="回到首頁">SnackForest</a>
+		</div>
+		<div class="collapse navbar-collapse" id="navbarNav"></div>
+		<div class="ms-auto d-flex align-items-center">
+			<a href="member.html" class="btn btn-outline-light btn-sm d-inline-flex align-items-center" aria-label="會員中心">
+				<i class="fa-solid fa-user me-2" aria-hidden="true"></i>
+				<span>會員中心</span>
+			</a>
+		</div>
+	</div>
+</nav>
+
+<aside class="client-sidebar" id="client-sidebar" aria-hidden="false" tabindex="-1" aria-label="客戶端側邊選單">
+	<div class="client-sidebar-header">
+		<div class="client-sidebar-brand">
+			<span class="client-sidebar-logo" aria-hidden="true">
+				<img class="client-sidebar-logo-img" src="" alt="" loading="lazy">
+				<span class="client-sidebar-logo-initials">SF</span>
+			</span>
+			<div>
+				<span class="client-sidebar-title">SnackForest</span>
+				<span class="client-sidebar-subtitle">探索零食世界</span>
+			</div>
+		</div>
+		<button type="button" class="btn-close client-sidebar-close" aria-label="關閉選單" data-client-menu-close></button>
+	</div>
+	<nav class="client-sidebar-nav" aria-label="客戶端主選單">
+		<a class="client-sidebar-link" href="index.html" data-client-menu-close aria-label="首頁">
+			<i class="fa-solid fa-house" aria-hidden="true"></i>
+			<span class="client-sidebar-text">首頁</span>
+		</a>
+		<a class="client-sidebar-link" href="product.html" data-client-menu-close aria-label="商品列表">
+			<i class="fa-solid fa-store" aria-hidden="true"></i>
+			<span class="client-sidebar-text">商品列表</span>
+		</a>
+		<a class="client-sidebar-link" href="cart.html" data-client-menu-close aria-label="購物車">
+			<i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+			<span class="client-sidebar-text">購物車</span>
+			<span class="client-sidebar-badge badge rounded-pill bg-danger" data-cart-badge>0</span>
+		</a>
+		<a class="client-sidebar-link" href="member.html" data-client-menu-close aria-label="會員中心">
+			<i class="fa-solid fa-user" aria-hidden="true"></i>
+			<span class="client-sidebar-text">會員中心</span>
+		</a>
+	</nav>
+	<div class="client-sidebar-footer">
+		<button class="client-sidebar-link" type="button" onclick="logout()" data-client-menu-close aria-label="登出">
+			<i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+			<span class="client-sidebar-text">登出</span>
+		</button>
+	</div>
+</aside>
+<div class="client-sidebar-backdrop" id="client-sidebar-backdrop" hidden data-client-menu-close></div>
+
+<main class="client-main main-content" id="main-content">
+	<div class="mb-4">
+		<h1 class="h2 mb-1">會員中心</h1>
+		<p class="text-muted mb-0">管理您的會員資料、頭像與歷史訂單紀錄。</p>
+	</div>
+
+	<ul class="nav nav-tabs member-tabs" id="member-tabs" role="tablist">
+		<li class="nav-item" role="presentation">
+			<button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-panel" type="button" role="tab" aria-controls="profile-panel" aria-selected="true">會員資料</button>
+		</li>
+		<li class="nav-item" role="presentation">
+			<button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-panel" type="button" role="tab" aria-controls="orders-panel" aria-selected="false">訂單紀錄</button>
+		</li>
+	</ul>
+
+	<div class="tab-content py-4">
+		<div class="tab-pane fade show active" id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
+			<div class="row g-4 align-items-start">
+				<div class="col-lg-4">
+				  <div class="card h-100 member-card">
+						<div class="card-body text-center">
+							<div id="profile-avatar" class="member-avatar mb-3" role="button" tabindex="0" aria-label="點擊更新會員頭像">
+								<span id="profile-avatar-initial" class="initial">M</span>
+								<img id="profile-avatar-img" src="" alt="會員頭像" class="d-none">
+							</div>
+							<input type="file" id="avatar-file" accept="image/*" class="visually-hidden">
+							<p class="small text-muted mb-0">點擊上方頭像即可選擇新的圖片</p>
+							<div class="small text-muted mt-3" id="profile-updated"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-8">
+					<div id="profile-feedback" class="alert d-none" role="alert"></div>
+				  <div class="card member-card">
+						<div class="card-body">
+							<form id="profile-form" class="needs-validation" novalidate>
+								<div class="row g-3">
+									<div class="col-md-6">
+										<label for="profile-name" class="form-label">顯示名稱</label>
+										<input type="text" id="profile-name" class="form-control" placeholder="請輸入顯示名稱">
+									</div>
+									<div class="col-md-6">
+										<label for="profile-id" class="form-label">會員編號</label>
+										<input type="text" id="profile-id" class="form-control" placeholder="尚未登入" readonly disabled>
+									</div>
+									<div class="col-md-6">
+										<label for="profile-email" class="form-label">電子郵件</label>
+										<input type="email" id="profile-email" class="form-control" placeholder="name@example.com">
+									</div>
+									<div class="col-md-6">
+										<label for="profile-phone" class="form-label">聯絡電話</label>
+										<input type="tel" id="profile-phone" class="form-control" placeholder="09xx-xxx-xxx">
+									</div>
+									<div class="col-12">
+										<label for="profile-address" class="form-label">聯絡地址</label>
+										<textarea id="profile-address" class="form-control" rows="2" placeholder="完整收貨地址"></textarea>
+									</div>
+								</div>
+								<div class="d-flex justify-content-end gap-2 mt-4">
+									<button type="button" class="btn btn-outline-secondary" id="profile-reset">還原</button>
+									<button type="submit" class="btn btn-primary" id="profile-save">儲存變更</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="tab-pane fade" id="orders-panel" role="tabpanel" aria-labelledby="orders-tab">
+			<div class="card mb-4">
+				<div class="card-body">
+					<div class="row g-3 align-items-end">
+						<div class="col-xl-3 col-md-4">
+							<label class="form-label" for="filter-keyword">關鍵字</label>
+							<input type="text" id="filter-keyword" class="form-control" placeholder="訂單編號或商品名稱">
+						</div>
+						<div class="col-xl-3 col-md-4">
+							<label class="form-label" for="filter-status">訂單狀態</label>
+							<select id="filter-status" class="form-select">
+								<option value="">全部狀態</option>
+								<option value="processing">處理中</option>
+								<option value="shipped">已出貨</option>
+								<option value="completed">已完成</option>
+							</select>
+						</div>
+						<div class="col-xl-3 col-md-4">
+							<label class="form-label" for="filter-range">時間範圍</label>
+							<select id="filter-range" class="form-select">
+								<option value="">全部期間</option>
+								<option value="30">最近 30 天</option>
+								<option value="90">最近 90 天</option>
+								<option value="180">最近 180 天</option>
+							</select>
+						</div>
+						<div class="col-xl-3 col-12 text-xl-end">
+							<button class="btn btn-outline-secondary" type="button" id="btn-refresh">
+								<i class="fa-solid fa-rotate"></i> 重新整理
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="row g-4 mb-4">
+				<div class="col-md-4">
+				  <div class="card h-100 member-card">
+						<div class="card-body">
+							<div class="text-muted small mb-1">訂單總數</div>
+							<div class="h3 mb-0" id="stat-orders-count">0</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-4">
+				  <div class="card h-100 member-card">
+						<div class="card-body">
+							<div class="text-muted small mb-1">累計消費</div>
+							<div class="h3 mb-0" id="stat-total-amount">NT$0</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-4">
+				  <div class="card h-100 member-card">
+						<div class="card-body">
+							<div class="text-muted small mb-1">最近訂單</div>
+							<div class="h3 mb-0 fs-5" id="stat-last-order">--</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div id="orders-container" class="orders-list d-flex flex-column gap-3"></div>
+			<div class="d-grid mt-4">
+				<button class="btn btn-outline-primary d-none" id="btn-show-more" type="button">顯示更多訂單</button>
+			</div>
+		</div>
+	</div>
+</main>
+
+<footer id="site-footer" class="site-footer client-footer">
+	<div class="container text-center">
+		<p class="mb-0">© 2025 SnackForest. 保留所有權利。</p>
+	</div>
+</footer>
+
+<script src="js/auth-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js-api/api-manager.js"></script>
+<script src="js/env.js"></script>
+<script src="js/footer.js"></script>
+<script src="js/navigation.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/session.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/init.js"></script>
+<script>
+(() => {
+	const API_ORIGIN = window.SF_API_BASE ? String(window.SF_API_BASE) : window.location.origin;
+	const STORAGE_ORIGIN = window.SF_STORAGE_BASE ? String(window.SF_STORAGE_BASE) : API_ORIGIN;
+	const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+
+	const storedCustomerId = localStorage.getItem('customerId');
+	const storedCustomerName = localStorage.getItem('customerName') || '';
+	const role = (localStorage.getItem('sf-client-role') || localStorage.getItem('userRole') || 'customer').toLowerCase();
+	const cid = storedCustomerId ? String(storedCustomerId) : null;
+
+	const feedbackPanel = document.getElementById('profile-feedback');
+	const profileForm = document.getElementById('profile-form');
+	const profileNameInput = document.getElementById('profile-name');
+	const profileEmailInput = document.getElementById('profile-email');
+	const profilePhoneInput = document.getElementById('profile-phone');
+	const profileAddressInput = document.getElementById('profile-address');
+	const profileIdInput = document.getElementById('profile-id');
+	const profileUpdatedEl = document.getElementById('profile-updated');
+	const profileResetBtn = document.getElementById('profile-reset');
+	const avatar = document.getElementById('profile-avatar');
+	const avatarImg = document.getElementById('profile-avatar-img');
+	const avatarInitial = document.getElementById('profile-avatar-initial');
+	const avatarFileInput = document.getElementById('avatar-file');
+	const btnRefresh = document.getElementById('btn-refresh');
+	const btnShowMore = document.getElementById('btn-show-more');
+	const filterKeyword = document.getElementById('filter-keyword');
+	const filterStatus = document.getElementById('filter-status');
+	const filterRange = document.getElementById('filter-range');
+
+	let currentProfile = null;
+	let allOrders = [];
+	let visibleCount = 10;
+	let keywordValue = '';
+	let statusValue = '';
+	let rangeValue = '';
+
+	function lockDownMemberUI(message, tone = 'warning', redirectUrl) {
+		if (feedbackPanel) {
+			feedbackPanel.className = `alert alert-${tone} mb-3`;
+			feedbackPanel.textContent = message;
+		}
+		if (profileForm) {
+			profileForm.querySelectorAll('input, textarea, button, select').forEach((el) => {
+				el.setAttribute('disabled', 'disabled');
+			});
+		}
+		if (btnRefresh) btnRefresh.setAttribute('disabled', 'disabled');
+		if (btnShowMore) btnShowMore.setAttribute('disabled', 'disabled');
+		if (avatar) {
+			avatar.setAttribute('aria-disabled', 'true');
+			avatar.setAttribute('tabindex', '-1');
+		}
+		const ordersContainer = document.getElementById('orders-container');
+		if (ordersContainer) {
+			ordersContainer.innerHTML = `<div class="alert alert-info mb-0 text-center">${message}</div>`;
+		}
+		if (redirectUrl) {
+			setTimeout(() => {
+				try {
+					window.location.href = redirectUrl;
+				} catch (_) {
+					window.location.assign(redirectUrl);
+				}
+			}, 1600);
+		}
+	}
+
+	if (role !== 'customer') {
+		const redirectTarget = role === 'admin' ? '../admin/index.html' : '../login.html';
+		lockDownMemberUI('請使用會員帳號登入以檢視會員中心，系統將為您導向適當頁面。', 'warning', redirectTarget);
+		return;
+	}
+
+	if (!cid) {
+		lockDownMemberUI('請先登入會員帳號以檢視會員中心。', 'warning', '../login.html');
+		return;
+	}
+
+	function resolveAssetUrl(path) {
+		if (!path) return '';
+		if (/^https?:\/\//i.test(path)) return path;
+		const base = STORAGE_ORIGIN.replace(/\/+$/, '');
+		const clean = String(path).replace(/^\/+/, '');
+		return `${base}/${clean}`;
+	}
+
+	function showFeedback(message, tone = 'info') {
+		if (!feedbackPanel) return;
+		if (!message) {
+			feedbackPanel.className = 'alert d-none';
+			feedbackPanel.textContent = '';
+			return;
+		}
+		feedbackPanel.className = `alert alert-${tone} mb-3`;
+		feedbackPanel.textContent = message;
+	}
+
+	function applyProfile(data) {
+		currentProfile = data;
+		const displayName = data.displayName || data.name || storedCustomerName;
+		if (profileNameInput) profileNameInput.value = displayName || '';
+		if (profileEmailInput) profileEmailInput.value = data.email || '';
+		if (profilePhoneInput) profilePhoneInput.value = data.phone || '';
+		if (profileAddressInput) profileAddressInput.value = data.address || '';
+		if (profileIdInput) profileIdInput.value = data.customerId || cid || '';
+		if (avatarInitial) {
+			const initial = (displayName || 'M').trim().charAt(0).toUpperCase() || 'M';
+			avatarInitial.textContent = initial;
+		}
+		const avatarUrl = resolveAssetUrl(data.avatarUrl);
+		if (avatar && avatarImg) {
+			if (avatarUrl) {
+				avatar.classList.add('has-image');
+				avatarImg.src = avatarUrl;
+				avatarImg.classList.remove('d-none');
+			} else {
+				avatar.classList.remove('has-image');
+				avatarImg.src = '';
+				avatarImg.classList.add('d-none');
+			}
+		}
+		if (profileUpdatedEl) {
+			if (data.updatedAt) {
+				try {
+					profileUpdatedEl.textContent = '最後更新：' + new Date(data.updatedAt).toLocaleString('zh-TW');
+				} catch (_) {
+					profileUpdatedEl.textContent = '';
+				}
+			} else {
+				profileUpdatedEl.textContent = '';
+			}
+		}
+		if (displayName && displayName !== storedCustomerName) {
+			localStorage.setItem('customerName', displayName);
+		}
+	}
+
+	async function loadProfile() {
+		if (!cid || !window.api || typeof window.api.getCustomerProfile !== 'function') {
+			applyProfile({ customerId: cid, displayName: storedCustomerName });
+			return;
+		}
+		try {
+			const res = await window.api.getCustomerProfile(cid);
+			if (!res.success) throw new Error(res.error || '無法取得會員資料');
+			const profile = res.data || {};
+			profile.customerId = cid;
+			applyProfile(profile);
+			showFeedback('');
+		} catch (err) {
+			console.error('載入會員資料失敗', err);
+			showFeedback(err.message || '無法載入會員資料', 'danger');
+		}
+	}
+
+	function readFileAsBase64(file) {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => {
+				const result = reader.result;
+				if (typeof result === 'string') {
+					const commaIndex = result.indexOf(',');
+					resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+				} else {
+					reject(new Error('無法讀取檔案內容'));
+				}
+			};
+			reader.onerror = () => reject(new Error('讀取檔案時發生錯誤'));
+			reader.readAsDataURL(file);
+		});
+	}
+
+	async function uploadAvatar(file) {
+		if (!file || !cid) return;
+		if (file.size > MAX_AVATAR_SIZE) {
+			showFeedback('頭像檔案過大，請選擇 2MB 以下的圖片。', 'warning');
+			return;
+		}
+		if (!window.api || typeof window.api.updateCustomerProfile !== 'function') {
+			showFeedback('系統尚未初始化完成，請稍後再試。', 'warning');
+			return;
+		}
+		showFeedback('頭像上傳中，請稍候...', 'info');
+		try {
+			const base64 = await readFileAsBase64(file);
+			const payload = {
+				customerId: cid,
+				avatarFileName: file.name,
+				avatarContentType: file.type || 'application/octet-stream',
+				avatarData: base64
+			};
+			const res = await window.api.updateCustomerProfile(payload);
+			if (!res.success) throw new Error(res.error || '上傳頭像失敗');
+			const profile = res.data || {};
+			profile.customerId = cid;
+			applyProfile(profile);
+			showFeedback('頭像已更新完成。', 'success');
+		} catch (err) {
+			console.error('頭像上傳失敗', err);
+			showFeedback(err.message || '頭像更新失敗，請稍後再試。', 'danger');
+		}
+	}
+
+	if (avatar && avatarFileInput) {
+		const openPicker = () => avatarFileInput.click();
+		avatar.addEventListener('click', openPicker);
+		avatar.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				openPicker();
+			}
+		});
+		avatarFileInput.addEventListener('change', () => {
+			const file = avatarFileInput.files && avatarFileInput.files[0];
+			if (file) uploadAvatar(file);
+			avatarFileInput.value = '';
+		});
+	}
+
+	if (profileForm) {
+		profileForm.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			if (!cid || !window.api || typeof window.api.updateCustomerProfile !== 'function') {
+				showFeedback('系統尚未初始化完成，請稍後再試。', 'warning');
+				return;
+			}
+			const payload = {
+				customerId: cid,
+				displayName: (profileNameInput?.value || '').trim() || null,
+				email: (profileEmailInput?.value || '').trim() || null,
+				phone: (profilePhoneInput?.value || '').trim() || null,
+				address: (profileAddressInput?.value || '').trim() || null
+			};
+			try {
+				showFeedback('正在儲存資料...', 'info');
+				const res = await window.api.updateCustomerProfile(payload);
+				if (!res.success) throw new Error(res.error || '儲存失敗');
+				const profile = res.data || {};
+				profile.customerId = cid;
+				applyProfile(profile);
+				showFeedback('會員資料已更新。', 'success');
+			} catch (err) {
+				console.error('儲存會員資料失敗', err);
+				showFeedback(err.message || '儲存失敗，請稍後再試。', 'danger');
+			}
+		});
+	}
+
+	if (profileResetBtn) {
+		profileResetBtn.addEventListener('click', () => {
+			applyProfile(currentProfile || { customerId: cid, displayName: storedCustomerName });
+			showFeedback('已還原為上次儲存的資料。', 'info');
+		});
+	}
+
+	function toNumber(n) {
+		if (n == null) return 0;
+		if (typeof n === 'number') return n;
+		if (typeof n === 'string') {
+			const value = Number(n.replace(/[\,\s]/g, ''));
+			return Number.isNaN(value) ? 0 : value;
+		}
+		return 0;
+	}
+
+	function fmtPrice(n) {
+		try {
+			return 'NT$' + Number(toNumber(n) || 0).toLocaleString('zh-TW');
+		} catch (_) {
+			return 'NT$0';
+		}
+	}
+
+	function parseDate(v) {
+		if (v == null) return null;
+		try {
+			if (typeof v === 'number') return new Date(v);
+			const d = new Date(String(v));
+			return Number.isNaN(d.getTime()) ? null : d;
+		} catch (_) {
+			return null;
+		}
+	}
+
+	function fmtDate(v) {
+		const d = parseDate(v);
+		return d ? d.toLocaleString('zh-TW') : '';
+	}
+
+	function resolveStatus(order) {
+		const raw = (order.status || '').toString().toLowerCase();
+		if (raw.includes('ship')) return { key: 'shipped', text: '已出貨' };
+		if (raw.includes('complete') || raw.includes('finish')) return { key: 'completed', text: '已完成' };
+		return { key: 'processing', text: '處理中' };
+	}
+
+	function computeStats(list) {
+		const totalCount = list.length;
+		const totalAmount = list.reduce((sum, order) => sum + toNumber(order.totalAmount), 0);
+		const latest = list.reduce((acc, order) => {
+			const current = parseDate(order.orderDate);
+			if (!current) return acc;
+			if (!acc || current > acc) return current;
+			return acc;
+		}, null);
+		const countEl = document.getElementById('stat-orders-count');
+		const totalEl = document.getElementById('stat-total-amount');
+		const lastEl = document.getElementById('stat-last-order');
+		if (countEl) countEl.textContent = String(totalCount);
+		if (totalEl) totalEl.textContent = fmtPrice(totalAmount);
+		if (lastEl) lastEl.textContent = latest ? latest.toLocaleString('zh-TW') : '--';
+	}
+
+	function matchKeyword(order, keyword) {
+		if (!keyword) return true;
+		const term = keyword.trim().toLowerCase();
+		if (!term) return true;
+		if (String(order.id).toLowerCase().includes(term)) return true;
+		if (Array.isArray(order.details)) {
+			return order.details.some((detail) => (detail.productName || '').toString().toLowerCase().includes(term));
+		}
+		return false;
+	}
+
+	function statusMatch(order, key) {
+		if (!key) return true;
+		return resolveStatus(order).key === key;
+	}
+
+	function inRange(order, days) {
+		if (!days) return true;
+		const d = parseDate(order.orderDate);
+		if (!d) return false;
+		const diff = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24);
+		return diff <= Number(days);
+	}
+
+	function renderEmpty() {
+		const container = document.getElementById('orders-container');
+		if (!container) return;
+		container.innerHTML = `<div class="orders-empty text-center text-muted py-5">
+			<div class="fs-1 mb-3"><i class="fa-regular fa-folder-open"></i></div>
+			<p class="mb-0">目前沒有符合條件的訂單</p>
+		</div>`;
+	}
+
+	function renderOrders(list) {
+		const container = document.getElementById('orders-container');
+		const btnMore = document.getElementById('btn-show-more');
+		if (!container || !btnMore) return;
+		container.innerHTML = '';
+		if (!list.length) {
+			renderEmpty();
+			btnMore.classList.add('d-none');
+			computeStats([]);
+			return;
+		}
+		computeStats(list);
+		const slice = list.slice(0, visibleCount);
+		btnMore.classList.toggle('d-none', slice.length >= list.length);
+		slice.forEach((order) => {
+			const details = Array.isArray(order.details) ? order.details : [];
+			const total = toNumber(order.totalAmount);
+			const status = resolveStatus(order);
+			const card = document.createElement('div');
+			card.className = 'card order-card';
+			const rows = details.map((detail) => `
+				<tr>
+					<td>${detail.productName || ''}</td>
+					<td class="text-center">${detail.quantity || 0}</td>
+					<td class="text-end">${fmtPrice(detail.priceAtTimeOfPurchase || detail.price || 0)}</td>
+				</tr>
+			`).join('');
+			const tableHtml = details.length ? `
+				<div class="table-responsive">
+					<table class="table table-sm align-middle order-items-table mb-0">
+						<thead>
+							<tr><th>商品</th><th class="text-center">數量</th><th class="text-end">單價</th></tr>
+						</thead>
+						<tbody>${rows}</tbody>
+					</table>
+				</div>` : '<div class="text-muted small">此訂單無明細</div>';
+			const collapseId = `order-${order.id}`;
+			card.innerHTML = `
+				<div class="card-header order-header d-flex justify-content-between align-items-center">
+					<div>
+						<div class="fw-semibold">訂單編號 #${order.id}</div>
+						<div class="text-muted small">${fmtDate(order.orderDate)}</div>
+					</div>
+					<div class="text-end">
+						<div class="fw-bold text-primary">${fmtPrice(total)}</div>
+						<span class="badge badge-status ${status.key}">${status.text}</span>
+					</div>
+				</div>
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<div class="small text-muted">配送：${order.shippingMethod || ''} / 付款：${order.paymentMethod || ''}</div>
+						<button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+							查看明細
+						</button>
+					</div>
+					<div class="collapse show" id="${collapseId}">
+						<div class="row g-3">
+							<div class="col-lg-8">${tableHtml}</div>
+							<div class="col-lg-4">
+								<div class="border rounded p-3 bg-light">
+									<div class="small text-muted mb-2">收件資訊</div>
+									<div class="mb-1">姓名：${order.recipientName || ''}</div>
+									<div class="mb-1">電話：${order.recipientPhone || ''}</div>
+									<div class="mb-0">地址：${order.recipientAddress || ''}</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>`;
+			container.appendChild(card);
+		});
+	}
+
+	function showLoadingSkeleton() {
+		const container = document.getElementById('orders-container');
+		if (!container) return;
+		container.innerHTML = `
+			<div class="card p-4">
+				<div class="skeleton mb-2" style="height:18px;width:220px;border-radius:4px;"></div>
+				<div class="skeleton mb-2" style="height:12px;width:160px;border-radius:4px;"></div>
+				<div class="skeleton" style="height:64px;border-radius:8px;"></div>
+			</div>`;
+	}
+
+	function currentFiltered() {
+		const list = allOrders.slice();
+		return list.filter((order) => matchKeyword(order, keywordValue) && statusMatch(order, statusValue) && inRange(order, rangeValue));
+	}
+
+	function applyFilters(resetVisible) {
+		if (resetVisible) visibleCount = 10;
+		renderOrders(currentFiltered());
+	}
+
+	async function loadOrders() {
+		const container = document.getElementById('orders-container');
+		if (container) showLoadingSkeleton();
+		if (!window.api || typeof window.api.getOrders !== 'function') {
+			computeStats([]);
+			renderOrders([]);
+			return;
+		}
+		try {
+			const res = await window.api.getOrders();
+			if (!res.success) throw new Error(res.error || '無法取得訂單');
+			let list = Array.isArray(res.data) ? res.data : [];
+			if (role === 'customer' && cid != null) {
+				list = list.filter((order) => String(order.customerId) === String(cid));
+			}
+			list.sort((a, b) => {
+				const da = parseDate(a.orderDate)?.getTime() || 0;
+				const db = parseDate(b.orderDate)?.getTime() || 0;
+				return db - da;
+			});
+			allOrders = list;
+			applyFilters(true);
+		} catch (err) {
+			console.error('載入訂單失敗', err);
+			if (container) container.innerHTML = `<div class="alert alert-danger">${err.message || '載入訂單失敗'}</div>`;
+			computeStats([]);
+		}
+	}
+
+	if (filterKeyword) {
+		filterKeyword.addEventListener('input', (event) => {
+			keywordValue = event.target.value || '';
+			applyFilters(true);
+		});
+	}
+
+	if (filterStatus) {
+		filterStatus.addEventListener('change', (event) => {
+			statusValue = event.target.value || '';
+			applyFilters(true);
+		});
+	}
+
+	if (filterRange) {
+		filterRange.addEventListener('change', (event) => {
+			rangeValue = event.target.value || '';
+			applyFilters(true);
+		});
+	}
+
+	if (btnRefresh) {
+		btnRefresh.addEventListener('click', () => loadOrders());
+	}
+
+	if (btnShowMore) {
+		btnShowMore.addEventListener('click', () => {
+			visibleCount += 10;
+			applyFilters(false);
+		});
+	}
+
+	document.addEventListener('DOMContentLoaded', () => {
+		applyProfile({ customerId: cid, displayName: storedCustomerName });
+		loadProfile();
+		loadOrders();
+	}, { once: true });
+})();
+</script>
+
+<div id="liveToast" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+	<div class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+		<div class="toast-header">
+			<strong class="me-auto">通知</strong>
+			<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+		</div>
+		<div class="toast-body"></div>
+	</div>
+</div>
+
+</body>
+</html>
+

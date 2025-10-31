@@ -4,29 +4,95 @@
     <meta charset="UTF-8">
     <title>SnackForest 購物車</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/frontend/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-Avb2QiuDEEvB4bZJYdft2mNjVShBftLdPG8FJ0V7irTLQ8Uo0qcPxh4Plq7G5tGm0rU+1SPhVotteLpBERwTkw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/frontend/client/css/client.css">
+    <link rel="icon" href="data:,">
 </head>
-<body>
+<body class="client-sidebar-collapsed">
+<script>
+(function () {
+    var BREAKPOINT = 992;
+    try {
+        if (!('localStorage' in window)) return;
+    } catch (_) {
+        return;
+    }
+    try {
+        var pref = window.localStorage.getItem('sf-client-sidebar-state');
+        if (pref === 'expanded' && window.innerWidth >= BREAKPOINT) {
+            document.body.classList.add('client-sidebar-expanded');
+            document.body.classList.remove('client-sidebar-collapsed');
+        }
+    } catch (_) {
+        // ignore storage access errors
+    }
+})();
+</script>
 
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
     <div class="container-fluid">
-        <a class="navbar-brand" href="index.html">SnackForest</a>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.html">繼續購物</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="#">我的購物車</a>
-                </li>
-            </ul>
-            <button class="btn btn-outline-light" onclick="logout()">登出</button>
+        <div class="d-flex align-items-center gap-3">
+            <button class="client-navbar-hamburger" id="client-menu-button" type="button" aria-label="開啟選單" aria-controls="client-sidebar" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <a class="navbar-brand" href="index.html">SnackForest</a>
+        </div>
+        <div class="collapse navbar-collapse" id="navbarNav"></div>
+        <div class="ms-auto d-flex align-items-center">
+            <a href="member.html" class="btn btn-outline-light btn-sm d-inline-flex align-items-center" aria-label="會員中心">
+                <i class="fa-solid fa-user me-2" aria-hidden="true"></i>
+                <span>會員中心</span>
+            </a>
         </div>
     </div>
 </nav>
 
-<main class="container main-content pt-5" id="main-content">
+<!-- 客戶端側邊選單（仿管理端左側欄） -->
+<aside class="client-sidebar" id="client-sidebar" aria-hidden="false" tabindex="-1" aria-label="客戶端側邊選單">
+    <div class="client-sidebar-header">
+        <div class="client-sidebar-brand">
+            <span class="client-sidebar-logo" aria-hidden="true">
+                <img class="client-sidebar-logo-img" src="" alt="" loading="lazy">
+                <span class="client-sidebar-logo-initials">SF</span>
+            </span>
+            <div>
+                <span class="client-sidebar-title">SnackForest</span>
+                <span class="client-sidebar-subtitle">探索零食世界</span>
+            </div>
+        </div>
+        <button type="button" class="btn-close client-sidebar-close" aria-label="關閉選單" data-client-menu-close></button>
+    </div>
+    <nav class="client-sidebar-nav" aria-label="客戶端主選單">
+        <a class="client-sidebar-link" href="index.html" data-client-menu-close aria-label="首頁">
+            <i class="fa-solid fa-house" aria-hidden="true"></i>
+            <span class="client-sidebar-text">首頁</span>
+        </a>
+        <a class="client-sidebar-link" href="product.html" data-client-menu-close aria-label="商品列表">
+            <i class="fa-solid fa-store" aria-hidden="true"></i>
+            <span class="client-sidebar-text">商品列表</span>
+        </a>
+        <a class="client-sidebar-link" href="cart.html" data-client-menu-close aria-label="購物車">
+            <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+            <span class="client-sidebar-text">購物車</span>
+            <span class="client-sidebar-badge badge rounded-pill bg-danger" data-cart-badge>0</span>
+        </a>
+        <a class="client-sidebar-link" href="member.html" data-client-menu-close aria-label="會員中心">
+            <i class="fa-solid fa-user" aria-hidden="true"></i>
+            <span class="client-sidebar-text">會員中心</span>
+        </a>
+    </nav>
+    <div class="client-sidebar-footer">
+        <button class="client-sidebar-link" type="button" onclick="logout()" data-client-menu-close aria-label="登出">
+            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+            <span class="client-sidebar-text">登出</span>
+        </button>
+    </div>
+</aside>
+<div class="client-sidebar-backdrop" id="client-sidebar-backdrop" hidden data-client-menu-close></div>
+
+<main class="client-main main-content" id="main-content">
     <div class="pt-4">
         <h1 class="mb-4">我的購物車</h1>
     </div>
@@ -77,8 +143,26 @@
     </div>
 </main>
 
-<script src="main.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+            <footer id="site-footer" class="site-footer client-footer">
+                <div class="container text-center">
+                    <p class="mb-0">© 2025 SnackForest. 保留所有權利。</p>
+                </div>
+                </footer>
+
+            <script src="js/auth-guard.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+            <script src="js/env.js"></script>
+            <script src="js/footer.js"></script>
+            <script src="js/navigation.js"></script>
+            <script src="js/utils.js"></script>
+<script src="js/session.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/popover.js"></script>
+<script src="js/product-list.js"></script>
+<script src="js/product-detail.js"></script>
+<script src="js/cart-page.js"></script>
+<script src="js/home.js"></script>
+<script src="js/init.js"></script>
 <div id="liveToast" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div class="toast" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header">

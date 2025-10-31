@@ -86,6 +86,31 @@ public class CustomerDAO {
     }
 
     /**
+     * 依帳號與電話（暫當密碼）查詢顧客。
+     * 適用於尚未建置雜湊密碼欄位的情境，直接用 customers.Phone 做比對。
+     */
+    public Customer findByAccountAndPhone(String account, String phone) throws SQLException {
+        // case-insensitive match on Account to be user-friendly
+        String sql = "SELECT idCustomers, CustomerName, Account FROM customers WHERE LOWER(Account) = LOWER(?) AND Phone = ? LIMIT 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, account);
+            stmt.setString(2, phone);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Customer(
+                        rs.getInt("idCustomers"),
+                        rs.getString("CustomerName"),
+                        rs.getString("Account"),
+                        null,
+                        null
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * 查詢所有顧客
      * 
      * @return 顧客物件清單

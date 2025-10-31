@@ -1,0 +1,1213 @@
+/*
+==============================================
+SnackForest - 全局樣式表 (顏色已還原)
+==============================================
+*/
+
+/* --- 1. Google 字體與全域變數 --- */
+/* 採用 Poppins 與 Noto Sans TC 字體，並設定客戶端通用的主題色與陰影。 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap');
+
+:root {
+    --primary-color: #4a7c59;      /* 原始主題綠 */
+    --secondary-color: #6a994e;    /* 原始次要綠 */
+    --accent-color: #a3b18a;       /* 原始點綴綠 */
+    --text-color: #333;            /* 原始文字顏色 */
+    --card-bg: #ffffff;            /* 卡片背景 */
+    --border-color: #dee2e6;       /* 邊框顏色 (保留) */
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
+    --border-radius: 0.75rem;      /* 圓角 (新) */
+    --font-sans-serif: 'Poppins', 'Noto Sans TC', sans-serif;
+    --background-color: #f7f9f8;
+    --client-sidebar-width-collapsed: 100px; /* 客戶端側欄收合寬度 */
+    --client-sidebar-width-expanded: 312px; /* 客戶端側欄展開寬度 */
+    --client-navbar-height: 72px;           /* 導覽列高度 (同步頂端固定列) */
+    --client-main-max-width: 1240px;        /* 主內容區最大寬度 */
+    --client-main-gutter: 48px;             /* 主內容左右邊距 */
+    /* 質感升級：擴充色票與陰影層級 */
+    --primary-700: #234a2b;
+    --primary-600: #2f5f3a;
+    --primary-500: #3d6d47;
+    --muted-text: #5b6470;
+    --surface-1: #ffffff;
+    --surface-2: #fbfdfb;
+    --ring-color: rgba(74, 124, 89, 0.25);
+    --elev-1: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --elev-2: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+/* --- 2. 基礎與排版 --- */
+/* 對應頁面：frontend/login.html、frontend/client/*.html
+    統一背景色、字體與固定導覽列預留空間。 */
+html {
+    height: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--background-color);
+    font-family: var(--font-sans-serif);
+    color: var(--text-color);
+    line-height: 1.7;
+    padding-top: 96px; /* 為固定導覽列預留空間 (加高 navbar) */
+    overflow-x: hidden;
+}
+
+body > main {
+    flex: 1 0 auto;
+}
+
+/* 全域可用性加強：文字選取與焦點指示、減少動效偏好 */
+::selection { background: rgba(74, 124, 89, 0.22); color: #fff; }
+:focus-visible { outline: 2px solid var(--ring-color); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+}
+
+/* 登入頁主體：frontend/login.html。 */
+.login-page-body {
+    flex-direction: column;
+}
+
+.login-page-body > main {
+    flex: 0 0 auto;
+}
+
+/* --- 登入頁與首頁主視覺 --- */
+/* 對應頁面：frontend/client/index.html 首頁英雄區塊、frontend/login.html 登入背景。 */
+.home-hero {
+    background: linear-gradient(135deg, #1b2735, #090a0f 60%, #182848);
+    color: #fff;
+    border-radius: 1.25rem;
+    padding: clamp(2.5rem, 4vw, 3.5rem);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+    overflow: hidden;
+}
+.home-hero .hero-title { font-weight: 800; letter-spacing: .3px; }
+.home-hero .hero-sub { opacity: .9; }
+.home-hero .hero-media { display: flex; justify-content: center; }
+.home-hero .hero-illustration {
+    max-width: 320px;
+    max-height: 260px;
+    object-fit: cover;
+    border-radius: 1rem;
+    box-shadow: var(--shadow-hover);
+}
+
+@media (min-width: 992px) {
+    .home-hero .hero-media { justify-content: flex-end; }
+}
+
+@media (max-width: 991.98px) {
+    .home-hero { text-align: center; }
+    .home-hero .hero-media { margin-top: 1.75rem; }
+}
+
+/* 首頁輪播容器：對應 frontend/client/index.html 的 #homeCarousel。 */
+.home-carousel-wrapper {
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    position: relative;
+    background: var(--surface-2);
+    background: #fff;
+}
+.home-carousel-wrapper #homeCarousel,
+.home-carousel-wrapper #homeCarousel .carousel-item,
+.home-carousel-wrapper #homeCarousel .carousel-item img {
+    border-radius: inherit;
+}
+.home-carousel-wrapper #homeCarousel .carousel-item img {
+    width: 100%;
+    height: 380px;
+    object-fit: cover;
+}
+.home-carousel-wrapper .carousel-control-prev,
+.home-carousel-wrapper .carousel-control-next {
+    z-index: 10;
+}
+.category-card { border: 1px solid rgba(0,0,0,.06); }
+.category-card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(0,0,0,.12); }
+/* 讓輪播支援拖曳互動 (client/js/carousel.js)。 */
+.home-carousel-wrapper .carousel-inner {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.home-carousel-wrapper .carousel-inner.is-dragging {
+    cursor: grabbing;
+}
+.home-carousel-wrapper .carousel-item img {
+    -webkit-user-drag: none;
+    user-select: none;
+}
+.carousel-slide-link:focus-visible {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    outline: 2px solid var(--secondary-color);
+    outline-offset: 2px;
+}
+
+.login-page-body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(74,124,89,0.25), transparent 60%),
+        radial-gradient(800px 500px at 110% 10%, rgba(163,177,138,0.25), transparent 60%),
+        linear-gradient(135deg, #f3f7f4, #e9f2ec);
+    padding: 32px 16px;
+}
+
+/* 首頁優勢列：icon 放左側置中、文字置於中偏右區域 */
+.benefits-row .benefit {
+    background: #fff;
+    border-radius: .75rem;
+    padding: 18px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.06);
+    display: grid;                     /* 兩欄：左 icon、右文字 */
+    grid-template-columns: 64px 1fr;   /* 左側固定寬度，右側自適應 */
+    align-items: center;               /* 垂直置中 */
+    gap: 14px;                         /* 左右留白 */
+    min-height: 88px;                  /* 稍微拉高，視覺更穩 */
+}
+.benefits-row .benefit i {
+    font-size: 1.9rem;                 /* icon 加大 */
+    color: #198754;
+    align-self: center;                /* 垂直置中（保險） */
+    justify-self: center;              /* 水平置中於左欄 */
+}
+.benefits-row .benefit > div {         /* 文字容器 */
+    align-self: center;                /* 文字垂直置中 */
+}
+.benefits-row .benefit .title {
+    font-weight: 700;
+    margin: 0 0 4px 0;                 /* 取消舊的左外距，改為上下排版 */
+}
+.benefits-row .benefit .desc {
+    color: #6c757d;
+    margin: 0;
+    font-size: .95rem;
+}
+
+/* 首頁分類網格：client/index.html 的 .category-grid。 */
+.category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+.category-card { background:#fff; border-radius: .75rem; padding: 18px; text-align:center; cursor:pointer; box-shadow: 0 6px 18px rgba(0,0,0,.06); transition: transform .18s ease, box-shadow .18s ease; }
+.category-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.1); }
+.category-card .icon { width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; background: #f3f6ff; color:#0d6efd; font-size:1.25rem; }
+.category-card .name { font-weight: 700; }
+
+/* 精選商品卡片：client/index.html 的 .featured-section。 */
+.featured-section .section-title { font-weight: 800; }
+.featured-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+.featured-card { border:none; border-radius: .75rem; overflow:hidden; box-shadow: 0 6px 18px rgba(0,0,0,.06); transition: transform .18s ease, box-shadow .18s ease; }
+.featured-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(0,0,0,.12); }
+.featured-card img { width:100%; height:180px; object-fit:cover; }
+.featured-card .price { color:#0d6efd; font-weight:700; }
+
+/* 首頁頁尾：client/index.html 的 .home-footer 區塊。 */
+.home-footer { color:#adb5bd; }
+.home-footer a { color:#ced4da; text-decoration:none; }
+.home-footer a:hover { color:#fff; text-decoration:underline; }
+
+.site-footer{
+    background:#1f2937;
+    color:#e2e8f0;
+    padding:40px 0;
+    margin-top:72px;
+}
+
+.site-footer .container{
+    max-width:1080px;
+}
+
+.site-footer p{
+    margin:0;
+    font-size:0.95rem;
+    letter-spacing:0.02em;
+}
+
+.site-footer a{
+    color:#cbd5f5;
+    text-decoration:none;
+}
+
+.site-footer a:hover{
+    color:#fff;
+    text-decoration:underline;
+}
+
+/* 登入表單外層：login.html 的 .login-wrapper。 */
+.login-wrapper { width: 100%; max-width: 440px; }
+/* 登入卡片本體：對應 .login-card。 */
+.login-card { border-radius: 1rem; backdrop-filter: blur(8px); box-shadow: 0 16px 40px rgba(0,0,0,0.12); }
+/* SF 圓形品牌圖示：login.html 中登入卡片頂部。 */
+.login-brand {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: #fff; font-weight: 700; letter-spacing: 1px;
+}
+/* 登入頁底部補充連結 (忘記密碼、註冊)。 */
+.login-footer { font-size: 0.9rem; }
+
+h1, h2, h3, h4, h5, h6 {
+    /* 全站標題字色：同步套用到所有 client/*.html 章節標題。 */
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* --- 3. 導覽列 --- */
+.navbar {
+       /* 導覽列背景顏色 */
+    /* 以柔和漸層與玻璃擬態加強質感 */
+    background: linear-gradient(135deg, var(--primary-600), var(--secondary-color));
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+    backdrop-filter: saturate(140%) blur(6px);
+    -webkit-backdrop-filter: saturate(140%) blur(6px);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+/* 讓導覽列固定於頂端並調整較高高度 */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    z-index: 1050;
+}
+.navbar .container-fluid { align-items: center; }
+.navbar-brand, .nav-link {
+    color: #fff !important;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+/* 行動版選單展開時停止 body 捲動。 */
+body.client-menu-open { overflow: hidden; }
+
+/* 行動版漢堡按鈕：client/js/navigation.js 切換 .client-menu-open。 */
+.client-navbar-hamburger {
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    padding: 0;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    margin-left: 8px;
+}
+
+.client-navbar-hamburger:hover,
+.client-navbar-hamburger:focus-visible {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #ffffff;
+}
+
+.client-navbar-hamburger span {
+    /* 小橫條在展開時旋轉為 X。 */
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: #ffffff;
+    border-radius: 999px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.client-navbar-hamburger:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.65);
+    outline-offset: 4px;
+}
+
+body.client-menu-open .client-navbar-hamburger span:nth-child(1),
+body.client-sidebar-expanded .client-navbar-hamburger span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+body.client-menu-open .client-navbar-hamburger span:nth-child(2),
+body.client-sidebar-expanded .client-navbar-hamburger span:nth-child(2) {
+    opacity: 0;
+}
+
+body.client-menu-open .client-navbar-hamburger span:nth-child(3),
+body.client-sidebar-expanded .client-navbar-hamburger span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+/* 客戶端側欄寬度對應主內容偏移。 */
+body {
+    --client-sidebar-width: var(--client-sidebar-width-collapsed);
+    --client-main-width: min(var(--client-main-max-width), calc(100% - var(--client-sidebar-width) - (var(--client-main-gutter) * 2)));
+}
+
+body.client-sidebar-expanded:not(.client-sidebar-overlay) {
+    --client-sidebar-width: var(--client-sidebar-width-expanded);
+}
+
+body.client-sidebar-overlay {
+    --client-sidebar-width: 0px;
+    --client-main-gutter: 16px;
+}
+
+.client-main {
+    width: var(--client-main-width);
+    max-width: 100%;
+    margin-top: calc(var(--client-navbar-height) + 24px);
+    margin-bottom: 64px;
+    margin-left: calc(
+        var(--client-sidebar-width)
+        + max(
+            var(--client-main-gutter),
+            calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
+        )
+    );
+    margin-right: max(
+        var(--client-main-gutter),
+        calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
+    );
+    padding: 32px;
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+    transition: none;
+    will-change: auto;
+}
+
+body.client-sidebar-overlay .client-main {
+    width: calc(100% - (var(--client-main-gutter) * 2));
+    margin: calc(var(--client-navbar-height) + 20px) var(--client-main-gutter) 56px;
+    margin-left: var(--client-main-gutter);
+    padding: 24px;
+    border-radius: 18px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.client-footer {
+    margin-left: calc(
+        var(--client-sidebar-width)
+        + max(
+            var(--client-main-gutter),
+            calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
+        )
+    );
+    margin-right: max(
+        var(--client-main-gutter),
+        calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
+    );
+    width: var(--client-main-width);
+    max-width: 100%;
+    margin-top: 0;
+    transition: none;
+    will-change: auto;
+}
+
+body.client-sidebar-overlay .client-footer {
+    margin-left: var(--client-main-gutter);
+    margin-right: var(--client-main-gutter);
+    width: calc(100% - (var(--client-main-gutter) * 2));
+}
+
+/* 客戶端側邊選單：行動裝置沿用管理端的左側欄風格。 */
+
+.client-sidebar {
+    position: fixed;
+    top: var(--client-navbar-height);
+    left: 0;
+    bottom: 0;
+    width: var(--client-sidebar-width-collapsed);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 14px 16px;
+    background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
+    border-right: 1px solid rgba(148, 163, 184, 0.35);
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: none;
+    transition: none;
+    z-index: 1100;
+}
+
+body.client-sidebar-animate .client-sidebar {
+    transition: width 0.24s ease, transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+body.client-sidebar-expanded:not(.client-sidebar-overlay) .client-sidebar {
+    width: var(--client-sidebar-width-expanded);
+    box-shadow: 18px 0 48px rgba(15, 23, 42, 0.12);
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar {
+    width: var(--client-sidebar-width-collapsed);
+    box-shadow: none;
+}
+
+body.client-sidebar-overlay .client-sidebar {
+    top: 0;
+    width: min(82vw, var(--client-sidebar-width-expanded));
+    transform: translateX(-100%);
+    box-shadow: none;
+    pointer-events: none;
+}
+
+body.client-sidebar-overlay.client-sidebar-expanded .client-sidebar {
+    transform: translateX(0);
+    box-shadow: 18px 0 48px rgba(15, 23, 42, 0.18);
+    pointer-events: auto;
+}
+
+body.client-sidebar-overlay.client-sidebar-collapsed .client-sidebar {
+    transform: translateX(-100%);
+}
+
+.client-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-inline: 4px;
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-header {
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.client-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #1f2937;
+    font-weight: 700;
+    transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-brand {
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.client-sidebar-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    overflow: hidden;
+    border: 1px solid transparent;
+    
+}
+
+.client-sidebar-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+    background: transparent;
+}
+
+.client-sidebar-logo-initials {
+    display: inline-block;
+}
+
+.client-sidebar-logo.has-image {
+    background: #ffffff;
+    border-color: rgba(148, 163, 184, 0.45);
+}
+
+.client-sidebar-logo.has-image .client-sidebar-logo-img {
+    display: block;
+}
+
+.client-sidebar-logo.has-image .client-sidebar-logo-initials {
+    display: none;
+}
+
+.client-sidebar-title {
+    font-size: 1.05rem;
+    color: var(--primary-color);
+}
+
+.client-sidebar-subtitle {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-title,
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-subtitle {
+    display: none;
+}
+
+.client-sidebar-close {
+    border: 0;
+    background: transparent;
+    color: #4b5563;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.client-sidebar-close:hover,
+.client-sidebar-close:focus-visible {
+    opacity: 1;
+    transform: rotate(90deg);
+}
+
+body:not(.client-sidebar-overlay) .client-sidebar-close {
+    display: none;
+}
+
+.client-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.client-sidebar-footer {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(203, 213, 225, 0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    transition: opacity 0.24s ease;
+}
+
+.client-sidebar-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem 1rem;
+    border-radius: 14px;
+    text-decoration: none;
+    color: #1f2937;
+    font-weight: 600;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.client-sidebar-link i {
+    font-size: 1.1rem;
+    width: 1.5rem;
+    text-align: center;
+    color: #3f4c3f;
+}
+
+.client-sidebar-badge {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.5rem;
+    display: none;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.4rem;
+    font-size: 0.75rem;
+    line-height: 1;
+    font-weight: 600;
+    pointer-events: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+    transform-origin: center;
+    transform: translate(30%, -30%);
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-badge {
+    top: 0.55rem;
+    left: 60%;
+    right: auto;
+    transform: translate(20%, -35%);
+}
+
+body.client-sidebar-overlay .client-sidebar-badge {
+    right: 0.6rem;
+    transform: translate(35%, -30%);
+}
+
+@keyframes client-cart-badge-pop {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.18); }
+    65% { transform: scale(0.94); }
+    100% { transform: scale(1); }
+}
+
+[data-cart-badge].badge-bump {
+    animation: client-cart-badge-pop 0.42s ease;
+}
+
+.client-sidebar-text {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    white-space: nowrap;
+}
+
+.client-sidebar-link:hover,
+.client-sidebar-link:focus-visible {
+    background: rgba(74, 124, 89, 0.12);
+    color: var(--primary-color);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    transform: translateX(2px);
+}
+
+.client-sidebar-link:hover i,
+.client-sidebar-link:focus-visible i {
+    color: var(--primary-color);
+}
+
+.client-sidebar-link.is-active,
+.client-sidebar-link[aria-current="page"] {
+    background: linear-gradient(90deg, rgba(74, 124, 89, 0.16), rgba(163, 177, 138, 0.12));
+    color: var(--primary-color);
+    box-shadow: inset 0 0 0 1px rgba(74, 124, 89, 0.18);
+}
+
+.client-sidebar-link.is-active i,
+.client-sidebar-link[aria-current="page"] i {
+    color: var(--primary-color);
+}
+
+.client-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.32s ease, visibility 0.32s ease;
+    z-index: 1990;
+    display: none;
+}
+
+body.client-sidebar-overlay .client-sidebar-backdrop {
+    display: block;
+}
+
+body.client-sidebar-overlay.client-sidebar-expanded .client-sidebar-backdrop {
+    opacity: 1;
+    visibility: visible;
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-link {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem 0;
+    padding-right: 0rem;
+    text-align: center;
+    min-height: 88px;
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-link i {
+    font-size: 1.35rem;
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-text {
+    position: static;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    clip: auto;
+    width: 100%;
+    height: auto;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    letter-spacing: 0.03em;
+    color: #3f4c3f;
+    display: block;
+}
+
+body.client-sidebar-expanded:not(.client-sidebar-overlay) .client-sidebar-text,
+body.client-sidebar-overlay .client-sidebar-text {
+    position: static;
+    opacity: 1;
+    transform: translateY(0);
+    clip: auto;
+    width: auto;
+    height: auto;
+}
+
+body.client-sidebar-collapsed:not(.client-sidebar-overlay) .client-sidebar-footer {
+    display: none;
+}
+
+body.client-sidebar-overlay.client-sidebar-expanded .client-sidebar-footer,
+body.client-sidebar-expanded:not(.client-sidebar-overlay) .client-sidebar-footer {
+    display: flex;
+}
+
+@media (max-width: 991.98px) {
+    body {
+        --client-sidebar-width: 0px;
+        --client-main-gutter: 16px;
+    }
+
+    .client-sidebar {
+        top: 0;
+        width: min(82vw, var(--client-sidebar-width-expanded));
+        transform: translateX(-100%);
+        box-shadow: none;
+        pointer-events: none;
+    }
+
+    body.client-sidebar-expanded .client-sidebar {
+        transform: translateX(0);
+        box-shadow: 18px 0 48px rgba(15, 23, 42, 0.18);
+        pointer-events: auto;
+    }
+
+    .client-sidebar-backdrop {
+        display: block;
+    }
+
+    body.client-sidebar-expanded .client-sidebar-backdrop {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+/* 顯示目前頁面或滑過的主選單連結。 */
+.nav-link:hover, .nav-link.active {
+    color: #e9ecef !important;
+}
+
+/* --- 4. 按鈕與表單 --- */
+/* 對應 login.html、client/cart.html、client/member.html 等表單提交區。 */
+.btn {
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    padding: 0.6rem 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.form-control, .form-select {
+    border-radius: var(--border-radius);
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.2);
+}
+
+/* --- 5. 卡片 --- */
+/* 商品卡、登入卡、購物車摘要卡共用外觀。 */
+.card {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    background-color: var(--card-bg);
+    transition: all 0.3s ease;
+}
+
+    /* 購物車右側結帳摘要：client/cart.html 的 .summary-card。 */
+    .summary-card.card { box-shadow: var(--shadow); border-radius: var(--border-radius); transition: none; }
+
+/* 讓購物車摘要在桌面版固定於視窗頂端下方。 */
+@media (min-width: 992px) {
+    .summary-card.card {
+        position: sticky;
+    top: 96px; /* 固定在導覽列下方 */
+        align-self: start;
+    }
+}
+
+/* 確保摘要卡片在滑鼠懸停時維持原位 (覆寫全域 .card:hover) */
+.summary-card.card:hover { transform: none !important; }
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+}
+
+/* 登入卡片與按鈕在滑鼠懸停時保持靜止 */
+.login-card.card:hover { transform: none !important; box-shadow: var(--shadow) !important; }
+.login-page-body .btn:hover { transform: none !important; }
+
+/*
+==============================================
+客戶端頁面樣式
+==============================================
+*/
+
+/* --- 商品網格 ---
+    對應頁面：client/index.html 精選商品、client/product.html 商品列表。 */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.75rem;
+}
+
+.product-card .card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.product-card .product-image-wrapper {
+    height: 200px;
+    overflow: hidden;
+}
+
+.product-card .product-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.3s ease;
+}
+
+/* 購物車與 popover 的數量調整列：client/cart.html、client/js/cart-page.js。 */
+.cart-qty-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.cart-qty-group .btn {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius);
+}
+
+.cart-qty-group input.form-control {
+    width: 64px;
+    text-align: center;
+    padding: 0.45rem 0.5rem;
+}
+
+.product-card.hover-pop-scale .product-card-img {
+    transform: scale(1.05);
+}
+
+/* 商品卡可點擊提示：client/product.html。 */
+.product-card {
+    cursor: pointer;
+}
+
+/* 滑入快覽視窗：固定的雙欄布局，左側堆疊主圖與縮圖 */
+#product-hover-popover {
+    position: fixed;
+    inset: 3% 4%; /* 稍微縮小內縮距離，釋出更多垂直空間供彈出視窗使用 */
+    z-index: 2000;
+    display: block;
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    transition: opacity 200ms ease, transform 200ms ease;
+    pointer-events: none;
+    visibility: hidden;
+    background-color: rgba(255,255,255,0.98);
+    border-radius: 0.75rem;
+    box-shadow: 0 22px 48px rgba(0,0,0,0.36);
+}
+
+#product-hover-popover.show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; visibility: visible; }
+
+#product-hover-popover .popover-inner { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; padding: 0.9rem 0.9rem 0.6rem 0.9rem; align-items: start; }
+
+#product-hover-popover .popover-inner .left { padding: 0.25rem 0.5rem 0.25rem 0.5rem; display:flex; flex-direction:column; min-width:220px; max-width:520px; }
+#product-hover-popover .popover-inner .left #popover-thumbs { margin-top: 0.8rem; display:flex; align-items:center; overflow-x:auto; gap:0.6rem; padding-bottom:12px; }
+#product-hover-popover .popover-inner .popover-thumb { border-radius: 0.5rem; box-shadow: var(--shadow); flex:0 0 auto; }
+/* 快覽視窗中的縮圖放大顯示 */
+#product-hover-popover .popover-inner .left #popover-thumbs img { width:56px; height:56px; object-fit:cover; border-radius:0.5rem; box-shadow: var(--shadow); }
+/* 將縮圖控制按鈕與縮圖並排 */
+.thumbs-row { display:flex; align-items:center; }
+.thumbs-row .btn { min-width:48px; height:48px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; }
+/* 縮圖列啟用平滑滾動 */
+#product-hover-popover .popover-inner .left #popover-thumbs { scroll-behavior: smooth; }
+/* 放大快覽視窗內的商品介紹文字 */
+#product-hover-popover #popover-introduction { font-size: 1rem; line-height:1.6; }
+
+/* 商品額外資訊的強調樣式 */
+#popover-metadata small { display:block; background: #f7fff6; padding:8px 10px; border-radius:8px; margin-bottom:8px; color: #2f5f3a; }
+
+/* 快覽視窗中作用中的縮圖樣式 */
+#popover-thumbs { position: relative; z-index: 3000; }
+#popover-thumbs .popover-thumb {
+    position: relative;
+    z-index: 3010;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+    display: inline-block; /* 確保內距與陰影不被裁切 */
+    padding: 4px; /* 為外圈高光預留空間 */
+    background: transparent;
+    overflow: visible;
+}
+#popover-thumbs .active-thumb {
+    /* 以陰影光暈取代外框，避免被父層圓角裁切 */
+    transform: scale(1.03);
+    z-index: 3020;
+    box-shadow: 0 0 0 4px var(--secondary-color), 0 8px 20px rgba(46,125,50,0.12);
+    border-radius: 0.55rem;
+}
+/* 限制縮圖容器的寬度，維持主圖與縮圖排版 */
+#product-hover-popover .popover-inner .left { max-width: 520px; }
+
+/* 放大快覽視窗內的商品標題 */
+#product-hover-popover .card-title#popover-product-name { font-size: 1.35rem; font-weight:700; }
+
+/* 確保主圖保留縮圖與右側欄位的空間 */
+/* 透過較彈性的規則讓較高的主圖也能置中顯示 */
+#product-hover-popover .popover-inner .left img {
+    display:block;
+    margin:0 auto 10px auto; /* 增加底部間距避免縮圖重疊 */
+    max-height: calc(72vh - 120px);
+    max-width: 480px; /* 放大主圖顯示尺寸 */
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius:0.5rem;
+    background: linear-gradient(180deg,#fff,#fbfbfb);
+    padding:6px;
+    position: relative;
+    z-index: 2000; /* 讓主圖位於縮圖下層 */
+}
+
+/* 強制數量調整列維持單行排列，避免換行 */
+#product-hover-popover .popover-inner .right .input-group { display:inline-flex; flex-wrap:nowrap; align-items:center; gap:8px; }
+#product-hover-popover .popover-inner .right .input-group input { text-align:center; }
+#product-hover-popover input.form-control { color: #222 !important; font-size: 1rem !important; background: #fff !important; }
+/* 更強的覆寫，確保數字在各瀏覽器的呈現清晰一致 */
+#product-hover-popover input.form-control#popover-qty,
+#product-hover-popover input.form-control[type=number],
+#product-hover-popover input.form-control[type=text] {
+    color: #222 !important;
+    -webkit-text-fill-color: #222 !important;
+    font-size: 1rem !important;
+    line-height: 1.2 !important;
+    padding: 0.375rem 0.5rem !important;
+    background: #fff !important;
+    height: auto !important;
+    text-indent: 0 !important;
+    text-align: center !important;
+}
+
+/* 將快覽視窗中的 +/- 按鈕縮小，避免遮住中央數值 */
+#product-hover-popover .input-group .btn {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+}
+
+/* 放大中央數字以提高可讀性 */
+#product-hover-popover #popover-qty {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+}
+
+/* 快覽視窗的整體尺寸限制 */
+#product-hover-popover { max-height: calc(100vh - 24px); overflow: visible; }
+
+/* 快覽彈出視窗的遮罩層：由 client/js/popover.js 控制顯示與隱藏。 */
+#popover-overlay { position: fixed; inset:0; background: rgba(0,0,0,0.32); z-index:1990; opacity:0; visibility:hidden; transition:opacity 180ms ease; }
+#popover-overlay.show { opacity:1; visibility:visible; }
+
+/* 對應全域提示訊息：client/js/utils.js 透過框架內建的提示組件顯示通知。 */
+#liveToast { z-index: 2147483647 !important; position: fixed !important; }
+#liveToast .toast { z-index: 2147483647 !important; }
+
+/* 提示訊息的視覺強化 */
+#liveToast { right: 1rem; top: 1rem; left: auto; bottom: auto; }
+#liveToast .toast {
+    min-width: 280px;
+    max-width: 420px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(74,124,89,0.12);
+    background: linear-gradient(180deg, #ffffff, #fbfff9);
+    box-shadow: 0 12px 28px rgba(18, 66, 30, 0.14);
+}
+#liveToast .toast-header {
+    background: linear-gradient(90deg, rgba(106,153,78,0.12), rgba(163,177,138,0.06));
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    padding: 0.5rem 0.75rem;
+    align-items: center;
+}
+#liveToast .toast-header .me-auto {
+    font-weight: 700;
+    color: #2f5f3a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+/* 在標題前加入小型勾選圖示 */
+#liveToast .toast-header .me-auto::before { content: "\2713"; display:inline-block; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#2f5f3a; color:#fff; font-size:12px; }
+#liveToast .toast-body { padding: 0.6rem 0.75rem; color: #234a2b; font-weight: 500; }
+
+/* 成功樣式使用更明顯的強調色 */
+.toast-success { border-color: rgba(46,125,50,0.2) !important; }
+.toast-success .toast-header { background: linear-gradient(90deg, rgba(74,124,89,0.18), rgba(74,124,89,0.06)); }
+
+/* 提示訊息內容的排版 */
+.toast-item .toast-name { font-weight: 700; color: #163b25; max-width: 180px; }
+.toast-item .toast-sub { color: rgba(30,50,30,0.6); }
+.toast-qty { font-weight: 700; padding: 0.45rem 0.6rem; border-radius: 0.6rem; }
+.toast-cta { font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 8px; }
+.toast-cta:hover { text-decoration: none; }
+
+/* 快覽視窗中的關閉按鈕 */
+#product-hover-popover > #popover-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2100;
+}
+
+/* 移除數字輸入框的微調按鈕，改由 +/- 控制數量 */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* 小螢幕時改為單欄呈現 */
+@media (max-width: 768px) {
+    /* 行動版視窗：調整 popover 與導覽列間距。 */
+    #product-hover-popover {
+        inset: 8px;
+        border-radius: 0.5rem;
+    }
+    #product-hover-popover .popover-inner { grid-template-columns: 1fr; }
+    body { padding-top: 72px; }
+}
+
+/* --- 商品卡圖片調整：提高高度並完整呈現 ---
+    對應頁面：client/product.html 及 client/index.html 的商品卡圖像。 */
+.product-card {
+    min-height: 460px; /* 讓卡片變高以完整呈現圖片 */
+}
+.product-card .product-image-wrapper {
+    height: 320px; /* 放大圖片可用高度 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    padding: 8px;
+}
+.product-card .product-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* 讓圖片完整顯示 */
+    transition: transform 0.25s ease;
+}
+
+@media (max-width: 768px) {
+    /* 行動版商品卡版面：client/product.html。 */
+    .product-card { min-height: 420px; }
+    .product-card .product-image-wrapper { height: 240px; }
+}
+
+.product-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 2.4em; 
+}
+
+.product-card .price {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    margin-top: auto; 
+}
+
+.product-card .card-footer {
+    background-color: transparent;
+    border-top: none;
+}
+
+/* 商品詳情頁的縮圖捲動區 */
+.thumbs-wrapper { display:flex; align-items:center; width:100%; }
+.thumbs-container { overflow-x:auto; display:flex; gap:0.5rem; -webkit-overflow-scrolling: touch; flex:1 1 auto; }
+.thumbs-container img { flex:0 0 auto; width:80px; height:80px; object-fit:cover; border-radius:0.5rem; }
+ .thumb-nav { width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:#fff; border:1px solid rgba(0,0,0,0.06); box-shadow: 0 6px 18px rgba(0,0,0,0.12); padding:0; }
+.thumb-nav:hover { transform: translateY(-2px); }
+.thumb-nav:active { transform: translateY(0); }
+.thumb-nav svg { width:18px; height:18px; }
+.thumb-nav[style*="display: none"] { visibility: hidden; }
+
+/*
+==============================================
+響應式設計
+==============================================
+*/
+
+@media (max-width: 768px) {
+    /* 行動版全域調整：縮小 padding 與標題大小。 */
+    body {
+        padding-top: 70px;
+    }
+    .main-content {
+        padding: 1.5rem;
+    }
+    .product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.5rem; }
+}
+
+@media (max-width: 576px) {
+    /* 更小裝置的商品卡寬度調整。 */
+    .product-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .product-card .card-title {
+        font-size: 1rem;
+    }
+    .product-card .price {
+        font-size: 1.1rem;
+    }
+}

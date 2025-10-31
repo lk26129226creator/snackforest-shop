@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "Snackforest",
+            "request": "launch",
+            "mainClass": "Snackforest",
+            "projectName": "snackforest-shop_c2c5df6d"
+        },
+        {
+            "type": "java",
             "name": "Server",
             "request": "launch",
             "mainClass": "Server",

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 工具演示</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .demo-section {
+            background: white;
+            margin: 20px 0;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .demo-section h2 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #bd2130; }
+        
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        .api-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .api-table th,
+        .api-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .api-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .api-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .status-success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .status-error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .response-json {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .quick-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .demo-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .demo-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .code-example {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛠️ SnackForest API 工具演示</h1>
+    <p>這個頁面展示如何使用 <code>api-manager.js</code> 工具類來簡化 API 操作。</p>
+
+    <!-- 快速演示 -->
+    <div class="demo-section">
+        <h2>🚀 快速演示</h2>
+        <div class="quick-demo">
+            <div class="demo-card">
+                <h4>載入商品</h4>
+                <button class="btn" onclick="loadTable('/api/products', '#products-container')">載入商品表格</button>
+            </div>
+            <div class="demo-card">
+                <h4>載入分類</h4>
+                <button class="btn" onclick="loadTable('/api/categories', '#categories-container')">載入分類表格</button>
+            </div>
+            <div class="demo-card">
+                <h4>健康檢查</h4>
+                <button class="btn" onclick="checkHealth()">檢查伺服器</button>
+            </div>
+            <div class="demo-card">
+                <h4>載入所有資料</h4>
+                <button class="btn btn-success" onclick="loadAllData()">一鍵載入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品資料 -->
+    <div class="demo-section">
+        <h2>📦 商品資料</h2>
+        <button class="btn" onclick="loadProductsWithActions()">載入商品（含操作按鈕）</button>
+        <button class="btn btn-success" onclick="showAddProductDemo()">新增商品演示</button>
+        <div id="products-container"></div>
+        
+        <!-- 新增商品演示 -->
+        <div id="add-product-demo" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+            <h4>新增商品演示</h4>
+            <input type="text" id="demo-product-name" placeholder="商品名稱" style="margin: 5px; padding: 8px;">
+            <input type="number" id="demo-product-price" placeholder="價格" style="margin: 5px; padding: 8px;">
+            <input type="number" id="demo-product-category" placeholder="分類ID" style="margin: 5px; padding: 8px;">
+            <button class="btn btn-success" onclick="addProductDemo()">新增</button>
+            <button class="btn" onclick="document.getElementById('add-product-demo').style.display='none'">取消</button>
+        </div>
+    </div>
+
+    <!-- 分類資料 -->
+    <div class="demo-section">
+        <h2>🏷️ 分類資料</h2>
+        <button class="btn" onclick="loadCategoriesCustom()">載入分類（自訂欄位）</button>
+        <div id="categories-container"></div>
+    </div>
+
+    <!-- 綜合資料 -->
+    <div class="demo-section">
+        <h2>📊 綜合資料</h2>
+        <button class="btn" onclick="loadSnackforestData()">載入 Snackforest 資料</button>
+        <div id="comprehensive-container"></div>
+    </div>
+
+    <!-- 程式碼範例 -->
+    <div class="demo-section">
+        <h2>💻 程式碼範例</h2>
+        
+        <h3>基本用法</h3>
+        <div class="code-example">// 基本 API 呼叫
+const result = await api.getProducts();
+if (result.success) {
+    console.log('商品資料:', result.data);
+}
+
+// 載入表格到容器
+loadTable('/api/products', '#my-container');
+
+// 新增商品
+const addResult = await api.addProduct({
+    name: '新商品',
+    price: 100,
+    categoryId: 1
+});</div>
+
+        <h3>進階用法</h3>
+        <div class="code-example">// 自訂表格選項
+loadTable('/api/products', '#container', {
+    excludeColumns: ['created_at'],
+    customColumns: { 'ProductName': '商品名稱' },
+    actions: [
+        {
+            text: '編輯',
+            className: 'btn-sm',
+            onclick: 'editProduct({id})'
+        }
+    ]
+});
+
+// 載入所有基本資料
+const allData = await api.loadAllBasicData();
+console.log('商品:', allData.products);
+console.log('分類:', allData.categories);</div>
+    </div>
+
+    <!-- 載入 API 管理工具 -->
+    <script src="/frontend/js/api-manager.js"></script>
+    
+    <script>
+        // 演示函數
+        async function checkHealth() {
+            const result = await api.checkHealth();
+            alert(result.success ? '伺服器正常運行' : '伺服器連線失敗: ' + result.error);
+        }
+
+        async function loadAllData() {
+            const allData = await api.loadAllBasicData();
+            
+            if (allData.products.length > 0) {
+                loadTable('/api/products', '#products-container');
+            }
+            
+            if (allData.categories.length > 0) {
+                loadTable('/api/categories', '#categories-container');
+            }
+            
+            if (allData.errors.products || allData.errors.categories) {
+                alert('部分資料載入失敗，請檢查伺服器狀態');
+            }
+        }
+
+        function loadProductsWithActions() {
+            loadTable('/api/products', '#products-container', {
+                customColumns: {
+                    'ProductName': '商品名稱',
+                    'Price': '價格',
+                    'CategoriesID': '分類ID'
+                },
+                actions: [
+                    {
+                        text: '刪除',
+                        className: 'btn-danger btn-sm',
+                        onclick: 'deleteProductDemo({id})'
+                    }
+                ]
+            });
+        }
+
+        function loadCategoriesCustom() {
+            loadTable('/api/categories', '#categories-container', {
+                customColumns: {
+                    'ID': '分類編號',
+                    'CategoryName': '分類名稱'
+                }
+            });
+        }
+
+        async function loadSnackforestData() {
+            const container = document.querySelector('#comprehensive-container');
+            container.innerHTML = '<div class="loading">載入綜合資料中...</div>';
+            
+            const result = await api.getSnackforestData();
+            
+            if (result.success) {
+                container.innerHTML = `
+                    <div class="status-success">✅ 載入成功</div>
+                    <div class="response-json">${JSON.stringify(result.data, null, 2)}</div>
+                `;
+            } else {
+                container.innerHTML = `<div class="status-error">❌ 載入失敗: ${result.error}</div>`;
+            }
+        }
+
+        function showAddProductDemo() {
+            document.getElementById('add-product-demo').style.display = 'block';
+        }
+
+        async function addProductDemo() {
+            const name = document.getElementById('demo-product-name').value;
+            const price = parseInt(document.getElementById('demo-product-price').value);
+            const categoryId = parseInt(document.getElementById('demo-product-category').value);
+            
+            if (!name || !price || !categoryId) {
+                alert('請填寫所有欄位');
+                return;
+            }
+            
+            const result = await api.addProduct({
+                name: name,
+                price: price,
+                categoryId: categoryId
+            });
+            
+            if (result.success) {
+                alert('商品新增成功！');
+                document.getElementById('add-product-demo').style.display = 'none';
+                // 清空表單
+                document.getElementById('demo-product-name').value = '';
+                document.getElementById('demo-product-price').value = '';
+                document.getElementById('demo-product-category').value = '';
+                // 重新載入商品列表
+                loadProductsWithActions();
+            } else {
+                alert('新增失敗: ' + result.error);
+            }
+        }
+
+        async function deleteProductDemo(id) {
+            if (confirm(`確定要刪除商品 ID ${id} 嗎？`)) {
+                const result = await api.deleteProduct(id);
+                if (result.success) {
+                    alert('刪除成功！');
+                    loadProductsWithActions(); // 重新載入
+                } else {
+                    alert('刪除失敗: ' + result.error);
+                }
+            }
+        }
+
+        // 頁面載入時自動檢查伺服器狀態
+        document.addEventListener('DOMContentLoaded', function() {
+            checkHealth();
+        });
+    </script>
+</body>
+</html>

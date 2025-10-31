@@ -5,4 +5,13 @@
         "backend/lib/json-20230618.jar"
     ],
     "liveServer.settings.port": 5501
+    ,
+    "liveServer.settings.ignoreFiles": [
+        "**/.vscode/**",
+        "**/node_modules/**",
+        "**/data/**",
+        "**/data/uploads/**",
+        "**/frontend/images/**",
+        "**/frontend/images/products/**"
+    ]
 }

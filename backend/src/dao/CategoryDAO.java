@@ -45,6 +45,7 @@ public class CategoryDAO {
      * @throws SQLException
      */
     public int save(Category category) throws SQLException {
+        // 首先嘗試只插入名稱並透過資料庫的 AUTO_INCREMENT 取得新主鍵
         String sql = "INSERT INTO category (categoryname) VALUES (?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, category.getName());
@@ -56,8 +57,35 @@ public class CategoryDAO {
                     }
                 }
             }
+        } catch (SQLException e) {
+            // 若資料表沒有 AUTO_INCREMENT 或無法取得產生鍵，改為手動產生新的 id 再插入
+            // 例如：Field 'idcategories' doesn't have a default value
+        }
+
+        // 回退方案：自行取得下一個 id 再插入（相容沒有 AUTO_INCREMENT 的資料表）
+        int nextId = getNextCategoryId();
+        String sqlWithId = "INSERT INTO category (idcategories, categoryname) VALUES (?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sqlWithId)) {
+            stmt.setInt(1, nextId);
+            stmt.setString(2, category.getName());
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                return nextId;
+            }
         }
         return -1;
+    }
+
+    /**
+     * 取得下一個分類編號（MAX(idcategories)+1）。
+     * 注意：這是簡易回退策略，非強一致性；適用於單人開發/小流量情境。
+     */
+    private int getNextCategoryId() throws SQLException {
+        String q = "SELECT COALESCE(MAX(idcategories), 0) + 1 AS next_id FROM category";
+        try (PreparedStatement ps = conn.prepareStatement(q); ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) return rs.getInt("next_id");
+        }
+        return 1;
     }
 
     /**
