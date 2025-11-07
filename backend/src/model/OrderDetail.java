@@ -4,14 +4,14 @@ import java.math.BigDecimal;
 
 /**
  * 訂單明細資料模型
- * 封裝單一訂單商品的資訊
+ * 描述訂單內單一商品的購買資訊，常搭配 {@link Order} 使用
  */
 public class OrderDetail {
-    /** 商品名稱 */
+    /** 商品名稱（顯示用，對應 products.ProductName） */
     private final String productName;
     /** 購買數量 */
     private final int quantity;
-    /** 購買當下的價格 */
+    /** 當下成交價格，保留歷史售價資料 */
     private final BigDecimal priceAtTimeOfPurchase;
 
     /**

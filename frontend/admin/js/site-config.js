@@ -1,3 +1,7 @@
+//
+//  站台設定模組：管理首頁 Hero、優勢、促銷、客服、精選商品與頁腳設定。
+//  提供快取、表單綁定、儲存與預覽功能，協助管理員快速調整前台內容。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { config, state, images } = Admin;
@@ -5,6 +9,10 @@
     const site = Admin.site || {};
     const STORAGE_KEY = 'sf-admin-site-config-cache';
 
+    /**
+     * 從 localStorage 讀取上次編輯的站台設定暫存。
+     * @returns {?Object}
+     */
     function readCachedConfig() {
         try {
             if (!('localStorage' in window)) return null;
@@ -21,6 +29,10 @@
         }
     }
 
+    /**
+     * 將站台設定寫入或清除本機暫存。
+     * @param {?Object} value 要寫入的設定；為 null 或 undefined 時清除暫存。
+     */
     function writeCachedConfig(value) {
         try {
             if (!('localStorage' in window)) return;
@@ -41,8 +53,9 @@
     const BUTTON_MAP = {
         hero: 'site-hero-save',
         benefits: 'site-benefit-save',
+        promotions: 'site-promotions-save',
+        support: 'site-support-save',
         featured: 'site-featured-save',
-        branding: 'site-branding-save',
         footer: 'site-footer-save'
     };
 
@@ -50,35 +63,51 @@
         state.siteConfig = {
             data: null,
             original: null,
-            dirty: { hero: false, benefits: false, featured: false, branding: false, footer: false },
+            dirty: { hero: false, benefits: false, promotions: false, support: false, featured: false, footer: false },
             bound: false,
             saving: false
         };
     } else {
-    state.siteConfig.dirty = Object.assign({ hero: false, benefits: false, featured: false, branding: false, footer: false }, state.siteConfig.dirty || {});
+        state.siteConfig.dirty = Object.assign({ hero: false, benefits: false, promotions: false, support: false, featured: false, footer: false }, state.siteConfig.dirty || {});
         state.siteConfig.bound = !!state.siteConfig.bound;
         state.siteConfig.saving = !!state.siteConfig.saving;
     }
 
+    /**
+     * 確保 `state.siteConfig.data` 存在並補齊必要欄位，防止表單操作遇到 undefined。
+     * @returns {Object} 可安全操作的站台設定資料物件。
+     */
     site.ensureData = function () {
+        const defaults = site.getDefault();
         state.siteConfig.data = state.siteConfig.data || site.cloneConfig(state.siteConfig.original || config.DEFAULT_SITE_CONFIG);
+        if (!Array.isArray(state.siteConfig.data.promotions)) {
+            state.siteConfig.data.promotions = deepClone(defaults.promotions || []);
+        }
+        if (!state.siteConfig.data.support) {
+            state.siteConfig.data.support = Object.assign({}, defaults.support);
+        } else {
+            const mergedSupport = Object.assign({}, defaults.support, state.siteConfig.data.support);
+            state.siteConfig.data.support = mergedSupport;
+        }
         if (!state.siteConfig.data.footer) {
-            const defaults = site.getDefault();
             state.siteConfig.data.footer = Object.assign({}, defaults.footer);
-            if (!state.siteConfig.data.branding) {
-                state.siteConfig.data.branding = Object.assign({}, defaults.branding);
-            }
-        } else if (!state.siteConfig.data.branding) {
-            const defaults = site.getDefault();
-            state.siteConfig.data.branding = Object.assign({}, defaults.branding);
         }
         return state.siteConfig.data;
     };
 
+    /**
+     * 取得網站設定的預設資料深拷貝，避免原始常數被改動。
+     * @returns {Object}
+     */
     site.getDefault = function () {
         return site.cloneConfig(config.DEFAULT_SITE_CONFIG);
     };
 
+    /**
+     * 深拷貝站台設定物件，確保不會修改到傳入來源。
+     * @param {Object} [cfg] 來源設定；缺省時使用預設值。
+     * @returns {Object}
+     */
     site.cloneConfig = function (cfg) {
         return deepClone(cfg || config.DEFAULT_SITE_CONFIG, deepClone(config.DEFAULT_SITE_CONFIG));
     };
@@ -89,6 +118,12 @@
         state.siteConfig.original = site.cloneConfig(cachedConfig);
     }
 
+    /**
+     * 將後端或本機暫存的資料正規化：
+     * hero/support 會補齊預設值、陣列會過濾空項目、精選列表會去重並轉成數字。
+     * @param {Object} raw 原始設定資料。
+     * @returns {Object}
+     */
     site.sanitizeData = function (raw) {
         const base = site.getDefault();
         const hero = Object.assign({}, base.hero, (raw && raw.hero) || {});
@@ -104,22 +139,46 @@
         const featured = Array.from(new Set((raw?.featuredProductIds || [])
             .map((id) => Number(id))
             .filter((id) => Number.isFinite(id))));
+        const promotionsSource = Array.isArray(raw?.promotions) ? raw.promotions : base.promotions || [];
+        const promotions = promotionsSource
+            .map((item) => {
+                if (!item) return null;
+                if (typeof item === 'string') {
+                    const text = item.trim();
+                    return text ? { text, link: '' } : null;
+                }
+                const text = String(item.text ?? item.title ?? '').trim();
+                if (!text) return null;
+                const linkRaw = item.link ?? item.href ?? item.url;
+                const link = typeof linkRaw === 'string' ? linkRaw.trim() : '';
+                return link ? { text, link } : { text, link: '' };
+            })
+            .filter(Boolean);
+        const supportRaw = (raw && typeof raw.support === 'object') ? raw.support : {};
+        const support = {
+            email: String(supportRaw.email ?? supportRaw.mail ?? base.support?.email ?? '').trim(),
+            phone: String(supportRaw.phone ?? supportRaw.tel ?? base.support?.phone ?? '').trim(),
+            hours: String(supportRaw.hours ?? supportRaw.businessHours ?? base.support?.hours ?? '').trim(),
+            liveChatUrl: String(supportRaw.liveChatUrl ?? supportRaw.chatUrl ?? base.support?.liveChatUrl ?? '').trim(),
+            liveChatLabel: String(supportRaw.liveChatLabel ?? supportRaw.liveChatText ?? supportRaw.chatLabel ?? base.support?.liveChatLabel ?? '').trim()
+        };
         const footer = Object.assign({}, base.footer, raw?.footer || {});
         footer.text = String(footer.text ?? '').trim();
         if (!footer.text) footer.text = base.footer.text;
-        const branding = Object.assign({}, base.branding, raw?.branding || {});
-        branding.logoUrl = String(branding.logoUrl ?? '').trim();
-        branding.brandName = String(branding.brandName ?? '').trim() || base.branding.brandName;
-        branding.tagline = String(branding.tagline ?? '').trim();
         return {
             hero,
             benefits: cleanedBenefits,
+            promotions,
+            support,
             featuredProductIds: featured,
-            branding,
             footer
         };
     };
 
+    /**
+     * 更新指定區塊的儲存按鈕文字與樣式，顯示是否存在未儲存變更。
+     * @param {string} section 對應的區塊識別，例如 hero、benefits。
+     */
     site.updateButtonState = function (section) {
         const btnId = BUTTON_MAP[section];
         if (!btnId) return;
@@ -132,12 +191,22 @@
         btn.classList.toggle('btn-warning', isDirty);
     };
 
+    /**
+     * 標記指定區塊為 dirty，並更新按鈕狀態顯示。
+     * @param {string} section 區塊名稱。
+     * @param {boolean} dirty 是否有未儲存變更。
+     */
     site.setDirty = function (section, dirty) {
-    state.siteConfig.dirty = state.siteConfig.dirty || { hero: false, benefits: false, featured: false, branding: false, footer: false };
+        state.siteConfig.dirty = state.siteConfig.dirty || { hero: false, benefits: false, promotions: false, support: false, featured: false, footer: false };
         state.siteConfig.dirty[section] = !!dirty;
         site.updateButtonState(section);
     };
 
+    /**
+     * 控制儲存按鈕忙碌狀態，顯示「儲存中...」並鎖定互動。
+     * @param {string|'all'} section 單一區塊或 'all' 表全域按鈕。
+     * @param {boolean} busy 是否處於忙碌狀態。
+     */
     site.setBusy = function (section, busy) {
         const buttonIds = section === 'all' ? Object.values(BUTTON_MAP) : [BUTTON_MAP[section]].filter(Boolean);
         buttonIds.forEach((btnId) => {
@@ -159,6 +228,11 @@
         });
     };
 
+    /**
+     * 更新站台設定區塊上方的提示訊息。
+     * @param {string} message 顯示的訊息文字。
+     * @param {string} [level='secondary'] Bootstrap 警示層級，如 info、warning。
+     */
     site.setStatus = function (message, level) {
         const section = document.getElementById('site-section');
         if (!section) return;
@@ -173,6 +247,9 @@
         status.classList.remove('d-none');
     };
 
+    /**
+     * 隱藏站台設定區塊提示訊息。
+     */
     site.clearStatus = function () {
         const section = document.getElementById('site-section');
         if (!section) return;
@@ -180,6 +257,10 @@
         if (status) status.classList.add('d-none');
     };
 
+    /**
+     * 進入站台設定頁時，綁定事件並在必要時重新載入資料。
+     * @param {{force?: boolean}} [options] force 為 true 時強制重新抓取資料。
+     */
     site.ensureSection = async function (options) {
         site.initBindings();
         if (!state.siteConfig.data || options?.force) {
@@ -189,6 +270,10 @@
         }
     };
 
+    /**
+     * 更新頁腳預覽區域，會依內容換行並處理空值提示。
+     * @param {string} text 頁腳輸入的文字內容。
+     */
     site.updateFooterPreview = function (text) {
         const preview = document.getElementById('site-footer-preview');
         if (!preview) return;
@@ -207,6 +292,10 @@
         });
     };
 
+    /**
+     * 渲染頁腳輸入欄位與預覽，若缺值則補預設資料。
+     * @param {Object} [footer]
+     */
     site.renderFooter = function (footer) {
         const defaults = site.getDefault().footer;
         const data = Object.assign({}, defaults, footer || {});
@@ -215,40 +304,9 @@
         site.updateFooterPreview(data.text);
     };
 
-    site.updateBrandingPreview = function (url) {
-        const preview = document.getElementById('site-branding-logo-preview');
-        if (!preview) return;
-        const trimmed = String(url || '').trim();
-        if (trimmed) {
-            try {
-                const normalized = images && typeof images.normalizeImageUrl === 'function'
-                    ? images.normalizeImageUrl(trimmed)
-                    : trimmed;
-                preview.src = normalized;
-            } catch (_) {
-                preview.src = trimmed;
-            }
-            preview.classList.remove('d-none');
-            preview.removeAttribute('hidden');
-        } else {
-            preview.removeAttribute('src');
-            preview.classList.add('d-none');
-            preview.setAttribute('hidden', '');
-        }
-    };
-
-    site.renderBranding = function (branding) {
-        const defaults = site.getDefault().branding;
-        const data = Object.assign({}, defaults, branding || {});
-        const nameInput = document.getElementById('site-branding-name');
-        if (nameInput) nameInput.value = data.brandName || '';
-        const taglineInput = document.getElementById('site-branding-tagline');
-        if (taglineInput) taglineInput.value = data.tagline || '';
-        const logoInput = document.getElementById('site-branding-logo');
-        if (logoInput) logoInput.value = data.logoUrl || '';
-        site.updateBrandingPreview(data.logoUrl);
-    };
-
+    /**
+     * 綁定各輸入欄位、按鈕與狀態，確保表單操作會同步更新 state。
+     */
     site.initBindings = function () {
         if (state.siteConfig.bound) return;
         state.siteConfig.bound = true;
@@ -304,49 +362,6 @@
             heroFileInput.addEventListener('change', site.handleHeroFileUpload);
         }
 
-        const brandingFields = [
-            { id: 'site-branding-name', key: 'brandName' },
-            { id: 'site-branding-tagline', key: 'tagline' },
-            { id: 'site-branding-logo', key: 'logoUrl' }
-        ];
-        brandingFields.forEach(({ id, key }) => {
-            const input = document.getElementById(id);
-            if (!input) return;
-            if (!input.dataset.bound) {
-                input.dataset.bound = '1';
-                input.addEventListener('input', (event) => {
-                    site.ensureData();
-                    const defaults = site.getDefault().branding;
-                    const branding = state.siteConfig.data.branding || (state.siteConfig.data.branding = Object.assign({}, defaults));
-                    branding[key] = event.target.value;
-                    if (key === 'logoUrl') {
-                        site.updateBrandingPreview(branding.logoUrl);
-                    }
-                    site.setDirty('branding', true);
-                });
-            }
-        });
-
-        const brandingUploadBtn = document.getElementById('site-branding-upload');
-        const brandingFileInput = document.getElementById('site-branding-logo-file');
-        if (brandingUploadBtn && brandingFileInput && !brandingUploadBtn.dataset.bound) {
-            brandingUploadBtn.dataset.bound = '1';
-            brandingUploadBtn.addEventListener('click', (event) => {
-                event.preventDefault();
-                brandingFileInput.click();
-            });
-            brandingFileInput.addEventListener('change', site.handleBrandingFileUpload);
-        }
-
-        const brandingSave = document.getElementById('site-branding-save');
-        if (brandingSave && !brandingSave.dataset.bound) {
-            brandingSave.dataset.bound = '1';
-            brandingSave.addEventListener('click', (event) => {
-                event.preventDefault();
-                site.saveConfig('branding');
-            });
-        }
-
         const benefitAddBtn = document.getElementById('site-benefit-add');
         if (benefitAddBtn) {
             benefitAddBtn.addEventListener('click', (event) => {
@@ -371,6 +386,63 @@
             benefitSave.addEventListener('click', (event) => {
                 event.preventDefault();
                 site.saveConfig('benefits');
+            });
+        }
+
+        const promoAddBtn = document.getElementById('site-promo-add');
+        if (promoAddBtn && !promoAddBtn.dataset.bound) {
+            promoAddBtn.dataset.bound = '1';
+            promoAddBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                site.ensureData();
+                const list = state.siteConfig.data.promotions || (state.siteConfig.data.promotions = []);
+                list.push({ text: '', link: '' });
+                site.renderPromotions(list);
+                site.setDirty('promotions', true);
+            });
+        }
+
+        const promoList = document.getElementById('site-promo-list');
+        if (promoList && !promoList.dataset.bound) {
+            promoList.dataset.bound = '1';
+            promoList.addEventListener('input', site.handlePromoInput);
+            promoList.addEventListener('click', site.handlePromoActionClick);
+        }
+
+        const promoSave = document.getElementById('site-promotions-save');
+        if (promoSave && !promoSave.dataset.bound) {
+            promoSave.dataset.bound = '1';
+            promoSave.addEventListener('click', (event) => {
+                event.preventDefault();
+                site.saveConfig('promotions');
+            });
+        }
+
+        const supportFields = [
+            { id: 'site-support-email', key: 'email' },
+            { id: 'site-support-phone', key: 'phone' },
+            { id: 'site-support-hours', key: 'hours' },
+            { id: 'site-support-livechat', key: 'liveChatUrl' },
+            { id: 'site-support-livechat-label', key: 'liveChatLabel' }
+        ];
+        supportFields.forEach(({ id, key }) => {
+            const input = document.getElementById(id);
+            if (!input || input.dataset.bound) return;
+            input.dataset.bound = '1';
+            input.addEventListener('input', (event) => {
+                site.ensureData();
+                const support = state.siteConfig.data.support || (state.siteConfig.data.support = {});
+                support[key] = event.target.value;
+                site.setDirty('support', true);
+            });
+        });
+
+        const supportSave = document.getElementById('site-support-save');
+        if (supportSave && !supportSave.dataset.bound) {
+            supportSave.dataset.bound = '1';
+            supportSave.addEventListener('click', (event) => {
+                event.preventDefault();
+                site.saveConfig('support');
             });
         }
 
@@ -410,6 +482,10 @@
         }
     };
 
+    /**
+     * 處理 Hero 圖片上傳，成功後更新預覽與資料狀態。
+     * @param {Event} event 來自 file input 的 change 事件。
+     */
     site.handleHeroFileUpload = async function (event) {
         const input = event.target;
         const file = input.files && input.files[0];
@@ -434,32 +510,10 @@
         }
     };
 
-    site.handleBrandingFileUpload = async function (event) {
-        const input = event.target;
-        const file = input.files && input.files[0];
-        if (!file) return;
-        site.setBusy('branding', true);
-        try {
-            const url = await images.uploadImage(file);
-            if (!url) throw new Error('未取得圖片網址');
-            site.ensureData();
-            const defaults = site.getDefault().branding;
-            const branding = state.siteConfig.data.branding || (state.siteConfig.data.branding = Object.assign({}, defaults));
-            branding.logoUrl = url;
-            site.renderBranding(branding);
-            site.setDirty('branding', true);
-        } catch (err) {
-            if (Admin.core && typeof Admin.core.handleError === 'function') {
-                Admin.core.handleError(err, 'Logo 圖片上傳失敗');
-            } else {
-                alert('Logo 圖片上傳失敗：' + (err.message || err));
-            }
-        } finally {
-            site.setBusy('branding', false);
-            try { input.value = ''; } catch (_) {}
-        }
-    };
-
+    /**
+     * 從後端抓取最新站台設定；若失敗則回退至本機快取。
+     * @returns {Promise<void>}
+     */
     site.loadConfig = async function () {
         if (state.siteConfig.loading) return;
         state.siteConfig.loading = true;
@@ -496,6 +550,11 @@
         }
     };
 
+    /**
+     * 依據目前 state 或指定資料重新渲染站台設定頁面。
+     * @param {Object} [data] 傳入時將作為最新資料來源。
+     * @param {{resetDirty?: boolean}} [options] 控制是否重置 dirty 狀態。
+     */
     site.render = function (data, options) {
         const resetDirty = options?.resetDirty !== false;
         if (data && (resetDirty || !state.siteConfig.data)) {
@@ -505,17 +564,23 @@
         }
         const current = state.siteConfig.data || site.getDefault();
         site.applyHeroInputs(current.hero);
-        site.renderBranding(current.branding);
         site.renderBenefits(current.benefits);
+        site.renderPromotions(current.promotions);
+        site.renderSupport(current.support);
         site.renderFeaturedList();
         site.renderFooter(current.footer);
+        const sections = ['hero', 'benefits', 'promotions', 'support', 'featured', 'footer'];
         if (resetDirty) {
-            ['hero', 'benefits', 'featured', 'branding', 'footer'].forEach((section) => site.setDirty(section, false));
+            sections.forEach((section) => site.setDirty(section, false));
         } else {
-            ['hero', 'benefits', 'featured', 'branding', 'footer'].forEach((section) => site.updateButtonState(section));
+            sections.forEach((section) => site.updateButtonState(section));
         }
     };
 
+    /**
+     * 將 Hero 欄位資料寫回輸入框並同步預覽圖。
+     * @param {Object} [hero] Hero 設定物件。
+     */
     site.applyHeroInputs = function (hero) {
         const map = {
             title: 'site-hero-title',
@@ -533,6 +598,10 @@
         site.updateHeroPreview(hero?.imageUrl || '');
     };
 
+    /**
+     * 更新 Hero 圖片預覽，有路徑時顯示圖像、無值則隱藏。
+     * @param {string} url Hero 圖片網址。
+     */
     site.updateHeroPreview = function (url) {
         const preview = document.getElementById('site-hero-image-preview');
         if (!preview) return;
@@ -546,6 +615,10 @@
         }
     };
 
+    /**
+     * 渲染首頁亮點清單並附上互動按鈕。
+     * @param {Array} benefits 亮點資料陣列。
+     */
     site.renderBenefits = function (benefits) {
         const list = document.getElementById('site-benefit-list');
         if (!list) return;
@@ -585,6 +658,10 @@
         });
     };
 
+    /**
+     * 監聽亮點輸入欄位變化，更新對應陣列並標記 dirty。
+     * @param {InputEvent} event input 事件。
+     */
     site.handleBenefitInput = function (event) {
         const field = event.target.getAttribute('data-field');
         if (!field) return;
@@ -599,6 +676,10 @@
         site.setDirty('benefits', true);
     };
 
+    /**
+     * 處理亮點卡片的上移、下移與刪除交互。
+     * @param {MouseEvent} event 點擊事件。
+     */
     site.handleBenefitActionClick = function (event) {
         const button = event.target.closest('button[data-action]');
         if (!button) return;
@@ -626,6 +707,120 @@
         }
     };
 
+    /**
+     * 渲染首頁促銷公告卡片列表。
+     * @param {Array} promotions 促銷資料陣列。
+     */
+    site.renderPromotions = function (promotions) {
+        const list = document.getElementById('site-promo-list');
+        if (!list) return;
+        list.innerHTML = '';
+        const items = Array.isArray(promotions) ? promotions : [];
+        if (!items.length) {
+            const empty = document.createElement('div');
+            empty.className = 'text-muted';
+            empty.textContent = '尚未新增優惠公告。按「新增一則」建立。';
+            list.appendChild(empty);
+            return;
+        }
+        items.forEach((promo, idx) => {
+            const card = document.createElement('div');
+            card.className = 'border rounded-3 p-3 bg-body-tertiary site-promo-item';
+            card.dataset.index = String(idx);
+            card.innerHTML = `
+                <div class="row g-2 align-items-end">
+                    <div class="col-lg-7">
+                        <label class="form-label mb-1">顯示文字</label>
+                        <input type="text" class="form-control" data-field="text" value="${escapeAttr(promo?.text || '')}" placeholder="例如：全館滿 NT$999 免運">
+                    </div>
+                    <div class="col-lg-5">
+                        <label class="form-label mb-1">連結（選填）</label>
+                        <input type="text" class="form-control" data-field="link" value="${escapeAttr(promo?.link || '')}" placeholder="例如：product.html">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <span class="text-muted small">第 ${idx + 1} 則</span>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary" data-action="promo-up">上移</button>
+                        <button type="button" class="btn btn-outline-secondary" data-action="promo-down">下移</button>
+                        <button type="button" class="btn btn-outline-danger" data-action="promo-remove">移除</button>
+                    </div>
+                </div>`;
+            list.appendChild(card);
+        });
+    };
+
+    /**
+     * 處理促銷欄位輸入，寫回資料陣列並標記 dirty。
+     * @param {InputEvent} event input 事件。
+     */
+    site.handlePromoInput = function (event) {
+        const field = event.target.getAttribute('data-field');
+        if (!field) return;
+        const container = event.target.closest('[data-index]');
+        if (!container) return;
+        const idx = Number(container.dataset.index);
+        if (!Number.isFinite(idx)) return;
+        site.ensureData();
+        const items = state.siteConfig.data.promotions || (state.siteConfig.data.promotions = []);
+        if (!items[idx]) items[idx] = { text: '', link: '' };
+        items[idx][field] = event.target.value;
+        site.setDirty('promotions', true);
+    };
+
+    /**
+     * 處理促銷卡片的排序、移除操作。
+     * @param {MouseEvent} event 點擊事件。
+     */
+    site.handlePromoActionClick = function (event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const container = button.closest('[data-index]');
+        if (!container) return;
+        const idx = Number(container.dataset.index);
+        if (!Number.isFinite(idx)) return;
+        site.ensureData();
+        const items = state.siteConfig.data.promotions || (state.siteConfig.data.promotions = []);
+        let changed = false;
+        if (button.dataset.action === 'promo-remove') {
+            items.splice(idx, 1);
+            changed = true;
+        } else if (button.dataset.action === 'promo-up' && idx > 0) {
+            [items[idx - 1], items[idx]] = [items[idx], items[idx - 1]];
+            changed = true;
+        } else if (button.dataset.action === 'promo-down' && idx < items.length - 1) {
+            [items[idx], items[idx + 1]] = [items[idx + 1], items[idx]];
+            changed = true;
+        }
+        if (changed) {
+            event.preventDefault();
+            site.renderPromotions(items);
+            site.setDirty('promotions', true);
+        }
+    };
+
+    /**
+     * 將客服資訊資料渲染回輸入欄位。
+     * @param {Object} [support] 客服設定資料。
+     */
+    site.renderSupport = function (support) {
+        const defaults = site.getDefault().support || {};
+        const data = Object.assign({}, defaults, support || {});
+        const emailInput = document.getElementById('site-support-email');
+        if (emailInput) emailInput.value = data.email || '';
+        const phoneInput = document.getElementById('site-support-phone');
+        if (phoneInput) phoneInput.value = data.phone || '';
+        const hoursInput = document.getElementById('site-support-hours');
+        if (hoursInput) hoursInput.value = data.hours || '';
+        const liveChatInput = document.getElementById('site-support-livechat');
+        if (liveChatInput) liveChatInput.value = data.liveChatUrl || '';
+        const liveChatLabelInput = document.getElementById('site-support-livechat-label');
+        if (liveChatLabelInput) liveChatLabelInput.value = data.liveChatLabel || '';
+    };
+
+    /**
+     * 渲染精選商品清單與選擇器，支援排序與刪除。
+     */
     site.renderFeaturedList = function () {
         const list = document.getElementById('site-featured-list');
         if (!list) return;
@@ -694,6 +889,10 @@
         });
     };
 
+    /**
+     * 處理精選商品新增、排序與移除的互動邏輯。
+     * @param {MouseEvent} event 點擊事件。
+     */
     site.handleFeaturedActionClick = function (event) {
         const button = event.target.closest('button[data-action]');
         if (!button) return;
@@ -728,6 +927,10 @@
         site.setDirty('featured', true);
     };
 
+    /**
+     * 組裝要送往後端的儲存 payload，並完成字串 trim 以及去重。
+     * @returns {Object}
+     */
     site.buildPayload = function () {
         site.ensureData();
         const hero = Object.assign({}, config.DEFAULT_SITE_CONFIG.hero, state.siteConfig.data.hero || {});
@@ -737,6 +940,14 @@
             title: String(item?.title ?? '').trim(),
             desc: String(item?.desc ?? '').trim()
         })).filter((item) => item.icon || item.title || item.desc);
+        const promotions = (state.siteConfig.data.promotions || [])
+            .map((item) => {
+                const text = String(item?.text ?? '').trim();
+                if (!text) return null;
+                const link = String(item?.link ?? item?.href ?? '').trim();
+                return link ? { text, link } : { text };
+            })
+            .filter(Boolean);
         const featured = Array.from(new Set((state.siteConfig.data.featuredProductIds || [])
             .map((id) => Number(id))
             .filter((id) => Number.isFinite(id))));
@@ -745,17 +956,18 @@
         const footer = {
             text: footerText || footerDefaults.text || ''
         };
-        const brandingDefaults = site.getDefault().branding;
-        const brandingSource = Object.assign({}, brandingDefaults, state.siteConfig.data.branding || {});
-        const brandingTagline = String(brandingSource.tagline ?? '').trim();
-        const branding = {
-            logoUrl: String(brandingSource.logoUrl ?? '').trim(),
-            brandName: (String(brandingSource.brandName ?? '').trim() || brandingDefaults.brandName || '').trim(),
-            tagline: brandingTagline || brandingDefaults.tagline || ''
-        };
-        return { hero, benefits, featuredProductIds: featured, branding, footer };
+        const supportDefaults = site.getDefault().support || {};
+        const supportData = Object.assign({}, supportDefaults, state.siteConfig.data.support || {});
+        Object.keys(supportData).forEach((key) => {
+            supportData[key] = String(supportData[key] ?? '').trim();
+        });
+        return { hero, benefits, promotions, support: supportData, featuredProductIds: featured, footer };
     };
 
+    /**
+     * 儲存指定區塊或整體站台設定，成功後清除 dirty 狀態。
+     * @param {string|'all'} section 目標區塊；使用 'all' 代表全區塊。
+     */
     site.saveConfig = async function (section) {
         if (state.siteConfig.saving) return;
         state.siteConfig.saving = true;
@@ -771,7 +983,7 @@
             state.siteConfig.data = site.cloneConfig(payload);
             state.siteConfig.original = site.cloneConfig(payload);
             writeCachedConfig(state.siteConfig.data);
-            ['hero', 'benefits', 'featured', 'branding', 'footer'].forEach((part) => site.setDirty(part, false));
+            ['hero', 'benefits', 'promotions', 'support', 'featured', 'footer'].forEach((part) => site.setDirty(part, false));
             site.clearStatus();
             if (Admin.core && typeof Admin.core.notifySuccess === 'function') {
                 Admin.core.notifySuccess('網站設定已儲存');

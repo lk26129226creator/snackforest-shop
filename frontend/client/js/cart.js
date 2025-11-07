@@ -1,9 +1,17 @@
 (function(){
+    // 客戶端購物車核心邏輯：管理 localStorage 購物車資料及導覽列徽章。
+
+    /** localStorage key，用於儲存購物車陣列。 */
     const STORAGE_KEY = 'sf_cart';
+    /** 共用工具庫（若未載入 utils.js，改用全域 fallback）。 */
     const utils = window.SF_UTILS || {};
     const normalizeImageUrl = utils.normalizeImageUrl || (window.normalizeImageUrl || ((u) => u || ''));
     const fallbackImage = utils.fallbackProductImage || window.SF_FALLBACK_PRODUCT_IMAGE || '/frontend/images/products/no-image.svg';
 
+    /**
+     * 取得目前購物車內容，解析失敗時回傳空陣列避免流程中斷。
+     * @returns {Array}
+     */
     function getCart() {
         try {
             return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -12,16 +20,26 @@
         }
     }
 
+    /**
+     * 儲存購物車內容並廣播 cart:updated 事件。
+     * @param {Array} cart
+     */
     function saveCart(cart) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
         dispatchCartUpdated();
     }
 
+    /**
+     * 清除購物車內容並廣播更新事件。
+     */
     function clearCart() {
         localStorage.removeItem(STORAGE_KEY);
         dispatchCartUpdated();
     }
 
+    /**
+     * 廣播購物車更新事件，detail 內含總數，提供徽章同步。
+     */
     function dispatchCartUpdated() {
         try {
             const cart = getCart();
@@ -33,10 +51,17 @@
         }
     }
 
+    /**
+     * 取得所有需同步的購物車徽章元素。
+     * @returns {Element[]}
+     */
     function resolveCartBadges() {
         return Array.from(document.querySelectorAll('[data-cart-badge]'));
     }
 
+    /**
+     * 觸發購物車徽章的震動動畫效果。
+     */
     function bumpCartBadge() {
         try {
             const badges = resolveCartBadges();
@@ -52,6 +77,9 @@
         }
     }
 
+    /**
+     * 計算購物車商品數量並更新所有徽章文字與顯示狀態。
+     */
     function updateCartBadge() {
         const badges = resolveCartBadges();
         if (!badges.length) return;
@@ -69,6 +97,15 @@
         });
     }
 
+    /**
+     * 新增商品至購物車，舊項目會累加數量並更新圖片。
+     * @param {(number|string)} id 商品識別碼。
+     * @param {string} name 商品名稱。
+     * @param {number} price 單價。
+     * @param {string} imageUrl 圖片網址。
+     * @param {number} [quantity=1] 加入的數量。
+     * @param {Object} [metadata] 額外資訊。
+     */
     function addToCart(id, name, price, imageUrl, quantity, metadata) {
         const parsedId = typeof id === 'string' && /^\d+$/.test(id) ? parseInt(id, 10) : id;
         const qty = quantity ? Number(quantity) : 1;
@@ -94,6 +131,12 @@
         showAddToCartToast(name, qty, normalizedImage);
     }
 
+    /**
+     * 顯示加入購物車提示 Toast，提供快速前往購物車的按鈕。
+     * @param {string} name 商品名稱。
+     * @param {number} quantity 新增的件數。
+     * @param {string} imageUrl 商品圖片。
+     */
     function showAddToCartToast(name, quantity, imageUrl) {
         const toastBody = document.querySelector('#liveToast .toast-body');
         if (toastBody) {
@@ -124,6 +167,7 @@
                     const bsToast = new bootstrap.Toast(toastEl);
                     bsToast.show();
                 }
+                // 成功載入 Toast 後再綁定「前往購物車」按鈕，一律以單次事件避免重複觸發
                 const goBtn = document.getElementById('toast-go-cart');
                 if (goBtn) {
                     goBtn.addEventListener('click', (ev) => {
@@ -144,6 +188,9 @@
         }
     }
 
+    /**
+     * 綁定全站「加入購物車」按鈕的點擊處理，讀取 data-* 資訊。
+     */
     function registerAddToCartHandler() {
         document.addEventListener('click', function onAddToCartClick(event) {
             const btn = event.target && event.target.closest ? event.target.closest('.add-to-cart-btn') : null;
@@ -157,6 +204,7 @@
         });
     }
 
+    // 對舊版頁面或靜態 HTML 暴露購物車 API，避免必須改寫既有 script 引用
     window.getCart = getCart;
     window.saveCart = saveCart;
     window.clearCart = clearCart;

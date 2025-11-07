@@ -1,12 +1,31 @@
+
+//
+//  商品詳情頁面模組，負責：
+//    - 根據網址參數取得指定商品。
+//    - 向後端抓取完整資料，並渲染成圖庫、規格與加入購物車的互動元件。
+//    - 與購物車共用模組整合，直接觸發 window.addToCart。
+//
 (function(){
     const env = window.SF_ENV || {};
     const utils = window.SF_UTILS || {};
     const API_BASE = env.API_BASE || 'http://localhost:8000/api';
     const formatPrice = utils.formatPrice || ((v) => v);
     const safeStr = utils.safeStr || ((v) => v ?? '');
-    const normalizeImageUrl = utils.normalizeImageUrl || (window.normalizeImageUrl || ((u) => u || ''));
     const fallbackImage = utils.fallbackProductImage || window.SF_FALLBACK_PRODUCT_IMAGE || '/frontend/images/products/no-image.svg';
+    const normalizeImageUrl = typeof utils.normalizeImageUrl === 'function'
+        ? (value) => utils.normalizeImageUrl(value)
+        : (typeof window.normalizeImageUrl === 'function'
+            ? (value) => window.normalizeImageUrl(value)
+            : (value) => {
+                if (value === undefined || value === null) return fallbackImage;
+                const str = String(value).trim();
+                return str || fallbackImage;
+            });
 
+    /**
+     * 初始化商品詳情頁流程：確認容器存在、解析 URL 參數並載入指定商品。
+     * @returns {Promise<void>}
+     */
     async function initProductDetail() {
         const container = document.getElementById('product-detail-container');
         if (!container) return;
@@ -28,6 +47,11 @@
         }
     }
 
+    /**
+     * 將商品資料渲染為詳情頁面，包括圖庫、商品資訊與加入購物車互動。
+     * @param {object} product 後端回傳的商品物件。
+     * @returns {void}
+     */
     function renderProductDetail(product) {
         const container = document.getElementById('product-detail-container');
         if (!container) return;
@@ -103,6 +127,10 @@
         const btnPrev = document.getElementById('thumb-prev');
         const btnNext = document.getElementById('thumb-next');
 
+        /**
+         * 判斷縮圖容器的捲動需求並切換左右導覽按鈕，避免短列表顯示控制鈕。
+         * @returns {void}
+         */
         function updateThumbNav() {
             if (!thumbContainer || !btnPrev || !btnNext) return;
             const canScroll = thumbContainer.scrollWidth > thumbContainer.clientWidth + 2;
@@ -110,6 +138,11 @@
             btnNext.style.display = canScroll ? 'inline-block' : 'none';
         }
 
+        /**
+         * 控制縮圖容器的水平捲動距離，依容器寬度估算滑動幅度。
+         * @param {number} delta 方向因子，正數為往右、負數為往左。
+         * @returns {void}
+         */
         function scrollThumbs(delta) {
             if (!thumbContainer) return;
             const amount = Math.round(thumbContainer.clientWidth * 0.8) * (delta > 0 ? 1 : -1);
@@ -121,6 +154,7 @@
         setTimeout(updateThumbNav, 50);
         window.addEventListener('resize', updateThumbNav);
 
+        // 數量控制區域：透過加減按鈕快速調整輸入框數值。
         const incBtn = document.getElementById('inc-qty');
         const decBtn = document.getElementById('dec-qty');
         const qtyInput = document.getElementById('qty');
@@ -129,6 +163,7 @@
 
         const addBtn = document.getElementById('add-to-cart-btn');
         if (addBtn) {
+            // 將目前商品加入購物車，會帶入主圖做為預覽縮圖。
             addBtn.addEventListener('click', () => {
                 const qty = qtyInput ? Number(qtyInput.value || 1) : 1;
                 const main = document.getElementById('main-product-image');
@@ -149,6 +184,7 @@
             const productionDate = safeStr(product.productionDate || product.ProductionDate);
             const expiryDate = safeStr(product.expiryDate || product.ExpiryDate);
             let hasMeta = false;
+            // 逐項檢查補充資訊，如產地與效期僅在有資料時才顯示，保持介面整潔。
             if (origin) {
                 const item = document.createElement('div');
                 item.className = 'meta-item';
@@ -173,7 +209,8 @@
             metaCard.style.display = hasMeta ? 'block' : 'none';
         }
 
-        const introEl = document.getElementById('product-introduction');
+    // 介紹區僅保留純文字，避免內嵌 HTML 造成 XSS 風險。
+    const introEl = document.getElementById('product-introduction');
         if (introEl) introEl.textContent = safeStr(product.introduction || product.remark || '');
     }
 

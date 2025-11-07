@@ -1,11 +1,33 @@
+
+//
+//  商品列表頁面主模組，負責資料載入、篩選、分頁與卡片互動繫結。
+//  透過公開的 window.SF_ProductList 介面，讓其他腳本能重複觸發篩選或重繪。
+//
 (function(){
+    // 取用在其他模組預先掛載的環境設定與工具函式，若不存在則使用安全的預設值。
     const env = window.SF_ENV || {};
     const utils = window.SF_UTILS || {};
     const popover = window.SF_Popover || {};
     const API_BASE = env.API_BASE || 'http://localhost:8000/api';
-    const normalizeImageUrl = utils.normalizeImageUrl || ((u) => u || '');
+    const fallbackImage = utils.fallbackProductImage || window.SF_FALLBACK_PRODUCT_IMAGE || '';
+    const normalizeImageUrl = typeof utils.normalizeImageUrl === 'function'
+        ? (value) => utils.normalizeImageUrl(value)
+        : (typeof window.normalizeImageUrl === 'function'
+            ? (value) => window.normalizeImageUrl(value)
+            : (value) => {
+                if (value === undefined || value === null) return fallbackImage;
+                const str = String(value).trim();
+                return str || fallbackImage;
+            });
     const formatPrice = utils.formatPrice || ((v) => v);
 
+    //
+    //  state 物件集中維護頁面狀態，避免全域散落變數：
+    //    - allProducts / filteredProducts：分別保存完整資料與篩選後結果。
+    //    - pageSize / currentPage：控制分頁。
+    //    - loadErrorMessage：保留載入失敗訊息，方便重繪時一併顯示。
+    //    - elements：快取頁面上常用的 DOM，減少重複查詢成本。
+    //
     const state = {
         allProducts: [],
         filteredProducts: [],
@@ -22,15 +44,25 @@
         }
     };
 
+    /**
+     * 頁面初始化流程：
+     * 1. 快取常用 DOM；2. 檢查是否為商品列表頁；3. 依網址參數還原狀態；4. 平行載入資料後綁定篩選。
+     * @returns {Promise<void>}
+     */
     async function initProductListPage() {
         cacheElements();
         if (!state.elements.productList) return;
+        prefillSearchFromUrl();
         toggleSectionsByQueryParam();
         await Promise.all([loadCategories(), loadProducts()]);
         bindFilters();
         applyFilters();
     }
 
+    /**
+     * 快取畫面所需的 DOM 參照，降低多次查詢的成本並集中管理。
+     * @returns {void}
+     */
     function cacheElements() {
         state.elements.productList = document.getElementById('product-list');
         state.elements.pagination = document.getElementById('pagination');
@@ -40,6 +72,10 @@
         state.elements.detailSection = document.getElementById('detail-section');
     }
 
+    /**
+     * 根據網址上的 id 參數決定顯示列表或詳情區塊，並同步調整頁面標題。
+     * @returns {void}
+     */
     function toggleSectionsByQueryParam() {
         const params = new URLSearchParams(window.location.search);
         const hasId = !!params.get('id');
@@ -53,6 +89,10 @@
         }
     }
 
+    /**
+     * 從 API 載入所有商品並轉換為標準資料結構，遇到錯誤時更新畫面提示。
+     * @returns {Promise<void>}
+     */
     async function loadProducts() {
         const productListEl = state.elements.productList;
         if (!productListEl) return;
@@ -72,6 +112,10 @@
         }
     }
 
+    /**
+     * 從 API 取得所有商品類別，建立篩選選單並保留使用者原有的選擇。
+     * @returns {Promise<void>}
+     */
     async function loadCategories() {
         const select = state.elements.categoryFilter;
         if (!select) return;
@@ -96,6 +140,10 @@
         }
     }
 
+    /**
+     * 根據網址中的 category 參數預選下拉選項，若不存在則動態補入。
+     * @returns {void}
+     */
     function preselectCategoryFromUrl() {
         const select = state.elements.categoryFilter;
         if (!select) return;
@@ -118,6 +166,25 @@
         }
     }
 
+    /**
+     * 解析網址中的 search 參數並設定搜尋欄位，方便分享篩選結果。
+     * @returns {void}
+     */
+    function prefillSearchFromUrl() {
+        const input = state.elements.searchInput;
+        if (!input) return;
+        const params = new URLSearchParams(window.location.search);
+        const keyword = params.get('search');
+        if (keyword) {
+            input.value = keyword;
+        }
+    }
+
+    /**
+     * 將後端回傳的商品物件統一為前端使用的欄位命名，並保留原始資料於 __raw。
+     * @param {object} product 後端回傳的商品資料（可能含不同欄位名稱）。
+     * @returns {{id: *, name: string, price: *, imageUrls: string[], imageUrl: string|null, categoryName: string|null, __raw: object}}
+     */
     function normalizeProductShape(product) {
         let imgs = [];
         if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) imgs = product.imageUrls;
@@ -135,6 +202,10 @@
         };
     }
 
+    /**
+     * 綁定搜尋欄與類別選單事件，觸發時會重設頁碼並重新套用篩選。
+     * @returns {void}
+     */
     function bindFilters() {
         const { searchInput, categoryFilter } = state.elements;
         if (searchInput) {
@@ -151,6 +222,10 @@
         }
     }
 
+    /**
+     * 根據搜尋關鍵字與類別篩選商品，若先前載入失敗則直接顯示錯誤資訊。
+     * @returns {void}
+     */
     function applyFilters() {
         if (state.loadErrorMessage) {
             const list = state.elements.productList;
@@ -175,6 +250,10 @@
         renderCurrentPage();
     }
 
+    /**
+     * 計算目前頁面該呈現的資料範圍，並觸發列表與分頁的渲染。
+     * @returns {void}
+     */
     function renderCurrentPage() {
         const start = (state.currentPage - 1) * state.pageSize;
         const end = start + state.pageSize;
@@ -183,6 +262,11 @@
         renderPagination();
     }
 
+    /**
+     * 將商品資料陣列渲染成卡片列表，並套用價格與圖片的標準化行為。
+     * @param {Array<object>} products 已轉換為前端結構的商品陣列。
+     * @returns {void}
+     */
     function renderProductGrid(products) {
         const list = state.elements.productList || document.getElementById('product-list');
         if (!list) return;
@@ -228,6 +312,10 @@
         });
     }
 
+    /**
+     * 建立分頁元件並處理點擊事件，確保頁碼切換後重新渲染列表。
+     * @returns {void}
+     */
     function renderPagination() {
         const pagination = state.elements.pagination;
         if (!pagination) return;

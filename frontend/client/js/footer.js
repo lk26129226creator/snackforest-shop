@@ -1,6 +1,12 @@
 (function () {
+    // 頁腳模組：自動建立 footer 結構並帶入站台設定中的客製化文字。
     const DEFAULT_TEXT = '© 2025 SnackForest. 保留所有權利。';
 
+    /**
+     * 將文字內容依換行切段插入頁腳，若無內容則使用預設版權。
+     * @param {HTMLElement} container 目標容器。
+     * @param {string} text 站台設定提供的頁腳文字。
+     */
     function applyFooterText(container, text) {
         if (!container) return;
         const content = String(text || '').trim();
@@ -19,6 +25,10 @@
         });
     }
 
+    /**
+     * 建立頁腳 DOM 並嘗試從站台設定載入客製化文案。
+     * @returns {Promise<void>}
+     */
     async function renderFooter() {
         const footer = document.getElementById('site-footer');
         if (!footer) return;
@@ -47,6 +57,10 @@
         }
     }
 
+    /**
+     * DOM ready helper：確保頁腳在元素可用時才開始渲染。
+     * @param {Function} fn 要執行的初始化函式。
+     */
     function onReady(fn) {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', fn, { once: true });

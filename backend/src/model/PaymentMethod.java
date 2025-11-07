@@ -2,12 +2,12 @@ package model;
 
 /**
  * 付款方式資料模型
- * 封裝付款方式的編號與名稱
+ * 對應後台設定的付款方式清單，供結帳流程與後台管理共用
  */
 public class PaymentMethod {
-    /** 付款方式編號 */
+    /** 付款方式主鍵（資料表 idpaymentmethods） */
     private int id;
-    /** 付款方式名稱 */
+    /** 顯示名稱（例如信用卡、超商代碼） */
     private String methodName;
 
     /**

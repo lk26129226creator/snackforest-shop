@@ -25,10 +25,20 @@ public class DBConnect {
         }
     }
 
+    /**
+     * 建立一個新的資料庫連線。
+     * 使用環境變數覆寫預設組態，以利在測試與正式環境切換。
+     * @return 已開啟的 JDBC Connection 實例
+     * @throws SQLException 當連線資訊錯誤或資料庫無法連線時拋出
+     */
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
+    /**
+     * 允許開發者在命令列快速測試連線是否成功。
+     * 若環境變數或資料庫設定錯誤，可直接在這裡看到具體例外訊息。
+     */
     public static void main(String[] args) {
         try (Connection conn = DBConnect.getConnection()) {
             System.out.println("✅ 成功連接 MySQL！");

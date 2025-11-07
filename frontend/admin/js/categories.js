@@ -1,8 +1,16 @@
+//
+//  分類管理模組：提供列表渲染、下拉同步、CRUD 表單綁定。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { config, state } = Admin;
     const categories = Admin.categories || {};
 
+    /**
+     * 渲染分類表格並同步商品新增/編輯表單的下拉選單。
+     * @param {Array} [list] 指定渲染的分類資料。
+     * @param {{error?: Error}} [options] 錯誤資訊顯示。
+     */
     categories.renderCategories = function (list, options = {}) {
         const container = document.getElementById('category-list');
         if (!container) return;
@@ -61,6 +69,10 @@
         });
     };
 
+    /**
+     * 新增分類並刷新快取，提交完成後會提示成功。
+     * @param {SubmitEvent} event 表單提交事件。
+     */
     categories.createCategory = async function (event) {
         event.preventDefault();
         const form = event.target;
@@ -87,6 +99,10 @@
         }
     };
 
+    /**
+     * 開啟分類編輯視窗並填入既有資料。
+     * @param {number} id 分類編號。
+     */
     categories.openEditCategoryModal = function (id) {
         const category = state.allCategories.find((c) => c.id === id);
         if (!category) return;
@@ -97,6 +113,9 @@
         if (state.modals.editCategory) state.modals.editCategory.show();
     };
 
+    /**
+     * 送出分類更新請求並於成功後刷新列表。
+     */
     categories.handleUpdateCategory = async function () {
         const form = document.getElementById('edit-category-form');
         if (!form) return;
@@ -124,6 +143,10 @@
         }
     };
 
+    /**
+     * 刪除指定分類並重新載入資料。
+     * @param {number} id 分類編號。
+     */
     categories.deleteCategory = async function (id) {
         if (!confirm(`確定要刪除分類 #${id} 嗎?`)) return;
         try {

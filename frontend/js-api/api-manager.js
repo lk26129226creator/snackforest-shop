@@ -3,6 +3,9 @@
  * 提供統一的 API 呼叫介面和資料載入功能
  */
 class SnackForestAPI {
+    /**
+     * @param {string} [baseURL] 自訂 API 基底路徑；若未提供則自動偵測。
+     */
     constructor(baseURL = '') {
         // 自動偵測後端 API 位置：
         // - 若目前頁面不是跑在 8000 連接埠（例如 Live Server 的 5500/5501），
@@ -16,7 +19,12 @@ class SnackForestAPI {
     }
 
     /**
-     * 通用 API 呼叫方法
+     * 通用 API 呼叫方法。
+     * @param {string} endpoint API 路徑或絕對網址。
+     * @param {string} [method='GET'] HTTP 方法。
+     * @param {object|null} [data=null] 需送出的 JSON 主體。
+     * @param {RequestInit} [options={}] 額外 fetch 設定，例如 headers。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
      */
     async apiCall(endpoint, method = 'GET', data = null, options = {}) {
         try {
@@ -61,7 +69,10 @@ class SnackForestAPI {
     }
 
     /**
-     * 帶快取的資料載入
+     * 以簡易記憶體快取取得資料，並在逾時或強制刷新時重新呼叫 API。
+     * @param {string} endpoint API 路徑或絕對網址。
+     * @param {boolean} [forceRefresh=false] 是否忽略快取重新抓取。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
      */
     async loadWithCache(endpoint, forceRefresh = false) {
         const cacheKey = endpoint;
@@ -83,23 +94,35 @@ class SnackForestAPI {
     }
 
     /**
-     * 系統健康檢查
+     * 查詢系統健康狀態（/ping）。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
      */
     async checkHealth() {
         return await this.apiCall('/ping');
     }
 
     /**
-     * 商品相關 API
+     * 取得所有商品清單（含快取機制）。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
      */
     async getProducts() {
         return await this.loadWithCache('/api/products');
     }
 
+    /**
+     * 依商品編號取得單一商品。
+     * @param {string|number} id 商品 ID。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async getProduct(id) {
         return await this.apiCall(`/api/products/${id}`);
     }
 
+    /**
+     * 新增商品後清除快取。
+     * @param {{name: string, price: number, categoryId: string|number}} productData 商品資料。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async addProduct(productData) {
         const result = await this.apiCall('/api/products', 'POST', {
             ProductName: productData.name,
@@ -114,6 +137,12 @@ class SnackForestAPI {
         return result;
     }
 
+    /**
+     * 更新商品資料後清除列表快取。
+     * @param {string|number} id 商品 ID。
+     * @param {{name: string, price: number, categoryId: string|number}} productData 商品資料。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async updateProduct(id, productData) {
         const result = await this.apiCall(`/api/products?id=${id}`, 'PUT', {
             id: id,
@@ -129,6 +158,11 @@ class SnackForestAPI {
         return result;
     }
 
+    /**
+     * 刪除指定商品並刷新快取。
+     * @param {string|number} id 商品 ID。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async deleteProduct(id) {
         const result = await this.apiCall(`/api/products/${id}`, 'DELETE');
         
@@ -140,12 +174,18 @@ class SnackForestAPI {
     }
 
     /**
-     * 分類相關 API
+     * 取得商品分類資料（含快取）。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
      */
     async getCategories() {
         return await this.loadWithCache('/api/categories');
     }
 
+    /**
+     * 新增分類並清除相關快取。
+     * @param {string} name 類別名稱。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async addCategory(name) {
         const result = await this.apiCall('/api/categories', 'POST', {
             categoryname: name
@@ -158,6 +198,11 @@ class SnackForestAPI {
         return result;
     }
 
+    /**
+     * 刪除分類並刷新快取。
+     * @param {string|number} id 類別 ID。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async deleteCategory(id) {
         const result = await this.apiCall(`/api/categories/${id}`, 'DELETE');
         
@@ -169,12 +214,18 @@ class SnackForestAPI {
     }
 
     /**
-     * 訂單相關 API
+     * 取得所有訂單資料。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
      */
     async getOrders() {
         return await this.apiCall('/api/order');
     }
 
+    /**
+     * 建立新訂單。
+     * @param {{items: Array, total: number, customerId: string|number}} orderData 訂單內容。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async createOrder(orderData) {
         return await this.apiCall('/api/order', 'POST', {
             items: orderData.items,
@@ -183,6 +234,11 @@ class SnackForestAPI {
         });
     }
 
+    /**
+     * 取得顧客檔案資訊。
+     * @param {string|number} customerId 顧客 ID。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async getCustomerProfile(customerId) {
         if (customerId == null || customerId === '') {
             return {
@@ -194,6 +250,11 @@ class SnackForestAPI {
         return await this.apiCall(`/api/customer-profile/${customerId}`);
     }
 
+    /**
+     * 更新顧客檔案。
+     * @param {object} profileData 顧客資料物件，需包含 customerId。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async updateCustomerProfile(profileData) {
         if (!profileData || typeof profileData !== 'object') {
             return {
@@ -214,18 +275,24 @@ class SnackForestAPI {
     }
 
     /**
-     * 綜合資料載入
+     * 取得 snackforest 綜合資料。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
      */
     async getSnackforestData() {
         return await this.apiCall('/api/snackforest');
     }
 
+    /**
+     * 查詢資料庫偵錯資訊。
+     * @returns {Promise<{success: boolean, status?: number, data: any, error?: string}>}
+     */
     async getDbDebug() {
         return await this.apiCall('/api/debug/db');
     }
 
     /**
-     * 便利方法：載入所有基本資料
+     * 平行載入商品與分類，回傳整理後的結果物件。
+     * @returns {Promise<{products: Array, categories: Array, errors: {products: string|null, categories: string|null}}>} 
      */
     async loadAllBasicData() {
         const [products, categories] = await Promise.all([
@@ -244,7 +311,10 @@ class SnackForestAPI {
     }
 
     /**
-     * 表格生成器
+     * 將陣列資料轉為 HTML 表格結構字串。
+     * @param {Array<object>} data 列表資料。
+     * @param {{className?: string, excludeColumns?: string[], customColumns?: object, actions?: Array<{className: string, onclick: string, text: string}>}} [options={}] 顯示選項。
+     * @returns {string}
      */
     generateTable(data, options = {}) {
         if (!Array.isArray(data) || data.length === 0) {
@@ -299,7 +369,9 @@ class SnackForestAPI {
     }
 
     /**
-     * 清除快取
+     * 清除快取，可指定單一路徑或全部清空。
+     * @param {string|null} [endpoint=null] 要移除的快取 key。
+     * @returns {void}
      */
     clearCache(endpoint = null) {
         if (endpoint) {
@@ -310,7 +382,11 @@ class SnackForestAPI {
     }
 
     /**
-     * 批次載入資料並渲染到指定容器
+     * 呼叫 API 後將結果渲染為表格並塞入指定容器。
+     * @param {string} endpoint API 路徑或絕對網址。
+     * @param {string} containerSelector 目標容器的查詢選擇器。
+     * @param {{className?: string, excludeColumns?: string[], customColumns?: object, actions?: Array<{className: string, onclick: string, text: string}>}} [options={}] 表格渲染設定。
+     * @returns {Promise<void>}
      */
     async loadTable(endpoint, containerSelector, options = {}) {
         const container = document.querySelector(containerSelector);

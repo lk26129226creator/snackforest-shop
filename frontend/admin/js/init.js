@@ -1,7 +1,15 @@
+//
+//  Admin 初始化入口：檢查權限、綁定事件、同步載入各模組資料。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { state } = Admin;
 
+    /**
+     * 確認目前瀏覽者具備管理者權限，否則導回登入頁。
+     * 會記錄原始網址，登入後可作為返回依據。
+     * @returns {boolean} true 表示通過驗證。
+     */
     function ensureAdminAccess() {
         const role = (localStorage.getItem('sf-admin-role') || localStorage.getItem('userRole') || '').toLowerCase();
         if (role === 'admin') return true;
@@ -12,6 +20,9 @@
         return false;
     }
 
+    /**
+     * 綁定導覽列項目，統一委派給 navigation 模組切換版面。
+     */
     function bindNavLinks() {
         const mapping = {
             'nav-dashboard': 'dashboard-section',
@@ -34,12 +45,74 @@
         });
     }
 
+    /**
+     * 監聽客戶端透過 localStorage 廣播的新訂單訊息，並顯示提示。
+     */
+    function bindOrderNotifications() {
+        if (Admin._orderNotifyBound) return;
+        Admin._orderNotifyBound = true;
+
+        const presentedIds = new Set();
+
+        const presentNotification = (payload) => {
+            if (!payload || !Admin.core) return;
+            if (payload.id && presentedIds.has(payload.id)) return;
+            if (payload.id) presentedIds.add(payload.id);
+            const orderId = payload.orderId || payload.id || '?';
+            const customer = payload.recipientName ? `（${payload.recipientName}）` : '';
+            const amount = typeof payload.total === 'number'
+                ? `，金額 NT$${payload.total.toLocaleString()}`
+                : '';
+            const toastOptions = {
+                toastId: payload.id,
+                id: payload.id,
+                orderId,
+                recipientName: payload.recipientName,
+                total: payload.total,
+                createdAt: payload.createdAt
+            };
+            if (Admin.core.showOrderToast) {
+                Admin.core.showOrderToast(toastOptions);
+            } else {
+                Admin.core.notifySuccess?.(`新訂單 #${orderId}${customer}${amount}`, { ttl: 6000 });
+            }
+            Admin.data?.loadOrders?.({ force: true, silent: true }).catch((err) => {
+                console.warn('重新載入訂單資料時發生錯誤', err);
+            });
+        };
+
+        window.addEventListener('storage', (event) => {
+            if (event.key !== 'sf-order-notify' || !event.newValue) return;
+            try {
+                const payload = JSON.parse(event.newValue);
+                presentNotification(payload);
+            } catch (err) {
+                console.warn('解析訂單通知資料失敗', err);
+            }
+        });
+
+        try {
+            const pending = localStorage.getItem('sf-order-notify-latest');
+            if (pending) {
+                localStorage.removeItem('sf-order-notify-latest');
+                const payload = JSON.parse(pending);
+                presentNotification(payload);
+            }
+        } catch (err) {
+            console.warn('讀取訂單通知快取失敗', err);
+        }
+    }
+
+    /**
+     * 管理端初始化流程：串接模組、載入資料、配置事件監聽。
+     */
     function initializeAdmin() {
         if (!ensureAdminAccess()) {
             return;
         }
 
-        const safeInvoke = (label, fn) => {
+    // safeInvoke 包裝函式：確保某一模組失敗時不會中斷整體流程。
+    const safeInvoke = (label, fn) => {
             if (typeof fn !== 'function') return;
             try {
                 const result = fn();
@@ -106,6 +179,7 @@
         });
 
         safeInvoke('綁定導覽列', () => bindNavLinks());
+    safeInvoke('訂單即時通知', () => bindOrderNotifications());
 
         safeInvoke('綁定商品表單', () => {
             const productForm = document.getElementById('product-form');
@@ -169,7 +243,7 @@
         safeInvoke('輪播按鈕綁定', () => Admin.carousel?.bindEditorButtons?.());
         safeInvoke('輪播按鈕狀態', () => Admin.carousel?.updateSaveButtonState?.());
 
-        const defaultSection = Admin.config?.DEFAULT_SECTION || 'dashboard-section';
+    const defaultSection = Admin.config?.DEFAULT_SECTION || 'dashboard-section';
         const initialSection = Admin.navigation?.getSavedSection?.() || defaultSection;
         safeInvoke('切換初始分頁', () => Admin.navigation?.switchToSection?.(initialSection, { force: true }));
 
@@ -180,12 +254,14 @@
         }, 120);
     }
 
+    // DOMReady 後啟動初始化，支援直接匯入腳本時的同步呼叫。
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initializeAdmin);
     } else {
         initializeAdmin();
     }
 
+    // 將常用操作橋接到全域，提供 HTML 內 inline 事件呼叫。
     window.openEditProductModal = (id) => Admin.products?.openEditProductModal?.(id);
     window.deleteProduct = (id) => Admin.products?.deleteProduct?.(id);
     window.openEditCategoryModal = (id) => Admin.categories?.openEditCategoryModal?.(id);

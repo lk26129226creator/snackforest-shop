@@ -7,19 +7,32 @@ import org.json.JSONArray;
 
 /**
  * 商品資料模型
- * 封裝商品的基本資訊（如編號、名稱、價格、分類）
+ * 統一封裝商品顯示與維護所需的全部欄位
  */
 public class Product {
+    /** 分類名稱（JOIN category 時補齊，供前端顯示） */
     private String categoryName;
+    /** 商品編號（主鍵 idProducts） */
     private int idProducts;
+    /** 分類編號（外鍵 CategoriesID） */
     private int categoriesID;
+    /** 商品名稱 */
     private String productName;
+    /** 售價（整數元） */
     private int price;
-    private String imageUrls; // Can be JSON array string or legacy comma-separated
-    private String introduction; // 商品介紹
-    private String origin; // 產地
-    private String productionDate; // 生產日期 (yyyy-MM-dd)
-    private String expiryDate; // 有效期限 (yyyy-MM-dd)
+    /**
+     * 圖片 URL 集合，可為 JSON 陣列字串或舊版逗號分隔格式
+     * 透過 {@link #getImageUrlList()} 轉換為 List 以便使用
+     */
+    private String imageUrls;
+    /** 商品介紹文字 */
+    private String introduction;
+    /** 產地資訊（可選） */
+    private String origin;
+    /** 生產日期 (yyyy-MM-dd) */
+    private String productionDate;
+    /** 有效期限 (yyyy-MM-dd) */
+    private String expiryDate;
 
     public Product(int idProducts, int categoriesID, String productName, int price) {
         this.idProducts = idProducts;
@@ -75,7 +88,7 @@ public class Product {
         this.expiryDate = expiryDate;
     }
 
-    // --- Getters and Setters ---
+    // --- Getter 與 Setter 方法 ---
 
     public int getIdProducts() {
         return idProducts;
@@ -158,13 +171,13 @@ public class Product {
     }
 
     /**
-     * Robustly parses the imageUrls string to get a list of URLs.
-     * This method can handle:
-     * 1. Valid JSON arrays (e.g., ["url1", "url2"]).
-     * 2. Corrupted nested JSON array strings (e.g., "[\"url1\"]").
-     * 3. Legacy comma-separated strings (e.g., "url1,url2").
-     * 4. Empty or null strings.
-     * @return A clean list of image URLs.
+     * 將 imageUrls 欄位轉換為 URL 字串清單。
+     * 支援以下格式：
+     * 1. 標準 JSON 陣列（例如 ["url1", "url2"]）
+     * 2. 早期版本序列化錯誤的巢狀 JSON 字串（例如 "[\"url1\"]"）
+     * 3. 舊版逗號分隔字串（例如 "url1,url2"）
+     * 4. 空字串或 null（回傳空清單）
+     * @return 乾淨的圖片 URL 清單
      */
     public List<String> getImageUrlList() {
         List<String> list = new ArrayList<>();
@@ -174,32 +187,31 @@ public class Product {
 
         String current = imageUrls.trim();
 
-        // Recursively unpack nested JSON strings
+        // 逐層拆解巢狀的 JSON 字串，確保取得最終乾淨陣列
         while (current.startsWith("[") && current.endsWith("]")) {
             try {
                 JSONArray jsonArray = new JSONArray(current);
                 if (jsonArray.length() == 0) {
-                    return list; // Empty array, we are done.
+                    return list; // 解析後為空陣列，代表沒有圖片可以回傳
                 }
-                // Check if the first element is another JSON array string
+                // 如果第一個元素仍是一個 JSON 陣列字串，代表資料還沒清理乾淨
                 String firstElement = jsonArray.optString(0, null);
                 if (firstElement != null && firstElement.trim().startsWith("[")) {
-                    current = firstElement; // Unpack and loop again
+                    current = firstElement; // 持續往內層解包，直到取得真正的 URL 陣列
                 } else {
-                    // Assume this is the final, clean array
+                    // 判定已經拿到最終的 URL 清單，逐一加入結果
                     for (int i = 0; i < jsonArray.length(); i++) {
                         list.add(jsonArray.getString(i));
                     }
                     return list;
                 }
             } catch (Exception e) {
-                // Failed to parse as JSON, break the loop and treat as legacy.
+                // 若無法解析成 JSON，改用舊版逗號分隔格式處理
                 break;
             }
         }
 
-        // If we are here, it's either not JSON or was corrupted. Treat as legacy CSV.
-        // This will also handle the case where the loop breaks.
+        // 如果進到這裡，代表不是合法 JSON 或已解析失敗，改以傳統逗號分隔處理
         list.addAll(Arrays.asList(current.split(",")));
         return list;
     }

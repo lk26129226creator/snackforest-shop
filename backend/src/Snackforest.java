@@ -153,7 +153,7 @@ import model.*;
         }
 
         int newId = findNextAvailableId("customers", "idCustomers");
-        Customer newCustomer = new Customer(newId, newName, newAccount, newPassword, ""); // Updated constructor
+    Customer newCustomer = new Customer(newId, newName, newAccount, newPassword, ""); // 使用含鹽值欄位的新建構子簽章
 
         try {
             if (customerDAO.save(newCustomer)) {
@@ -462,7 +462,7 @@ import model.*;
         int newId = findNextAvailableId("customers", "idCustomers");
 
         // 建立新的 Customer 物件並透過 DAO 儲存
-        Customer newCustomer = new Customer(newId, newName, newAccount, newPassword, ""); // Updated constructor
+    Customer newCustomer = new Customer(newId, newName, newAccount, newPassword, ""); // 採用新版建構子，最後一個參數為鹽值佔位
 
         try {
             if (customerDAO.save(newCustomer)) {
@@ -531,10 +531,10 @@ import model.*;
         System.out.println("\n--- 客戶列表 ---");
         List<Customer> customers = customerDAO.findAll();
 
-        System.out.printf("%-5s %-15s %-15s\n", "ID", "姓名", "帳號"); // Removed "電話(密碼)" column
+    System.out.printf("%-5s %-15s %-15s\n", "ID", "姓名", "帳號"); // 介面調整：移除舊有「電話(密碼)」欄位只留必要資訊
         System.out.println("----------------------------------------------------------");
         for (Customer c : customers) {
-            System.out.printf("%-5d %-15s %-15s\n", c.getId(), c.getName(), c.getAccount()); // Removed c.getPhone()
+            System.out.printf("%-5d %-15s %-15s\n", c.getId(), c.getName(), c.getAccount()); // 將電話欄位拿掉後改為僅顯示帳號
         }
         System.out.println("----------------------------------------------------------");
     }

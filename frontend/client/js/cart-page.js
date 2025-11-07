@@ -1,10 +1,118 @@
 (function(){
+    // 購物車頁面初始化：負責渲染商品列表、摘要與送出訂單。
+
+    /** 當前環境設定（由 env.js 提供）。 */
     const env = window.SF_ENV || {};
     const utils = window.SF_UTILS || {};
+    /** 後端 API 基底網址：若未提供則預設指向本機 8000 port。 */
     const API_BASE = env.API_BASE || 'http://localhost:8000/api';
     const normalizeImageUrl = utils.normalizeImageUrl || (window.normalizeImageUrl || ((u) => u || ''));
     const fallbackImage = utils.fallbackProductImage || window.SF_FALLBACK_PRODUCT_IMAGE || '/frontend/images/products/no-image.svg';
 
+    /**
+     * 顯示訂單建立成功的覆蓋式對話框，帶有快捷操作鈕。
+     * @param {number|string} orderId 訂單編號。
+     * @param {number} total 訂單總額。
+     * @param {string} [recipientName] 收件人名字。
+     */
+    function showOrderSuccessDialog(orderId, total, recipientName) {
+        const existing = document.querySelector('.order-success-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'order-success-overlay';
+        overlay.innerHTML = `
+            <div class="order-success-dialog" role="dialog" aria-modal="true" aria-labelledby="order-success-title">
+                <div class="order-success-icon" aria-hidden="true">✅</div>
+                <h2 id="order-success-title">訂單已建立</h2>
+                <p class="order-success-message">${recipientName ? `${recipientName}，` : ''}感謝您的訂購！<br/>訂單編號 <span class="order-id">#${orderId}</span></p>
+                <p class="order-success-sub">已為您預留商品，應付金額 <strong>NT$${Number(total || 0).toLocaleString()}</strong></p>
+                <div class="order-success-actions">
+                    <button type="button" class="order-success-btn primary" data-action="orders">查看訂單紀錄</button>
+                    <button type="button" class="order-success-btn subtle" data-action="continue">繼續逛逛</button>
+                </div>
+                <button type="button" class="order-success-close" aria-label="關閉" data-action="close">✕</button>
+            </div>`;
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeDialog();
+            }
+        };
+
+        const autoCloseTimer = setTimeout(() => closeDialog(), 9000);
+
+        const closeDialog = () => {
+            document.body.classList.remove('order-success-active');
+            overlay.classList.remove('is-visible');
+            document.removeEventListener('keydown', handleKeyDown);
+            clearTimeout(autoCloseTimer);
+            setTimeout(() => overlay.remove(), 180);
+        };
+
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                closeDialog();
+            }
+        });
+
+        overlay.querySelector('[data-action="close"]').addEventListener('click', closeDialog);
+        overlay.querySelector('[data-action="orders"]').addEventListener('click', () => {
+            closeDialog();
+            window.location.href = 'member.html#orders';
+        });
+        overlay.querySelector('[data-action="continue"]').addEventListener('click', () => {
+            closeDialog();
+            window.location.href = 'index.html';
+        });
+
+        document.body.appendChild(overlay);
+        document.body.classList.add('order-success-active');
+        requestAnimationFrame(() => overlay.classList.add('is-visible'));
+        document.addEventListener('keydown', handleKeyDown);
+
+        const primaryBtn = overlay.querySelector('[data-action="orders"]');
+        if (primaryBtn) {
+            try {
+                primaryBtn.focus({ preventScroll: true });
+            } catch (_) {
+                primaryBtn.focus();
+            }
+        }
+    }
+
+    /**
+     * 廣播訂單建立事件給管理端，利用 localStorage 觸發 storage 事件。
+     * @param {number|string} orderId 訂單編號。
+     * @param {{total?:number,recipientName?:string}} payload 額外資訊。
+     */
+    function notifyAdminOfNewOrder(orderId, payload) {
+        try {
+            const notice = {
+                id: `order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                orderId,
+                total: Number(payload.total || 0),
+                recipientName: payload.recipientName || '',
+                createdAt: new Date().toISOString()
+            };
+            localStorage.setItem('sf-order-notify', JSON.stringify(notice));
+            localStorage.setItem('sf-order-notify-latest', JSON.stringify(notice));
+            setTimeout(() => {
+                try {
+                    localStorage.removeItem('sf-order-notify');
+                } catch (removeErr) {
+                    console.warn('無法清除訂單通知暫存', removeErr);
+                }
+            }, 150);
+        } catch (err) {
+            console.warn('廣播訂單通知給管理端時發生錯誤', err);
+        }
+    }
+
+    /**
+     * 頁面進入點：渲染列表、綁定事件並載入運送/付款選項。
+     */
     function initCartPage() {
         const container = document.getElementById('cart-items-container');
         if (!container) return;
@@ -16,6 +124,10 @@
         populateShippingAndPayment();
     }
 
+    /**
+     * 透過 API 載入運送與付款方式並填入下拉選單。
+     * @returns {Promise<void>}
+     */
     async function populateShippingAndPayment() {
         const shipSel = document.getElementById('shipping-method');
         const paySel = document.getElementById('payment-method');
@@ -57,6 +169,9 @@
         }
     }
 
+    /**
+     * 渲染購物車內容卡片，無項目時顯示引導畫面。
+     */
     function renderCartPage() {
         const container = document.getElementById('cart-items-container');
         if (!container) return;
@@ -101,6 +216,9 @@
         renderCartSummary();
     }
 
+    /**
+     * 更新右側訂單摘要：計算商品小計、運費與總金額。
+     */
     function renderCartSummary() {
         const container = document.getElementById('cart-summary-container');
         if (!container) return;
@@ -115,6 +233,10 @@
         `;
     }
 
+    /**
+     * 處理購物車項目的增減刪除操作。
+     * @param {MouseEvent} event 點擊事件。
+     */
     function handleCartClick(event) {
         const target = event.target;
         if (!target || !target.dataset) return;
@@ -135,6 +257,10 @@
         renderCartPage();
     }
 
+    /**
+     * 結帳流程：驗證表單後送出訂單。
+     * @param {SubmitEvent} event 表單提交事件。
+     */
     async function handleCheckout(event) {
         event.preventDefault();
         const cart = window.getCart ? window.getCart() : [];
@@ -168,9 +294,11 @@
             });
             if (!res.ok) throw new Error('建立訂單失敗: ' + res.status);
             const data = await res.json();
-            alert('訂單建立成功，編號: ' + data.orderId);
+            showOrderSuccessDialog(data.orderId, payload.total, recipientName);
+            notifyAdminOfNewOrder(data.orderId, { total: payload.total, recipientName });
+            form.reset();
             window.clearCart && window.clearCart();
-            setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+            renderCartPage();
         } catch (err) {
             console.error(err);
             alert(err.message || '結帳失敗');

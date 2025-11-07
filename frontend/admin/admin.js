@@ -1,4 +1,6 @@
-// SnackForest admin legacy loader. Please include main.js instead.
+//
+//  SnackForest Admin 舊版載入器：提醒改用 main.js，並動態導向新版順序載入流程。
+//
 (function () {
     console.warn('[SnackForest] admin.js is deprecated. Loading main.js fallback.');
     const currentScript = document.currentScript;

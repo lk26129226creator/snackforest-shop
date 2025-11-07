@@ -4,23 +4,23 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 /**
- * 訂單資料模型。
- * 封裝顧客訂單的所有資訊。
+ * 訂單資料模型
+ * 集中封裝訂單主檔與顯示所需資訊，供 DAO、後台報表與命令列流程共用
  */
 public class Order {
-    /** 訂單編號 */
+    /** 訂單編號（主鍵 idOrders，建立後由資料庫回寫） */
     private int id;
-    /** 顧客編號 */
+    /** 顧客編號（外鍵 idCustomers） */
     private final int customerId;
-    /** 顧客姓名（僅顯示用，JOIN 查詢時填入） */
+    /** 顧客姓名（僅查詢列出時填入，方便顯示） */
     private String customerName;
-    /** 訂單日期 */
+    /** 建立訂單的時間戳記 */
     private Timestamp orderDate;
-    /** 訂單總金額 */
+    /** 訂單總金額（使用 BigDecimal 保持精準度） */
     private final BigDecimal totalAmount;
-    /** 配送方式 */
+    /** 配送方式名稱 */
     private final String shippingMethod;
-    /** 付款方式 */
+    /** 付款方式名稱 */
     private final String paymentMethod;
     /** 收件人姓名 */
     private final String recipientName;
@@ -62,7 +62,7 @@ public class Order {
         this.orderDate = orderDate;
         this.totalAmount = totalAmount;
         this.customerName = customerName;
-        // Initialize other fields to null as they are not fetched in list view
+    // 其餘欄位並未在列表查詢中帶出，統一設為 null 以維持資料一致
         this.customerId = 0;
         this.shippingMethod = null;
         this.paymentMethod = null;

@@ -1,0 +1,592 @@
+/*
+==============================================
+SnackForest - Mobile Styles (≤ 991.98px)
+==============================================
+*/
+
+/* --- 1. 全域佈局變數 (Mobile Baseline) --- */
+:root {
+    --client-navbar-height: 132px;           /* 行動導覽列高度 (預設：全元件顯示) */
+    --client-main-gutter: clamp(18px, 5vw, 28px); /* 主內容左右留白 */
+    --client-mobile-search-height: 54px;     /* 搜尋欄位固定高度 */
+    --client-tabbar-height: 76px;            /* 底部標籤列高度 */
+}
+
+body[data-client-mobile-nav="tabbar"] {
+    --client-navbar-height: 92px;
+}
+
+/* --- 2. 畫布與主版面 --- */
+body {
+    --client-sidebar-width: 0px;             /* 行動裝置不預留側欄寬度 */
+    padding-top: calc(var(--client-navbar-height) + 16px);
+    padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px);
+}
+
+body.client-sidebar-overlay,
+body.client-sidebar-expanded {
+    --client-sidebar-width: 0px;
+    --client-main-gutter: clamp(18px, 5vw, 28px);
+    padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px);
+}
+
+.client-main {
+    width: calc(100% - (var(--client-main-gutter) * 2));
+    margin: calc(var(--client-navbar-height) + 16px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 72px);
+    padding: clamp(20px, 5vw, 28px);
+    border-radius: 22px;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+}
+
+body.client-sidebar-overlay .client-main {
+    width: calc(100% - (var(--client-main-gutter) * 2));
+    margin: calc(var(--client-navbar-height) + 16px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 72px);
+    padding: clamp(20px, 5vw, 28px);
+}
+
+.client-main > *:first-child {
+    margin-top: 0;
+}
+
+.client-footer {
+    width: calc(100% - (var(--client-main-gutter) * 2));
+    margin: 0 var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 40px);
+}
+
+/* --- 3. 導覽列與頂部工具列 --- */
+.navbar {
+    min-height: var(--client-navbar-height);
+    padding: 12px 0 14px;
+}
+
+.navbar .container-fluid {
+    padding: 0 var(--client-main-gutter);
+}
+
+.client-topbar-container {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.client-topbar-left {
+    flex: 1 1 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.client-topbar-left .brand-signature {
+    font-size: 1.32rem;
+    letter-spacing: 0.25px;
+}
+
+.client-topbar-center {
+    order: 3;
+    flex: 1 1 100%;
+    min-width: 0;
+}
+
+.client-topbar-right {
+    order: 2;
+    flex: 1 1 100%;
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.client-support-btn,
+.client-member-btn {
+    width: auto;
+}
+
+body[data-client-mobile-nav="tabbar"] .client-topbar-container {
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem;
+}
+
+body[data-client-mobile-nav="tabbar"] .client-topbar-left {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    gap: 0.75rem;
+}
+
+body[data-client-mobile-nav="tabbar"] .client-topbar-left .client-topbar-promo {
+    display: none;
+}
+
+body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-center,
+body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
+    display: none !important;
+}
+
+/* --- 3-1. 底部標籤導覽列 --- */
+.client-mobile-tabbar {
+    position: fixed;
+    inset: auto 0 0 0;
+    height: var(--client-tabbar-height);
+    padding: 10px clamp(18px, 6vw, 32px) calc(10px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    background: rgba(12, 32, 18, 0.94);
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+    backdrop-filter: blur(18px);
+    z-index: 1040;
+    box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.2);
+}
+
+.client-tabbar-item {
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: rgba(226, 232, 240, 0.82);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    position: relative;
+    transition: color 0.2s ease, transform 0.2s ease;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.client-tabbar-item i {
+    font-size: 1.32rem;
+    transition: transform 0.25s ease;
+}
+
+.client-tabbar-item:focus-visible {
+    outline: 2px solid rgba(148, 196, 165, 0.55);
+    outline-offset: 4px;
+}
+
+.client-tabbar-item:hover,
+.client-tabbar-item:focus-visible {
+    color: #ffffff;
+}
+
+.client-tabbar-item.is-active {
+    color: #ffffff;
+}
+
+.client-tabbar-item.is-active i {
+    transform: translateY(-2px) scale(1.08);
+}
+
+.client-tabbar-item-featured {
+    flex: 1 1 auto;
+    gap: 4px;
+}
+
+.client-tabbar-fab {
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--secondary-color, #4ade80), rgba(167, 243, 208, 0.95));
+    color: #ffffff;
+    font-size: 1.4rem;
+    box-shadow: 0 14px 32px rgba(74, 124, 89, 0.28), 0 6px 14px rgba(134, 239, 172, 0.32);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.client-tabbar-item-featured.is-active .client-tabbar-fab,
+.client-tabbar-item-featured:hover .client-tabbar-fab {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 18px 38px rgba(74, 124, 89, 0.32), 0 8px 18px rgba(134, 239, 172, 0.38);
+}
+
+.client-tabbar-badge {
+    position: absolute;
+    top: 6px;
+    right: calc(50% - 2px);
+    transform: translateX(50%);
+    display: none;
+    min-width: 20px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1;
+    justify-content: center;
+    align-items: center;
+}
+
+/* --- 4. 搜尋列與快速操作 --- */
+.client-nav-search {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.65rem 1rem;
+    border-radius: 18px;
+    min-height: var(--client-mobile-search-height);
+}
+
+.client-nav-search i {
+    font-size: 1rem;
+}
+
+.client-nav-search input[type="search"] {
+    font-size: 1rem;
+}
+
+.client-nav-search button[type="submit"] {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+}
+
+.client-nav-search-results {
+    right: auto;
+    left: 0;
+    width: 100%;
+    max-width: none;
+}
+
+
+
+/* --- 5. 側欄浮層 --- */
+.client-sidebar {
+    top: 0;
+    height: 100vh;
+    width: min(78vw, 300px);
+    max-width: calc(100vw - 72px);
+    transform: translateX(-100%);
+    box-shadow: none;
+    pointer-events: none;
+    padding: 24px 22px 28px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.client-sidebar-expanded .client-sidebar {
+    transform: translateX(0);
+    box-shadow: 14px 0 36px rgba(15, 23, 42, 0.2);
+    pointer-events: auto;
+}
+
+.client-sidebar-backdrop {
+    display: block;
+    background: rgba(15, 23, 42, 0.24);
+}
+
+body.client-sidebar-expanded .client-sidebar-backdrop {
+    opacity: 1;
+    visibility: visible;
+}
+
+.client-sidebar-profile {
+    padding-top: 4px;
+    margin-bottom: 10px;
+}
+
+.client-sidebar-mobile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.client-sidebar-mobile-actions .client-nav-search {
+    padding: 0.75rem 1rem;
+    min-height: var(--client-mobile-search-height);
+}
+
+.client-sidebar-mobile-actions .client-nav-search-results {
+    position: static;
+    width: 100%;
+    max-height: 320px;
+    margin-top: 6px;
+    background: rgba(12, 32, 18, 0.94);
+}
+
+.client-sidebar-mobile-actions .client-nav-search-results[hidden] {
+    display: none;
+}
+
+.client-sidebar-mobile-actions .client-nav-cart,
+.client-sidebar-mobile-actions .client-support {
+    width: 100%;
+}
+
+.client-sidebar-mobile-actions .client-nav-cart-panel,
+.client-sidebar-mobile-actions .client-support-panel {
+    position: static;
+    width: 100%;
+    max-width: none;
+    border-radius: 18px;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+    margin-top: 10px;
+    background: #ffffff;
+}
+
+.client-sidebar-mobile-actions .client-nav-cart-panel[hidden],
+.client-sidebar-mobile-actions .client-support-panel[hidden] {
+    display: none;
+}
+
+.client-sidebar-mobile-actions .client-nav-cart-items {
+    max-height: 240px;
+}
+
+.client-sidebar-mobile-actions .client-member-btn {
+    margin-top: 4px;
+}
+
+.client-sidebar-nav {
+    margin-top: 14px;
+}
+
+.client-sidebar-footer {
+    margin-top: auto;
+}
+
+/* --- 6. 首頁英雄區與區塊 --- */
+.home-hero {
+    padding: clamp(1.75rem, 6vw, 2.75rem);
+    text-align: center;
+}
+
+.home-hero .row {
+    row-gap: 1.5rem;
+}
+
+.home-hero .hero-media {
+    margin-top: 0.75rem;
+}
+
+.home-hero .hero-illustration {
+    max-width: min(320px, 90%);
+}
+
+.home-hero .d-flex.gap-2.flex-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+}
+
+.home-hero .d-flex.gap-2.flex-wrap .btn {
+    width: 100%;
+}
+
+.home-carousel-wrapper {
+    margin: 0 calc(var(--client-main-gutter) * -1);
+    border-radius: 0;
+}
+
+.home-carousel-wrapper #homeCarousel .carousel-item img {
+    height: 280px;
+}
+
+/* --- 7. 內容分區 --- */
+.benefits-row > [class*="col-"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+.benefits-row .benefit {
+    grid-template-columns: 48px 1fr;
+    padding: 16px;
+}
+
+.category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1.25rem;
+}
+
+.product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.25rem;
+}
+
+.product-card {
+    min-height: 0;
+}
+
+.product-card .product-image-wrapper {
+    height: 220px;
+}
+
+.product-card .card-body {
+    gap: 0.75rem;
+}
+
+.cart-qty-group {
+    gap: 0.6rem;
+}
+
+.summary-card.card {
+    margin-top: 2rem;
+}
+
+/* --- 8. 表單與共用元件 --- */
+.form-control,
+.form-select {
+    min-height: 46px;
+}
+
+.table {
+    font-size: 0.95rem;
+}
+
+/* --- 9. 內縮視窗 (商品快覽) --- */
+#product-hover-popover {
+    inset: 8px;
+    border-radius: 0.5rem;
+}
+
+#product-hover-popover .popover-inner {
+    grid-template-columns: 1fr;
+}
+
+/* --- 10. 中尺寸行動裝置 (≤ 768px) --- */
+@media (max-width: 768px) {
+    :root {
+        --client-navbar-height: 120px;
+        --client-tabbar-height: 74px;
+    }
+
+    body[data-client-mobile-nav="tabbar"] {
+        --client-navbar-height: 88px;
+    }
+
+    .client-main {
+        margin-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 56px);
+        padding: clamp(18px, 6vw, 24px);
+    }
+
+    .home-carousel-wrapper #homeCarousel .carousel-item img {
+        height: 240px;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+
+    h1 {
+        font-size: 1.75rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* --- 11. 小型行動裝置 (≤ 576px) --- */
+@media (max-width: 576px) {
+    :root {
+        --client-tabbar-height: 70px;
+    }
+
+    .client-main {
+        margin: calc(var(--client-navbar-height) + 14px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 46px);
+    }
+
+    .client-mobile-tabbar {
+        padding: 8px clamp(16px, 7vw, 28px) calc(8px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .client-tabbar-item {
+        gap: 4px;
+        font-size: 0.7rem;
+    }
+
+    .client-tabbar-item i {
+        font-size: 1.18rem;
+    }
+
+    .client-tabbar-fab {
+        width: 46px;
+        height: 46px;
+        font-size: 1.25rem;
+    }
+
+    .client-nav-search {
+        padding: 0.6rem 0.9rem;
+    }
+
+    .brand-signature {
+        font-size: 1.25rem;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .product-card .product-image-wrapper {
+        height: 200px;
+    }
+
+    .product-card .card-title {
+        font-size: 1rem;
+    }
+
+    .product-card .price {
+        font-size: 1.1rem;
+    }
+
+    .home-carousel-wrapper #homeCarousel .carousel-item img {
+        height: 220px;
+    }
+
+    .client-nav-cart-items {
+        max-height: calc(70vh - 190px);
+    }
+}
+
+/* --- 12. 超小尺寸手機 (≤ 420px) --- */
+@media (max-width: 420px) {
+    :root {
+        --client-main-gutter: clamp(16px, 7vw, 22px);
+    }
+
+    body[data-client-mobile-nav="sidebar"] {
+        --client-navbar-height: 84px;
+    }
+
+    .navbar {
+        padding-bottom: 12px;
+    }
+
+    .client-topbar-left {
+        grid-template-columns: auto auto;
+    }
+
+    .client-topbar-left .brand-signature {
+        font-size: 1.2rem;
+    }
+
+    .client-topbar-left .client-topbar-promo {
+        font-size: 0.9rem;
+        padding: 9px 14px;
+    }
+
+    .client-nav-search {
+        border-radius: 16px;
+    }
+
+    .product-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .home-carousel-wrapper #homeCarousel .carousel-item img {
+        height: 200px;
+    }
+}

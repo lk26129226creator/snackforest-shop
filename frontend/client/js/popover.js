@@ -1,3 +1,10 @@
+
+//
+//  商品卡片滑過預覽 Popover 模組：
+//    - 延遲顯示，以避免使用者只是快速滑過卡片。
+//    - 從 API 抓取商品詳情並顯示多張圖片、價格、分類等資訊。
+//    - 提供加入購物車、切換縮圖等互動。
+//
 (function(){
     const env = window.SF_ENV || {};
     const utils = window.SF_UTILS || {};
@@ -6,6 +13,7 @@
     const formatPrice = utils.formatPrice || ((n) => n);
     const safeStr = utils.safeStr || ((v) => v ?? '');
 
+    // 快取 DOM 參照與狀態，避免重複查找造成效能浪費。
     let hoverTimer;
     let productHoverPopover = null;
     let popoverProductName = null;
@@ -16,6 +24,11 @@
     let currentPopoverProductId = null;
     let currentPopoverCard = null;
 
+    /**
+     * 依卡片上的 id 向後端取得完整商品資訊，失敗時回傳 null。
+     * @param {string|number} productId 商品編號。
+     * @returns {Promise<?Object>}
+     */
     async function fetchProductDetailsForPopover(productId) {
         try {
             const res = await fetch(API_BASE + '/products/' + productId);
@@ -27,6 +40,11 @@
         }
     }
 
+    /**
+     * 從商品卡片的連結解析出商品編號。
+     * @param {HTMLElement} card 商品卡片元素。
+     * @returns {?string}
+     */
     function computeProductIdFromCard(card) {
         if (!card) return null;
         const anchor = card.querySelector('a[href*="id="]');
@@ -41,6 +59,10 @@
         }
     }
 
+    /**
+     * 確保背景遮罩存在，提供點擊背景關閉 popover 的體驗。
+     * @returns {HTMLElement}
+     */
     function ensureOverlay() {
         let overlay = document.getElementById('popover-overlay');
         if (!overlay) {
@@ -51,6 +73,17 @@
         return overlay;
     }
 
+    //
+    //  進入顯示流程：
+    //    1. 若同一商品已顯示則跳過。
+    //    2. 取得詳細資料與圖片後填入內容。
+    //    3. 顯示 popover 並在卡片上套用視覺效果。
+    //
+    /**
+     * 顯示商品 popover，並載入詳細資料與圖片。
+     * @param {HTMLElement} productElement 觸發的商品卡片。
+     * @param {string|number} productId 商品編號。
+     */
     async function showProductPopover(productElement, productId) {
         if (!productHoverPopover || !productId) return;
         if (currentPopoverProductId === productId) return;
@@ -76,6 +109,11 @@
         currentPopoverCard.classList.add('hover-pop-scale');
     }
 
+    /**
+     * 整理商品圖片陣列，缺圖時回傳 normalize 後的空字串陣列。
+     * @param {Object} product 商品資料。
+     * @returns {string[]}
+     */
     function collectProductImages(product) {
         let imgs = [];
         if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
@@ -86,6 +124,16 @@
         return imgs.map((src) => normalizeImageUrl(src));
     }
 
+    //
+    //  將資料填入 popover：標題、價格、分類、介紹與縮圖列表。
+    //  會串接 wirePopoverControls 與 populateMetadata 做細部互動設定。
+    //
+    /**
+     * 將資料填入 popover，並綁定互動控制。
+     * @param {Object} product 商品資料。
+     * @param {string[]} imgs 圖片陣列。
+     * @param {string|number} productId 商品編號。
+     */
     function populatePopoverContent(product, imgs, productId) {
         if (popoverProductName) popoverProductName.textContent = product.name || '';
         if (popoverProductPrice) popoverProductPrice.textContent = formatPrice(product.price);
@@ -99,7 +147,7 @@
         const introEl = document.getElementById('popover-introduction');
         if (introEl) introEl.textContent = safeStr(product.introduction || product.remark || '');
 
-        const thumbsContainer = document.getElementById('popover-thumbs');
+    const thumbsContainer = document.getElementById('popover-thumbs');
         if (thumbsContainer) {
             thumbsContainer.innerHTML = '';
             imgs.forEach((url, idx) => {
@@ -123,6 +171,12 @@
         populateMetadata(product);
     }
 
+    // 註冊縮圖導覽、數量調整與加入購物車按鈕的事件。
+    /**
+     * 註冊縮圖導覽、數量調整與加入購物車按鈕事件。
+     * @param {string[]} imgs 圖片陣列。
+     * @param {Object} product 商品資料。
+     */
     function wirePopoverControls(imgs, product) {
         const popPrev = document.getElementById('popover-thumb-prev');
         const popNext = document.getElementById('popover-thumb-next');
@@ -162,6 +216,11 @@
         };
     }
 
+    // 額外補充資訊（產地、效期）若缺少則以破折號顯示，保持欄位整齊。
+    /**
+     * 填入產地/生產/效期等補充資訊。
+     * @param {Object} product 商品資料。
+     */
     function populateMetadata(product) {
         try {
             const originEl = document.getElementById('popover-origin');
@@ -178,6 +237,12 @@
         }
     }
 
+    // 顯示指定索引的圖片，支援循環切換並同步更新縮圖高亮。
+    /**
+     * 顯示指定索引的圖片並同步縮圖高亮。
+     * @param {number} idx 目標索引。
+     * @param {string[]} imgs 圖片陣列。
+     */
     function showIndex(idx, imgs) {
         if (!imgs || imgs.length === 0 || !popoverProductImage) return;
         const len = imgs.length;
@@ -187,6 +252,10 @@
         updateThumbHighlight(index);
     }
 
+    /**
+     * 更新縮圖的選取狀態。
+     * @param {number} activeIndex 當前索引。
+     */
     function updateThumbHighlight(activeIndex) {
         const nodes = document.querySelectorAll('#popover-thumbs .popover-thumb');
         nodes.forEach((node) => node.classList.remove('active-thumb'));
@@ -194,6 +263,10 @@
         if (active) active.classList.add('active-thumb');
     }
 
+    // 關閉 popover 並重置相關狀態與動畫樣式。
+    /**
+     * 關閉 popover 並重置狀態與動畫。
+     */
     function hideProductPopover() {
         if (!productHoverPopover) return;
         productHoverPopover.classList.remove('show');
@@ -211,6 +284,11 @@
         if (popQtyEl) popQtyEl.value = 1;
     }
 
+    // 滑入卡片時啟動定時器，停留超過 3 秒才展開 popover，降低干擾感。
+    /**
+     * 滑入商品卡片時啟動延遲顯示 popover。
+     * @param {MouseEvent} event
+     */
     function handleProductMouseOver(event) {
         const productCard = event.target.closest('.product-card');
         if (!productCard) return;
@@ -222,10 +300,17 @@
         }, 3000);
     }
 
+    /**
+     * 滑出商品卡片時清除定時器，避免觸發 popover。
+     */
     function handleProductMouseOut() {
         clearTimeout(hoverTimer);
     }
 
+    // 快取常用 DOM 元件、註冊關閉與 ESC 熱鍵，並預設隱藏 popup。
+    /**
+     * 快取常用 DOM 元件並註冊關閉與熱鍵事件。
+     */
     function initializeProductPopover() {
         productHoverPopover = document.getElementById('product-hover-popover');
         popoverProductName = document.getElementById('popover-product-name');
@@ -246,6 +331,11 @@
         });
     }
 
+    // 將滑入／滑出事件綁在商品卡片上，供列表渲染後呼叫。
+    /**
+     * 將滑入／滑出事件綁在商品卡片上，供列表渲染後呼叫。
+     * @param {HTMLElement} card 商品卡片。
+     */
     function bindProductCard(card) {
         if (!card) return;
         card.addEventListener('mouseenter', handleProductMouseOver);

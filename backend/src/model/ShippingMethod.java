@@ -2,12 +2,12 @@ package model;
 
 /**
  * 配送方式資料模型
- * 封裝配送方式的編號與名稱
+ * 將後台設定的配送選項封裝成物件，供結帳流程選擇與顯示
  */
 public class ShippingMethod {
-    /** 配送方式編號 */
+    /** 配送方式主鍵（資料表 idshippingmethods） */
     private int id;
-    /** 配送方式名稱 */
+    /** 顯示名稱（例如宅配、超商取貨） */
     private String methodName;
 
     /**

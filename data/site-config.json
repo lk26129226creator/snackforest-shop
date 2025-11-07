@@ -1,1 +1,34 @@
-{"hero":{"title":"探索世界零食的靈感地圖","subtitle":"精挑細選、快速到貨、安心付款。從人氣熱銷到限時新品，一鍵帶你吃遍全球風味。","imageUrl":"/frontend/images/products/3af632be-ab9b-484f-a304-ca164697ba95.png","primaryText":"開始購物","primaryLink":"product.html","secondaryText":"逛逛全部","secondaryLink":"product.html?category=all","imageResolved":"http://127.0.0.1:8000/frontend/images/products/3af632be-ab9b-484f-a304-ca164697ba95.png"},"benefits":[{"icon":"truck-fast","title":"快速到貨","desc":"下單 24 小時內出貨"},{"icon":"shield-halved","title":"安全付款","desc":"多元支付、SSL 安全"},{"icon":"arrows-rotate","title":"七日鑑賞","desc":"不滿意可退換"},{"icon":"gift","title":"會員回饋","desc":"點數折抵更划算"}],"featuredProductIds":[1,4,3],"branding":{"logoUrl":"/uploads/images/8b3b7e6a-7999-4d7d-b234-5e7368440e25.png","brandName":"SnackForest","tagline":"探索零食世界"},"footer":{"text":"© 2025 SnackForest. 保留所有權利。\n地址 : 台中市北屯區\nPhone : 0909585898/Mail : snackforest1688@gmail.com"}}
+{
+	"hero": {
+		"title": "探索世界零食的靈感地圖",
+		"subtitle": "精挑細選、快速到貨、安心付款。從人氣熱銷到限時新品，一鍵帶你吃遍全球風味。",
+		"imageUrl": "/frontend/images/products/3af632be-ab9b-484f-a304-ca164697ba95.png",
+		"primaryText": "開始購物",
+		"primaryLink": "product.html",
+		"secondaryText": "逛逛全部",
+		"secondaryLink": "product.html?category=all",
+		"imageResolved": "http://127.0.0.1:8000/frontend/images/products/3af632be-ab9b-484f-a304-ca164697ba95.png"
+	},
+	"benefits": [
+		{ "icon": "truck-fast", "title": "快速到貨", "desc": "下單 24 小時內出貨" },
+		{ "icon": "shield-halved", "title": "安全付款", "desc": "多元支付、SSL 安全" },
+		{ "icon": "arrows-rotate", "title": "七日鑑賞", "desc": "不滿意可退換" },
+		{ "icon": "gift", "title": "會員回饋", "desc": "點數折抵更划算" }
+	],
+	"promotions": [
+		{ "text": "全館滿 NT$999 免運", "link": "product.html" },
+		{ "text": "加入會員立即享 95 折優惠", "link": "member.html" },
+		{ "text": "最新上架零食！把握限量好味道", "link": "product.html?category=all" }
+	],
+	"support": {
+		"email": "snackforest1688@gmail.com",
+		"phone": "0909-585-898",
+		"hours": "週一至週五 09:00 - 18:00",
+		"liveChatUrl": "",
+		"liveChatLabel": ""
+	},
+	"featuredProductIds": [1, 4, 3],
+	"footer": {
+		"text": "© 2025 SnackForest. 保留所有權利。\n地址 : 台中市北屯區\nPhone : 0909585898/Mail : snackforest1688@gmail.com"
+	}
+}

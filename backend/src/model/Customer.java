@@ -1,10 +1,19 @@
 package model;
 
+/**
+ * 顧客資料模型
+ * 封裝會員的識別資訊與加密後的登入憑證
+ */
 public class Customer {
+    /** 顧客編號（對應資料表 idCustomers 欄位） */
     private int id;
+    /** 顧客姓名 */
     private String name;
+    /** 登入帳號（可為電子郵件或自訂字串） */
     private String account;
+    /** 已雜湊的密碼字串，DAO 寫入資料庫時會進一步轉換 */
     private String passwordHash;
+    /** 密碼雜湊使用的鹽值（與雜湊值成對保存） */
     private String salt;
 
     public Customer(int id, String name, String account, String passwordHash, String salt) {

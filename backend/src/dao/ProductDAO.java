@@ -10,7 +10,7 @@ import org.json.JSONArray;
  * 專責處理與商品相關的所有資料庫操作。
  */
 public class ProductDAO {
-    /** 資料庫連線物件 */
+    /** 共用資料庫連線，由呼叫者負責開啟/關閉 */
     private Connection conn;
 
     public ProductDAO(Connection conn) {
@@ -71,6 +71,7 @@ public class ProductDAO {
      * 取得下一個可用的商品編號
      */
     public int getNextProductId() throws SQLException {
+        // 仍保留簡易 MAX+1 策略以兼容未啟用 AUTO_INCREMENT 的資料庫（僅適合單人操作環境）
         String sql = "SELECT IFNULL(MAX(idProducts), 0) + 1 AS nextId FROM products";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -90,7 +91,7 @@ public class ProductDAO {
             stmt.setInt(3, categoryId);
             // 將 List<String> 轉成 JSON 存入資料庫
             stmt.setString(4, new JSONArray(imageUrls).toString());
-            // Introduction
+            // 防止傳入 null 導致資料庫寫入空值，統一轉成空字串
             stmt.setString(5, introduction == null ? "" : introduction);
             stmt.setString(6, origin == null ? "" : origin);
             stmt.setString(7, productionDate == null ? "" : productionDate);

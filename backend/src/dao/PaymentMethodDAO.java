@@ -9,7 +9,7 @@ import model.PaymentMethod;
  * 專責處理與付款方式相關的所有資料庫操作。
  */
 public class PaymentMethodDAO {
-    /** 資料庫連線物件 */
+    /** 共用資料庫連線，由外部管理交易週期 */
     private Connection conn;
 
     /**
@@ -29,7 +29,8 @@ public class PaymentMethodDAO {
      */
     public List<PaymentMethod> getAll() throws SQLException {
         List<PaymentMethod> methods = new ArrayList<>();
-        String sql = "SELECT idPaymentMethod, MethodName FROM payment_methods";
+    // 預設以資料表欄位命名為主，若後續 schema 調整可集中於此處修改
+    String sql = "SELECT idPaymentMethod, MethodName FROM payment_methods";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
                 ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {

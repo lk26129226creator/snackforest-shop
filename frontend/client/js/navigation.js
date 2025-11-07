@@ -1,9 +1,19 @@
 (function () {
+    // 導覽列與側欄的入口腳本：負責客戶端頁面共用的搜尋、購物車、支援資訊與側欄互動。
+    /** @constant BREAKPOINT 行動與桌面切換視窗寬度，單位為 px。 */
     const BREAKPOINT = 992;
+    /** @constant utils 客戶端共用工具函式集合（由 core.js 暴露）。 */
     const utils = window.SF_UTILS || {};
+    /** @constant env 透過 env.js 注入的環境設定（API_BASE 等）。 */
     const env = window.SF_ENV || {};
+    /** @constant LOCAL_HOSTS 開發時需要特殊處理的本機主機名清單。 */
     const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 
+    /**
+     * 解析輸入字串並安全地回傳其 origin，確保任何例外都會被吞掉以避免中斷流程。
+     * @param {string} value 可能是完整 URL 或部分路徑。
+     * @returns {string} 合法的 origin，或空字串。
+     */
     function getOriginSafe(value) {
         if (!value) return '';
         try {
@@ -15,6 +25,10 @@
         }
     }
 
+    /**
+     * 依序判斷環境變數與瀏覽器當前來源，推導出前端要呼叫的 API 來源位址。
+     * 優先使用 env.API_ORIGIN，若偵測到本機與部署主機混搭則會自動修正。
+     */
     const apiOrigin = (() => {
         const envOrigin = getOriginSafe(env.API_ORIGIN);
         const locationOrigin = getOriginSafe(window.location && window.location.origin);
@@ -35,6 +49,11 @@
         return envOrigin || locationOrigin || '';
     })();
 
+    /**
+     * 將開發時硬編成 localhost 的網址調整為目前網站的來源，避免跨來源問題。
+     * @param {string} url 需要修正的網址。
+     * @returns {string} 經過同源調整後的絕對網址。
+     */
     function adjustToCurrentOrigin(url) {
         if (!url) return url;
         try {
@@ -52,6 +71,10 @@
         }
     }
 
+    /**
+     * 清理圖片來源字串：若是 data scheme 或 HTTP(S) 以外的自訂格式，盡量保留原始內容。
+     * 若來源指向本機伺服器，會改為相對路徑以便部署。
+     */
     function normalizeOriginalSource(value) {
         if (!value) return value;
         const trimmed = String(value).trim();
@@ -68,6 +91,10 @@
         return trimmed;
     }
 
+    /**
+     * 供商品圖片與大頭貼共用的圖片 URL 標準化邏輯：支援 data URL、本機產品圖與上傳圖。
+     * 會優先呼叫 utils.normalizeImageUrl，否則自行推導路徑。
+     */
     const normalizeImageUrl = typeof utils.normalizeImageUrl === 'function'
         ? (value) => adjustToCurrentOrigin(utils.normalizeImageUrl(value))
         : (value) => {
@@ -97,12 +124,97 @@
             return path;
         };
 
+    /**
+     * 共用的價格格式化函式，確保畫面上的金額皆以 NT$ 與千分位顯示。
+     */
+    const formatPrice = typeof utils.formatPrice === 'function'
+        ? (value) => utils.formatPrice(value)
+        : (value) => {
+            const num = Number(value || 0);
+            return Number.isFinite(num) ? 'NT$' + num.toLocaleString('zh-TW') : String(value || '');
+        };
+
+    /**
+     * 換算 API Base URL：若 env 內已設置則沿用，否則使用目前來源加上 /api。
+     */
+    const API_BASE = (() => {
+        if (env && typeof env.API_BASE === 'string' && env.API_BASE.trim()) {
+            return env.API_BASE.trim();
+        }
+        if (apiOrigin) {
+            return apiOrigin.replace(/\/$/, '') + '/api';
+        }
+        return '/api';
+    })();
+
+    /** 輪播優惠輪替時間（毫秒）。 */
+    const PROMO_ROTATION_MS = 8000;
+    /** 輪播淡入淡出動畫時間（毫秒）。 */
+    const PROMO_FADE_MS = 320;
+    /** 快取站台設定內容，避免每次開啟都重抓。 */
+    let navSiteConfigCache = null;
+    /** 紀錄正在進行中的設定抓取 Promise，避免重複發送。 */
+    let navSiteConfigPromise = null;
+
+    /** 取得 site-config 的通用函式：若窗口引入了 fetchSiteConfig 則沿用。 */
     const fetchSiteCfg = typeof window.fetchSiteConfig === 'function'
         ? window.fetchSiteConfig
         : async () => ({});
-    const BRANDING_STORAGE_KEY = 'sf-client-branding';
-    const SIDEBAR_STATE_KEY = 'sf-client-sidebar-state';
 
+    /**
+     * 載入站台設定，支援強制重新載入（force = true）。
+     * @param {boolean} [force=false] 是否強制忽略快取。
+     * @returns {Promise<Object>}
+     */
+    async function loadNavSiteConfig(force) {
+        if (force === true) {
+            try {
+                const fresh = await fetchSiteCfg({ force: true });
+                navSiteConfigCache = fresh && typeof fresh === 'object' ? fresh : {};
+            } catch (e) {
+                if (!navSiteConfigCache) navSiteConfigCache = {};
+            }
+            return navSiteConfigCache;
+        }
+
+        if (navSiteConfigCache) {
+            return navSiteConfigCache;
+        }
+
+        if (!navSiteConfigPromise) {
+            navSiteConfigPromise = (async () => {
+                try {
+                    const data = await fetchSiteCfg();
+                    navSiteConfigCache = data && typeof data === 'object' ? data : {};
+                } catch (e) {
+                    if (!navSiteConfigCache) navSiteConfigCache = {};
+                } finally {
+                    navSiteConfigPromise = null;
+                }
+                return navSiteConfigCache;
+            })();
+        }
+
+        return navSiteConfigPromise;
+    }
+
+    /** localStorage key：儲存品牌標誌顏色與字樣。 */
+    const BRANDING_STORAGE_KEY = 'sf-client-branding';
+    /** localStorage key：記錄側欄展開/收合偏好。 */
+    const SIDEBAR_STATE_KEY = 'sf-client-sidebar-state';
+    /** localStorage key：候選的會員名稱欄位。 */
+    const MEMBER_NAME_KEYS = ['sf-client-name', 'customerName', 'userName'];
+    /** localStorage key：候選的會員編號欄位。 */
+    const MEMBER_ID_KEYS = ['sf-client-id', 'customerId'];
+    /** localStorage key：會員大頭貼圖片位置。 */
+    const MEMBER_AVATAR_KEY = 'sf-client-avatar';
+    /** Profile 更新事件名稱：用於跨頁同步會員資訊。 */
+    const PROFILE_UPDATE_EVENT = 'sf:profile-updated';
+
+    /**
+     * 嘗試從 localStorage 讀取品牌設定，若解析失敗則回傳 null。
+     * @returns {?Object}
+     */
     function readStoredBranding() {
         try {
             if (!('localStorage' in window)) return null;
@@ -120,6 +232,10 @@
         }
     }
 
+    /**
+     * 將品牌設定寫回 localStorage；若 payload 為 falsy 則清除資料。
+     * @param {?Object} payload 品牌設定物件。
+     */
     function writeStoredBranding(payload) {
         try {
             if (!('localStorage' in window)) return;
@@ -138,6 +254,10 @@
         }
     }
 
+    /**
+     * 讀取使用者針對側欄展開/收合的偏好。
+     * @returns {?string}
+     */
     function readSidebarPreference() {
         try {
             if (!('localStorage' in window)) return null;
@@ -153,6 +273,10 @@
         }
     }
 
+    /**
+     * 儲存側欄偏好：接受 'expanded' 或 'collapsed'，其他值會清除設定。
+     * @param {string} state 側欄狀態字串。
+     */
     function writeSidebarPreference(state) {
         try {
             if (!('localStorage' in window)) return;
@@ -171,6 +295,11 @@
         }
     }
 
+    /**
+     * 將顯示名稱轉換為首字母組合（支援多語），供大頭貼預設文字使用。
+     * @param {string} name 顯示名稱。
+     * @returns {string}
+     */
     function extractInitials(name) {
         if (!name) return 'SF';
         const trimmed = String(name).trim();
@@ -183,11 +312,832 @@
         return trimmed.slice(0, 2).toUpperCase();
     }
 
-    function onReady(fn) {0
+    /**
+     * 安全去除兩側空白，對 null/undefined 回傳空字串。
+     * @param {*} value 輸入值。
+     * @returns {string}
+     */
+    function safeTrim(value) {
+        if (value == null) return '';
+        return String(value).trim();
+    }
+
+    /**
+     * 從 localStorage 蒐集目前登入會員的名稱、編號與頭像。
+     * @returns {{name:string,id:string,avatar:string}}
+     */
+    function readStoredMemberMeta() {
+        const meta = { name: '', id: '', avatar: '' };
+        try {
+            if (!('localStorage' in window)) return meta;
+        } catch (_) {
+            return meta;
+        }
+
+        try {
+            const store = window.localStorage;
+            for (const key of MEMBER_NAME_KEYS) {
+                if (meta.name) break;
+                const candidate = safeTrim(store.getItem(key));
+                if (candidate) meta.name = candidate;
+            }
+
+            for (const key of MEMBER_ID_KEYS) {
+                if (meta.id) break;
+                const candidate = safeTrim(store.getItem(key));
+                if (candidate) meta.id = candidate;
+            }
+
+            const avatarCandidate = safeTrim(store.getItem(MEMBER_AVATAR_KEY));
+            if (avatarCandidate) meta.avatar = avatarCandidate;
+        } catch (_) {
+            // 忽略存取錯誤（例如隱私模式）
+        }
+
+        return meta;
+    }
+
+    /**
+     * DOMContentLoaded 封裝：確保所傳函式於文件準備完成後才執行。
+     */
+    function onReady(fn) {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', fn, { once: true });
         } else {
             fn();
+        }
+    }
+
+    /**
+     * 將 site-config 內的 promotions 轉為陣列，並過濾掉重複或空白資訊。
+     * @param {Object} cfg 站台設定物件。
+     * @returns {Array<{text:string,href:?string}>}
+     */
+    function collectPromoItems(cfg) {
+        const items = [];
+        const promoSource = cfg && Array.isArray(cfg.promotions) ? cfg.promotions : [];
+
+        promoSource.forEach((entry) => {
+            if (!entry) return;
+            if (typeof entry === 'string') {
+                const text = entry.trim();
+                if (text) items.push({ text, href: null });
+                return;
+            }
+            if (typeof entry === 'object') {
+                const text = String(entry.text || entry.title || '').trim();
+                if (!text) return;
+                const hrefRaw = typeof entry.href === 'string' ? entry.href : (typeof entry.link === 'string' ? entry.link : entry.url);
+                const href = hrefRaw && typeof hrefRaw === 'string' && hrefRaw.trim() ? hrefRaw.trim() : null;
+                items.push({ text, href });
+            }
+        });
+
+        const unique = [];
+        const seen = new Set();
+        items.forEach((item) => {
+            if (!item.text || seen.has(item.text)) return;
+            seen.add(item.text);
+            unique.push(item);
+        });
+
+        if (unique.length) return unique;
+
+        return [
+            { text: '全館滿 NT$999 免運', href: 'product.html' },
+            { text: '加入會員立即享 95 折優惠', href: 'member.html' },
+            { text: '最新上架零食！把握限量好味道', href: 'product.html?category=all' }
+        ];
+    }
+
+    /**
+     * 根據優惠文字計算 promo 按鈕所需寬度，確保輪播時不會跳動。
+     * @param {Array<{text:string}>} promos 優惠項目。
+     * @param {HTMLElement} promoEl 跑馬燈元素。
+     * @returns {?number}
+     */
+    function resolvePromoWidth(promos, promoEl) {
+        if (!promoEl || !Array.isArray(promos) || promos.length === 0) {
+            return null;
+        }
+        if (typeof document === 'undefined' || !document.body) {
+            return null;
+        }
+
+        const probe = promoEl.cloneNode(true);
+        probe.removeAttribute('id');
+        probe.style.position = 'absolute';
+        probe.style.visibility = 'hidden';
+        probe.style.pointerEvents = 'none';
+        probe.style.left = '-9999px';
+        probe.style.top = '-9999px';
+        probe.style.width = 'auto';
+        probe.style.minWidth = '0';
+        probe.style.maxWidth = 'none';
+        probe.dataset.state = '';
+
+        const textEl = probe.querySelector('[data-promo-text]');
+        if (!textEl) {
+            return null;
+        }
+
+        document.body.appendChild(probe);
+
+        let maxWidth = 0;
+        promos.forEach((item) => {
+            textEl.textContent = item.text;
+            const width = probe.offsetWidth;
+            if (width > maxWidth) maxWidth = width;
+        });
+
+        probe.remove();
+
+        if (!maxWidth) {
+            return null;
+        }
+
+        const padded = Math.ceil(maxWidth + 12);
+        const MIN_WIDTH = 260;
+        const MAX_WIDTH = 420;
+        return Math.max(MIN_WIDTH, Math.min(padded, MAX_WIDTH));
+    }
+
+    /**
+     * 初始化頂部優惠跑馬燈：沒有資料時隱藏按鈕，並套用最佳寬度。
+     * @param {Object} cfg 站台設定。
+     */
+    function hydratePromoTicker(cfg) {
+        const promoEl = document.getElementById('client-topbar-promo');
+        if (!promoEl) return;
+        const textEl = promoEl.querySelector('[data-promo-text]');
+        if (!textEl) return;
+
+        const promos = collectPromoItems(cfg);
+        if (!promos || promos.length === 0) {
+            if (typeof document !== 'undefined' && document.documentElement) {
+                document.documentElement.style.removeProperty('--client-topbar-promo-width');
+            }
+            promoEl.hidden = true;
+            return;
+        }
+
+        const resolvedWidth = resolvePromoWidth(promos, promoEl);
+        if (typeof document !== 'undefined' && document.documentElement) {
+            if (resolvedWidth) {
+                document.documentElement.style.setProperty('--client-topbar-promo-width', resolvedWidth + 'px');
+                promoEl.style.minWidth = resolvedWidth + 'px';
+                promoEl.style.maxWidth = resolvedWidth + 'px';
+                promoEl.style.width = resolvedWidth + 'px';
+            } else {
+                document.documentElement.style.removeProperty('--client-topbar-promo-width');
+                promoEl.style.removeProperty('min-width');
+                promoEl.style.removeProperty('max-width');
+                promoEl.style.removeProperty('width');
+            }
+        }
+
+        let index = 0;
+        let rotating = false;
+
+        function applyItem(item) {
+            if (!item) return;
+            textEl.textContent = item.text;
+            if (item.href) {
+                promoEl.dataset.href = item.href;
+                promoEl.setAttribute('aria-label', `查看優惠：${item.text}`);
+            } else {
+                delete promoEl.dataset.href;
+                promoEl.setAttribute('aria-label', item.text);
+            }
+        }
+
+        function tick() {
+            if (promos.length <= 1 || rotating) return;
+            rotating = true;
+            promoEl.dataset.state = 'leave';
+            window.setTimeout(() => {
+                index = (index + 1) % promos.length;
+                applyItem(promos[index]);
+                promoEl.dataset.state = 'enter';
+                window.setTimeout(() => {
+                    delete promoEl.dataset.state;
+                    rotating = false;
+                }, PROMO_FADE_MS);
+            }, PROMO_FADE_MS);
+        }
+
+        applyItem(promos[0]);
+        promoEl.hidden = false;
+        promoEl.dataset.state = 'enter';
+        window.setTimeout(() => delete promoEl.dataset.state, PROMO_FADE_MS);
+
+        if (promos.length > 1) {
+            window.setInterval(tick, PROMO_ROTATION_MS);
+        }
+
+        promoEl.addEventListener('click', () => {
+            const current = promos[index];
+            if (current && current.href) {
+                window.location.href = current.href;
+            }
+        });
+
+        promoEl.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                const current = promos[index];
+                if (current && current.href) {
+                    window.location.href = current.href;
+                }
+            }
+        });
+    }
+
+    /**
+     * 初始化頂部搜尋列：負責即時搜尋商品、顯示結果面板與鍵盤操作。
+     */
+    function initNavSearch() {
+        const form = document.getElementById('client-nav-search');
+        const input = document.getElementById('client-nav-search-input');
+        const resultsPanel = document.getElementById('client-nav-search-results');
+        if (!form || !input || !resultsPanel) return;
+        const resultsWrap = resultsPanel.querySelector('[data-results]');
+        const emptyEl = resultsPanel.querySelector('[data-empty]');
+        if (!resultsWrap) return;
+
+        if (form.dataset.bound === '1') {
+            return;
+        }
+        form.dataset.bound = '1';
+
+        const MIN_QUERY = 2;
+        let productsPromise = null;
+        let queryToken = 0;
+
+    /**
+     * 將後端回傳的商品資料整理成統一結構，方便後續渲染搜尋結果。
+     */
+    /**
+     * 將 API 回傳的商品資料正規化為搜尋結果所需格式。
+     * @param {Object} product 原始商品資料。
+     * @returns {{id:string,name:string,price:number,imageUrl:string,url:string}}
+     */
+    function normalizeProduct(product) {
+            const rawId = product.id ?? product.idProducts ?? product.idProduct ?? product.id_products ?? product.idproducts;
+            const id = rawId != null ? String(rawId) : '';
+            const name = String(product.name || product.ProductName || product.productName || '').trim();
+            const priceValue = product.price !== undefined ? product.price : (product.Price !== undefined ? product.Price : 0);
+            const categoryName = String(product.categoryName || product.category || product.CategoryName || product.categoryname || '').trim();
+            let image = '';
+            if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
+                image = product.imageUrls[0];
+            } else if (Array.isArray(product.ImageUrls) && product.ImageUrls.length > 0) {
+                image = product.ImageUrls[0];
+            } else if (product.imageUrl) {
+                image = product.imageUrl;
+            }
+            return {
+                id,
+                name,
+                price: Number(priceValue) || 0,
+                categoryName,
+                imageUrl: image ? normalizeImageUrl(image) : ''
+            };
+        }
+
+    /**
+     * 載入商品清單並快取 Promise，避免每次輸入都重新發送請求。
+     */
+    /**
+     * 取得商品清單，用於搜尋快取。
+     * @returns {Promise<Array>}
+     */
+    function fetchProducts() {
+            if (!productsPromise) {
+                productsPromise = fetch(API_BASE + '/products', { cache: 'no-store' })
+                    .then((res) => {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then((data) => Array.isArray(data) ? data.map(normalizeProduct) : [])
+                    .catch((err) => {
+                        console.warn('Nav search: failed to load products', err);
+                        return [];
+                    });
+            }
+            return productsPromise;
+        }
+
+    /** 隱藏搜尋結果面板並解除外部點擊監聽。 */
+    /**
+     * 隱藏搜尋結果面板並解除相關事件。
+     */
+    function hideResults() {
+            resultsPanel.hidden = true;
+            document.removeEventListener('click', handleOutsideClick, true);
+        }
+
+    /** 顯示搜尋結果面板並監聽外部點擊以便關閉。 */
+    /**
+     * 顯示搜尋結果面板並註冊外部點擊監聽。
+     */
+    function showResults() {
+            resultsPanel.hidden = false;
+            document.addEventListener('click', handleOutsideClick, true);
+        }
+
+    /** 搜尋結果開啟時，若點擊在表單外則關閉面板。 */
+    /**
+     * 搜尋結果外部點擊的收合處理。
+     * @param {MouseEvent} event 點擊事件。
+     */
+    function handleOutsideClick(event) {
+            const target = event.target instanceof Node ? event.target : null;
+            if (!target) return;
+            if (form.contains(target)) return;
+            hideResults();
+        }
+
+    /**
+     * 依搜尋結果渲染按鈕清單，提供快速導向商品頁面。
+     */
+    /**
+     * 將搜尋結果陣列渲染到面板中。
+     * @param {Array} items 正規化後的商品陣列。
+     */
+    function renderResults(items) {
+            resultsWrap.innerHTML = '';
+            if (!items.length) {
+                if (emptyEl) emptyEl.hidden = false;
+                showResults();
+                return;
+            }
+
+            if (emptyEl) emptyEl.hidden = true;
+
+            items.forEach((item) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'client-nav-search-item';
+                button.setAttribute('data-product-id', item.id);
+                button.setAttribute('role', 'option');
+
+                const content = document.createElement('div');
+                content.className = 'flex-grow-1';
+
+                const title = document.createElement('span');
+                title.className = 'client-nav-search-item-title';
+                title.textContent = item.name;
+
+                const meta = document.createElement('span');
+                meta.className = 'client-nav-search-item-meta';
+                const categoryMeta = item.categoryName ? `${item.categoryName} · ` : '';
+                meta.textContent = categoryMeta + formatPrice(item.price);
+
+                content.appendChild(title);
+                content.appendChild(meta);
+
+                button.appendChild(content);
+
+                const icon = document.createElement('i');
+                icon.className = 'fa-solid fa-arrow-right';
+                icon.setAttribute('aria-hidden', 'true');
+                button.appendChild(icon);
+
+                button.addEventListener('click', () => {
+                    if (item.id) {
+                        window.location.href = 'product.html?id=' + encodeURIComponent(item.id);
+                    } else {
+                        window.location.href = 'product.html';
+                    }
+                });
+
+                resultsWrap.appendChild(button);
+            });
+
+            showResults();
+        }
+
+    /**
+     * 監聽輸入變化：若達最小字數則執行 client-side 搜尋並更新列表。
+     */
+    /**
+     * 監聽搜尋輸入，根據關鍵字篩選商品並更新面板。
+     * @returns {Promise<void>}
+     */
+    async function handleQueryChange() {
+            const query = input.value.trim();
+            const token = ++queryToken;
+
+            if (query.length < MIN_QUERY) {
+                hideResults();
+                if (emptyEl) emptyEl.hidden = true;
+                return;
+            }
+
+            const products = await fetchProducts();
+            if (token !== queryToken) return;
+
+            const lowered = query.toLowerCase();
+            const matches = products
+                .filter((item) => {
+                    if (!item.name) return false;
+                    if (item.name.toLowerCase().includes(lowered)) return true;
+                    if (item.categoryName && item.categoryName.toLowerCase().includes(lowered)) return true;
+                    return false;
+                })
+                .slice(0, 6);
+
+            renderResults(matches);
+        }
+
+        input.addEventListener('input', () => {
+            handleQueryChange();
+        });
+
+        input.addEventListener('focus', () => {
+            if (input.value.trim().length >= MIN_QUERY && resultsWrap.children.length > 0) {
+                showResults();
+            }
+        });
+
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                hideResults();
+            }
+        });
+
+        resultsPanel.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                hideResults();
+                input.focus();
+            }
+        });
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const query = input.value.trim();
+            if (!query) {
+                hideResults();
+                return;
+            }
+            window.location.href = 'product.html?search=' + encodeURIComponent(query);
+            hideResults();
+        });
+    }
+
+    /**
+     * 初始化導覽列購物車快覽：讀取 cart.js 共用狀態並顯示商品摘要。
+     */
+    function initCartPreview() {
+        const toggle = document.getElementById('client-cart-button');
+        const panel = document.getElementById('client-cart-panel');
+        const wrapper = document.getElementById('client-nav-cart');
+        if (!toggle || !panel || !wrapper) return;
+
+        const itemsContainer = panel.querySelector('[data-cart-items]');
+        const emptyState = panel.querySelector('[data-cart-empty]');
+        const totalRow = panel.querySelector('[data-cart-total]');
+        const totalAmount = panel.querySelector('[data-cart-total-amount]');
+        const viewAllBtn = panel.querySelector('[data-nav-cart-action="view-cart"]');
+
+        let open = false;
+
+        if (toggle.dataset.previewBound === '1') {
+            return;
+        }
+        toggle.dataset.previewBound = '1';
+
+    /**
+     * 重新渲染購物車快覽：最多顯示前五項，並呈現總金額與空狀態。
+     */
+    function renderCartPreview() {
+            if (!itemsContainer) return;
+            const getCartFn = typeof window.getCart === 'function' ? window.getCart : null;
+            const cart = getCartFn ? getCartFn() : [];
+            const entries = Array.isArray(cart) ? cart : [];
+
+            itemsContainer.innerHTML = '';
+
+            if (!entries.length) {
+                if (emptyState) emptyState.hidden = false;
+                if (totalRow) totalRow.hidden = true;
+                return;
+            }
+
+            if (emptyState) emptyState.hidden = true;
+
+            let total = 0;
+            entries.slice(0, 5).forEach((item) => {
+                const qty = Number(item.quantity || 0);
+                const unitPrice = Number(item.price || 0);
+                total += qty * unitPrice;
+                const name = item.name || '商品';
+                const productId = item.id != null ? item.id : item.productId;
+
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'client-nav-cart-item';
+
+                const thumbUrl = item.imageUrl ? normalizeImageUrl(item.imageUrl) : '';
+                if (thumbUrl) {
+                    const img = document.createElement('img');
+                    img.src = thumbUrl;
+                    img.alt = name;
+                    img.className = 'client-nav-cart-thumb';
+                    img.loading = 'lazy';
+                    row.appendChild(img);
+                } else {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'client-nav-cart-thumb';
+                    row.appendChild(placeholder);
+                }
+
+                const info = document.createElement('div');
+                info.className = 'client-nav-cart-info';
+
+                const title = document.createElement('div');
+                title.className = 'title';
+                title.textContent = name;
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.textContent = `${qty} 件 · ${formatPrice(unitPrice)}`;
+
+                info.appendChild(title);
+                info.appendChild(meta);
+
+                row.appendChild(info);
+
+                if (productId != null) {
+                    row.addEventListener('click', () => {
+                        window.location.href = 'product.html?id=' + encodeURIComponent(productId);
+                    });
+                } else {
+                    row.addEventListener('click', () => {
+                        window.location.href = 'cart.html';
+                    });
+                }
+
+                itemsContainer.appendChild(row);
+            });
+
+            if (entries.length > 5) {
+                const more = document.createElement('div');
+                more.className = 'client-nav-cart-more text-muted';
+                more.textContent = `還有 ${entries.length - 5} 件商品…`;
+                itemsContainer.appendChild(more);
+            }
+
+            if (totalRow && totalAmount) {
+                totalRow.hidden = false;
+                totalAmount.textContent = formatPrice(total);
+            }
+        }
+
+    /** 關閉快覽並移除相關監聽，維持焦點回饋。 */
+    function closePanel() {
+            if (!open) return;
+            panel.hidden = true;
+            toggle.setAttribute('aria-expanded', 'false');
+            document.removeEventListener('click', handleOutsideClick, true);
+            panel.removeEventListener('keydown', handleKeydown, true);
+            open = false;
+        }
+
+    /** 開啟快覽：先渲染再加上點擊/鍵盤監聽。 */
+    function openPanel() {
+            if (open) return;
+            renderCartPreview();
+            panel.hidden = false;
+            toggle.setAttribute('aria-expanded', 'true');
+            document.addEventListener('click', handleOutsideClick, true);
+            panel.addEventListener('keydown', handleKeydown, true);
+            open = true;
+        }
+
+    /** 監聽外部點擊以在使用者點擊其他區域時收起面板。 */
+    function handleOutsideClick(event) {
+            const target = event.target instanceof Node ? event.target : null;
+            if (!target) return;
+            if (wrapper.contains(target)) return;
+            closePanel();
+        }
+
+    /** 支援 Esc 關閉購物車面板。 */
+    function handleKeydown(event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closePanel();
+                toggle.focus();
+            }
+        }
+
+        toggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            if (open) {
+                closePanel();
+            } else {
+                openPanel();
+            }
+        });
+
+        if (viewAllBtn) {
+            viewAllBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                window.location.href = 'cart.html';
+            });
+        }
+
+        window.addEventListener('cart:updated', () => {
+            if (open) {
+                renderCartPreview();
+            }
+        });
+    }
+
+    /**
+     * 從站台設定整理客服資訊，若缺欄位則從 footer 或預設值填補。
+     */
+    function extractSupportInfo(cfg) {
+        const info = {
+            email: '',
+            phone: '',
+            hours: '',
+            liveChatUrl: '',
+            liveChatLabel: ''
+        };
+
+        if (cfg && typeof cfg.support === 'object' && cfg.support !== null) {
+            info.email = String(cfg.support.email || cfg.support.mail || '').trim();
+            info.phone = String(cfg.support.phone || cfg.support.tel || '').trim();
+            info.hours = String(cfg.support.hours || cfg.support.businessHours || '').trim();
+            info.liveChatUrl = String(cfg.support.liveChatUrl || cfg.support.chatUrl || '').trim();
+            info.liveChatLabel = String(cfg.support.liveChatLabel || cfg.support.liveChatText || cfg.support.chatLabel || '').trim();
+        }
+
+        const footerText = cfg && cfg.footer && typeof cfg.footer.text === 'string' ? cfg.footer.text : '';
+        if (footerText) {
+            if (!info.email) {
+                const emailMatch = footerText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+                if (emailMatch) info.email = emailMatch[0];
+            }
+            if (!info.phone) {
+                const phoneMatch = footerText.match(/(0\d{1,3}[\s-]?\d{3,4}[\s-]?\d{3,4}|09\d{2}[\s-]?\d{3}[\s-]?\d{3})/);
+                if (phoneMatch) info.phone = phoneMatch[0];
+            }
+        }
+
+        if (!info.email) info.email = 'snackforest1688@gmail.com';
+        if (!info.phone) info.phone = '0909-585-898';
+        if (!info.hours) info.hours = '週一至週五 09:00 - 18:00';
+
+        return info;
+    }
+
+    /**
+     * 初始化導覽列客服下拉：動態填入電話/信箱/營業時間並處理面板開關。
+     */
+    function initSupportMenu(cfg) {
+        const wrapper = document.getElementById('client-support');
+        const button = document.getElementById('client-support-button');
+        const panel = document.getElementById('client-support-panel');
+        if (!wrapper || !button || !panel) return;
+
+    const emailLink = panel.querySelector('[data-support-email]');
+    const phoneLink = panel.querySelector('[data-support-phone]');
+    const chatLink = panel.querySelector('[data-support-chat]');
+    const hoursEl = panel.querySelector('[data-support-hours]');
+
+        const info = extractSupportInfo(cfg);
+        const alreadyBound = button.dataset.supportBound === '1';
+
+        if (emailLink) {
+            if (info.email) {
+                const span = emailLink.querySelector('span');
+                if (span) span.textContent = info.email;
+                emailLink.href = 'mailto:' + info.email;
+                emailLink.hidden = false;
+            } else {
+                emailLink.hidden = true;
+            }
+        }
+
+        if (phoneLink) {
+            if (info.phone) {
+                const span = phoneLink.querySelector('span');
+                if (span) span.textContent = info.phone;
+                const tel = info.phone.replace(/[^+\d]/g, '');
+                phoneLink.href = tel ? 'tel:' + tel : '#';
+                phoneLink.hidden = false;
+            } else {
+                phoneLink.hidden = true;
+            }
+        }
+
+        if (hoursEl) {
+            if (info.hours) {
+                hoursEl.textContent = info.hours;
+                hoursEl.hidden = false;
+            } else {
+                hoursEl.hidden = true;
+            }
+        }
+
+        if (chatLink) {
+            if (info.liveChatUrl) {
+                const span = chatLink.querySelector('span');
+                if (span) span.textContent = info.liveChatLabel || '線上客服';
+                chatLink.href = info.liveChatUrl;
+                if (/^https?:/i.test(info.liveChatUrl)) {
+                    chatLink.target = '_blank';
+                    chatLink.rel = 'noopener noreferrer';
+                } else {
+                    chatLink.removeAttribute('target');
+                    chatLink.removeAttribute('rel');
+                }
+                chatLink.hidden = false;
+            } else {
+                chatLink.hidden = true;
+            }
+        }
+
+        window.requestAnimationFrame(() => {
+            if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches) {
+                panel.style.removeProperty('min-width');
+                panel.style.removeProperty('width');
+                panel.style.removeProperty('max-width');
+                return;
+            }
+            const measured = panel.scrollWidth;
+            if (Number.isFinite(measured) && measured > 0) {
+                const targetWidth = Math.min(Math.max(Math.ceil(measured + 24), 320), 420);
+                panel.style.minWidth = targetWidth + 'px';
+                panel.style.maxWidth = targetWidth + 'px';
+                panel.style.width = targetWidth + 'px';
+            }
+        });
+
+        let open = false;
+
+    /** 關閉客服面板並解除監聽，避免多重綁定。 */
+    function closePanel() {
+            if (!open) return;
+            panel.hidden = true;
+            button.setAttribute('aria-expanded', 'false');
+            document.removeEventListener('click', handleOutsideClick, true);
+            panel.removeEventListener('keydown', handleKeydown, true);
+            open = false;
+        }
+
+    /** 顯示客服面板並啟用外部點擊與鍵盤監聽。 */
+    function openPanel() {
+            if (open) return;
+            panel.hidden = false;
+            button.setAttribute('aria-expanded', 'true');
+            document.addEventListener('click', handleOutsideClick, true);
+            panel.addEventListener('keydown', handleKeydown, true);
+            open = true;
+        }
+
+    /** 監聽表單外點擊以自動收合客服面板。 */
+    function handleOutsideClick(event) {
+            const target = event.target instanceof Node ? event.target : null;
+            if (!target) return;
+            if (wrapper.contains(target)) return;
+            closePanel();
+        }
+
+    /** 支援 Esc 關閉客服面板並將焦點回到觸發鈕。 */
+    function handleKeydown(event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closePanel();
+                button.focus();
+            }
+        }
+
+        if (!alreadyBound) {
+            button.dataset.supportBound = '1';
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (open) {
+                    closePanel();
+                } else {
+                    openPanel();
+                }
+            });
+
+            panel.addEventListener('click', (event) => {
+                const target = event.target instanceof HTMLElement ? event.target : null;
+                if (!target) return;
+                if (target.closest('a')) {
+                    // Let navigation proceed but close the panel for consistency.
+                    closePanel();
+                }
+            });
         }
     }
 
@@ -205,23 +1155,428 @@
         }
         button.dataset.bound = '1';
 
-    const body = document.body;
+        initNavSearch();
+        initCartPreview();
+
+        const body = document.body;
+        const topbarContainer = document.querySelector('.client-topbar-container');
+        const topbarCenter = topbarContainer ? topbarContainer.querySelector('.client-topbar-center') : null;
+        const topbarRight = topbarContainer ? topbarContainer.querySelector('.client-topbar-right') : null;
+        const profileContainer = sidebar.querySelector('[data-client-sidebar-profile]');
+        const profileLink = profileContainer ? profileContainer.querySelector('[data-client-profile-link]') : null;
+        const avatarWrapper = profileContainer ? profileContainer.querySelector('[data-client-profile-avatar]') : null;
+        const avatarImg = profileContainer ? profileContainer.querySelector('[data-client-profile-avatar-img]') : null;
+        const avatarInitial = profileContainer ? profileContainer.querySelector('[data-client-profile-avatar-initial]') : null;
+        const profilePrimary = profileContainer ? profileContainer.querySelector('[data-client-profile-primary]') : null;
+    const profileSecondary = profileContainer ? profileContainer.querySelector('[data-client-profile-secondary]') : null;
+    const primaryDefaultText = profilePrimary ? profilePrimary.textContent.trim() : '歡迎登入會員';
+    const secondaryDefaultText = profileSecondary ? profileSecondary.textContent.trim() : '會員中心';
+    let lastSidebarProfile = null;
+
+        const topbarCenterPlacement = topbarCenter ? {
+            parent: topbarCenter.parentNode,
+            nextSibling: topbarCenter.nextSibling
+        } : null;
+        const topbarRightPlacement = topbarRight ? {
+            parent: topbarRight.parentNode,
+            nextSibling: topbarRight.nextSibling
+        } : null;
+
+        let actionsContainer = null;
+        let navRelocatedForMobile = false;
+
+    /**
+     * 建立或取用行動版底部導覽列，確保只生成一次。
+     * @returns {HTMLElement|null}
+     */
+    function ensureMobileTabbar() {
+            let tabbar = document.querySelector('[data-client-mobile-tabbar]');
+            if (tabbar && tabbar.isConnected) {
+                return tabbar;
+            }
+
+            tabbar = document.createElement('nav');
+            tabbar.className = 'client-mobile-tabbar';
+            tabbar.setAttribute('data-client-mobile-tabbar', '1');
+            tabbar.innerHTML = `
+                <a href="index.html" class="client-tabbar-item" data-tab-key="home" aria-label="回到首頁">
+                    <i class="fa-solid fa-house" aria-hidden="true"></i>
+                    <span>首頁</span>
+                </a>
+                <a href="product.html" class="client-tabbar-item" data-tab-key="categories" aria-label="瀏覽全部商品分類">
+                    <i class="fa-solid fa-compass" aria-hidden="true"></i>
+                    <span>分類</span>
+                </a>
+                <button type="button" class="client-tabbar-item client-tabbar-item-featured" data-tab-action="search" data-tab-key="search" aria-label="快速搜尋商品">
+                    <span class="client-tabbar-fab" aria-hidden="true">
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    </span>
+                    <span>搜尋</span>
+                </button>
+                <a href="cart.html" class="client-tabbar-item" data-tab-key="cart" aria-label="查看購物車">
+                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+                    <span>購物車</span>
+                    <span class="client-tabbar-badge" data-cart-badge aria-hidden="true">0</span>
+                </a>
+                <a href="member.html" class="client-tabbar-item" data-tab-key="profile" aria-label="前往會員中心">
+                    <i class="fa-solid fa-user" aria-hidden="true"></i>
+                    <span>會員</span>
+                </a>
+            `;
+            document.body.appendChild(tabbar);
+            return tabbar;
+        }
+
+    /**
+     * 依據當前頁面路徑標示底部導覽列的啟用狀態。
+     * @param {HTMLElement} tabbar 底部導覽列元素
+     */
+    function syncTabbarActiveState(tabbar) {
+            if (!tabbar) return;
+            const tabs = tabbar.querySelectorAll('[data-tab-key]');
+            if (!tabs.length) return;
+            tabs.forEach((tab) => {
+                tab.classList.remove('is-active');
+                tab.removeAttribute('aria-current');
+            });
+
+            const path = (window.location && window.location.pathname ? window.location.pathname : '').toLowerCase();
+            let key = 'home';
+            if (path.includes('cart')) {
+                key = 'cart';
+            } else if (path.includes('member')) {
+                key = 'profile';
+            } else if (path.includes('product')) {
+                key = 'categories';
+            }
+
+            const active = tabbar.querySelector(`[data-tab-key="${key}"]`);
+            if (active) {
+                active.classList.add('is-active');
+                active.setAttribute('aria-current', 'page');
+            }
+        }
+
+    /**
+     * 綁定底部導覽列的互動行為（例如搜尋按鈕聚焦輸入框）。
+     * @param {HTMLElement} tabbar 底部導覽列元素
+     */
+    function bindTabbarInteractions(tabbar) {
+            if (!tabbar || tabbar.dataset.tabbarBound === '1') {
+                return;
+            }
+
+            const searchBtn = tabbar.querySelector('[data-tab-action="search"]');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const searchInput = document.getElementById('client-nav-search-input');
+                    const shouldOpenSidebar = window.innerWidth < BREAKPOINT;
+
+                    if (shouldOpenSidebar && !body.classList.contains('client-sidebar-expanded')) {
+                        openSidebar({ focusSidebar: true });
+                    } else {
+                        const searchForm = document.getElementById('client-nav-search');
+                        if (searchForm && typeof searchForm.scrollIntoView === 'function') {
+                            searchForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+
+                    if (searchInput) {
+                        const delay = shouldOpenSidebar ? 140 : 40;
+                        setTimeout(() => {
+                            try {
+                                searchInput.focus({ preventScroll: true });
+                            } catch (_) {
+                                searchInput.focus();
+                            }
+                        }, delay);
+                    }
+                });
+            }
+
+            tabbar.dataset.tabbarBound = '1';
+        }
+
+    /**
+     * 確保側欄內存在承載搜尋與快捷操作的容器，若尚未建立則即時產生。
+     */
+    function ensureMobileActionsContainer() {
+            if (actionsContainer && actionsContainer.isConnected) {
+                return actionsContainer;
+            }
+            const existing = sidebar.querySelector('[data-client-sidebar-mobile-actions]');
+            if (existing) {
+                actionsContainer = existing;
+                return actionsContainer;
+            }
+            const container = document.createElement('div');
+            container.className = 'client-sidebar-mobile-actions';
+            container.setAttribute('data-client-sidebar-mobile-actions', '1');
+            container.hidden = true;
+            const navEl = sidebar.querySelector('.client-sidebar-nav');
+            if (navEl && navEl.parentNode === sidebar) {
+                sidebar.insertBefore(container, navEl);
+            } else {
+                sidebar.appendChild(container);
+            }
+            actionsContainer = container;
+            return actionsContainer;
+        }
+
+    /**
+     * 將 DOM 節點依原始位置插回（桌面模式時使用）。
+     */
+    function restoreNode(node, placement) {
+            if (!node || !placement || !placement.parent) return;
+            if (node.parentNode === placement.parent) return;
+            if (placement.nextSibling && placement.nextSibling.parentNode === placement.parent) {
+                placement.parent.insertBefore(node, placement.nextSibling);
+            } else {
+                placement.parent.appendChild(node);
+            }
+        }
+
+    /**
+     * 行動版：把搜尋列與右側快捷鈕移到側欄容器內，並標記目前版型。
+     */
+    function moveNavBitsToSidebar() {
+            if (navRelocatedForMobile) return;
+            const container = ensureMobileActionsContainer();
+            if (!container) return;
+            if (topbarCenter && topbarCenter.parentNode !== container) {
+                container.appendChild(topbarCenter);
+            }
+            if (topbarRight && topbarRight.parentNode !== container) {
+                container.appendChild(topbarRight);
+            }
+            container.hidden = false;
+            navRelocatedForMobile = true;
+            body.setAttribute('data-client-mobile-nav', 'tabbar');
+        }
+
+    /**
+     * 回復桌面版：將搜尋和快捷鈕移回頂部導覽列，並隱藏側欄容器。
+     */
+    function restoreNavBitsToTopbar() {
+            if (!navRelocatedForMobile) return;
+            restoreNode(topbarCenter, topbarCenterPlacement);
+            restoreNode(topbarRight, topbarRightPlacement);
+            if (actionsContainer) {
+                actionsContainer.hidden = true;
+            }
+            navRelocatedForMobile = false;
+            body.removeAttribute('data-client-mobile-nav');
+        }
+
+    /** 根據視窗寬度切換導覽列元件所屬位置。 */
+    function syncNavLayoutForViewport() {
+            const shouldUseMobileLayout = window.innerWidth < BREAKPOINT;
+            if (shouldUseMobileLayout) {
+                moveNavBitsToSidebar();
+            } else {
+                restoreNavBitsToTopbar();
+            }
+        }
+
+        syncNavLayoutForViewport();
+
+        const mobileTabbar = ensureMobileTabbar();
+        syncTabbarActiveState(mobileTabbar);
+    bindTabbarInteractions(mobileTabbar);
+        window.addEventListener('hashchange', () => syncTabbarActiveState(mobileTabbar));
+        window.addEventListener('sf:navigation', () => syncTabbarActiveState(mobileTabbar));
+        window.addEventListener('popstate', () => syncTabbarActiveState(mobileTabbar));
+
+        if (typeof window.matchMedia === 'function') {
+            const mq = window.matchMedia(`(max-width: ${BREAKPOINT - 1}px)`);
+            const handler = () => {
+                syncNavLayoutForViewport();
+                syncTabbarActiveState(mobileTabbar);
+            };
+            if (typeof mq.addEventListener === 'function') {
+                mq.addEventListener('change', handler);
+            } else if (typeof mq.addListener === 'function') {
+                mq.addListener(handler);
+            }
+        } else {
+            window.addEventListener('resize', () => {
+                syncNavLayoutForViewport();
+                syncTabbarActiveState(mobileTabbar);
+            });
+        }
+
         const focusableSelector = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
         let lastFocused = null;
         let currentMode = null;
-    let outsideClickBound = false;
-    const storedSidebarPreference = readSidebarPreference();
-    const shouldStartExpanded = storedSidebarPreference === 'expanded' && window.innerWidth >= BREAKPOINT;
+        let outsideClickBound = false;
+        const storedSidebarPreference = readSidebarPreference();
+        const shouldStartExpanded = storedSidebarPreference === 'expanded' && window.innerWidth >= BREAKPOINT;
 
-        async function applyBranding() {
-            const brandNameEl = sidebar.querySelector('.client-sidebar-title');
-            const taglineEl = sidebar.querySelector('.client-sidebar-subtitle');
-            const logoWrapper = sidebar.querySelector('.client-sidebar-logo');
-            const logoImg = sidebar.querySelector('.client-sidebar-logo-img');
-            const initialsEl = sidebar.querySelector('.client-sidebar-logo-initials');
+    /**
+     * 將會員資訊同步到側欄頭像區，包含名稱、編號與預設字母。
+     */
+    function applySidebarProfileState(state) {
+            if (!profileContainer) return;
+            const nextName = safeTrim(state && state.name);
+            const nextId = safeTrim(state && state.id);
+            const nextAvatarRaw = safeTrim(state && state.avatar);
+
+            if (
+                lastSidebarProfile
+                && lastSidebarProfile.name === nextName
+                && lastSidebarProfile.id === nextId
+                && lastSidebarProfile.avatar === nextAvatarRaw
+            ) {
+                return;
+            }
+
+            lastSidebarProfile = { name: nextName, id: nextId, avatar: nextAvatarRaw };
+
+            const hasName = Boolean(nextName);
+            const hasAvatar = Boolean(nextAvatarRaw);
+
+            if (profileContainer) {
+                profileContainer.dataset.memberState = hasName ? 'authenticated' : 'guest';
+            }
+
+            if (profilePrimary) {
+                profilePrimary.textContent = hasName ? `歡迎 ${nextName} 會員` : primaryDefaultText;
+            }
+
+            if (profileSecondary) {
+                profileSecondary.textContent = secondaryDefaultText || '會員中心';
+                if (nextId) {
+                    profileSecondary.setAttribute('data-member-id', nextId);
+                    profileSecondary.setAttribute('title', `會員編號 #${nextId}`);
+                } else {
+                    profileSecondary.removeAttribute('data-member-id');
+                    profileSecondary.removeAttribute('title');
+                }
+            }
+
+            const initialsSource = hasName ? nextName : '會員';
+            const initials = extractInitials(initialsSource);
+            if (avatarInitial) {
+                avatarInitial.textContent = initials;
+            }
+
+            if (avatarWrapper) {
+                avatarWrapper.classList.toggle('has-image', hasAvatar);
+                if (hasName) {
+                    avatarWrapper.setAttribute('title', `${nextName} 會員`);
+                } else {
+                    avatarWrapper.removeAttribute('title');
+                }
+            }
+
+            if (avatarImg) {
+                if (hasAvatar) {
+                    let resolvedAvatar = nextAvatarRaw;
+                    try {
+                        resolvedAvatar = normalizeImageUrl(nextAvatarRaw);
+                    } catch (_) {
+                        resolvedAvatar = nextAvatarRaw;
+                    }
+                    if (avatarImg.src !== resolvedAvatar) {
+                        avatarImg.src = resolvedAvatar;
+                    }
+                    avatarImg.alt = `${nextName || '會員'}頭像`;
+                } else {
+                    avatarImg.removeAttribute('src');
+                    avatarImg.alt = '';
+                }
+            }
+
+            if (profileLink) {
+                const labelName = hasName ? nextName : '會員';
+                const label = hasName ? `前往 ${labelName} 的會員中心` : '前往會員中心';
+                profileLink.setAttribute('title', label);
+                profileLink.setAttribute('aria-label', label);
+                if (nextId) {
+                    profileLink.setAttribute('data-member-id', nextId);
+                } else {
+                    profileLink.removeAttribute('data-member-id');
+                }
+            }
+        }
+
+    /**
+     * 從 localStorage 或事件覆寫的資料更新側欄會員資料顯示。
+     */
+    function updateSidebarProfile(override) {
+            if (!profileContainer) return;
+            const stored = readStoredMemberMeta();
+            const next = { ...stored };
+
+            if (override && typeof override === 'object') {
+                if (Object.prototype.hasOwnProperty.call(override, 'name')) {
+                    next.name = safeTrim(override.name);
+                }
+                if (Object.prototype.hasOwnProperty.call(override, 'avatarUrl')) {
+                    next.avatar = safeTrim(override.avatarUrl);
+                } else if (Object.prototype.hasOwnProperty.call(override, 'avatar')) {
+                    next.avatar = safeTrim(override.avatar);
+                }
+                if (Object.prototype.hasOwnProperty.call(override, 'customerId')) {
+                    next.id = safeTrim(override.customerId);
+                } else if (Object.prototype.hasOwnProperty.call(override, 'id')) {
+                    next.id = safeTrim(override.id);
+                }
+            }
+
+            applySidebarProfileState(next);
+        }
+
+    /**
+     * 監聽 localStorage 與自訂事件變更，保持側欄會員資訊最新。
+     */
+    const handleProfileStorage = (event) => {
+            if (!event) {
+                updateSidebarProfile();
+                return;
+            }
+            const key = event.key;
+            if (
+                key == null
+                || MEMBER_NAME_KEYS.includes(key)
+                || MEMBER_ID_KEYS.includes(key)
+                || key === MEMBER_AVATAR_KEY
+            ) {
+                updateSidebarProfile();
+            }
+        };
+
+        const handleProfileEvent = (event) => {
+            if (!event) {
+                updateSidebarProfile();
+                return;
+            }
+            const detail = event.detail && typeof event.detail === 'object' ? event.detail : null;
+            updateSidebarProfile(detail);
+        };
+
+        if (profileContainer) {
+            updateSidebarProfile();
+            window.addEventListener('storage', handleProfileStorage);
+            window.addEventListener(PROFILE_UPDATE_EVENT, handleProfileEvent);
+        }
+
+    /**
+     * 依據 site-config 或快取資料套用品牌名稱、標語與 Logo。
+     * 若使用者已透過管理端更新，會寫入 localStorage 以便其他頁面共用。
+     */
+    async function applyBranding(preloadedCfg) {
+            const brandNameEls = sidebar.querySelectorAll('[data-client-brand-name]');
+            const taglineEls = sidebar.querySelectorAll('[data-client-brand-tagline]');
+            const logoWrappers = sidebar.querySelectorAll('[data-client-brand-logo]');
+            const logoImgs = sidebar.querySelectorAll('[data-client-brand-logo-img]');
+            const initialsEls = sidebar.querySelectorAll('[data-client-brand-initials]');
             const navBrand = document.querySelector('.navbar .navbar-brand');
-            const fallbackName = brandNameEl ? brandNameEl.textContent.trim() : 'SnackForest';
-            const fallbackTagline = taglineEl ? taglineEl.textContent.trim() : '';
+            const fallbackName = brandNameEls.length ? brandNameEls[0].textContent.trim() : 'SnackForest';
+            const fallbackTagline = taglineEls.length ? taglineEls[0].textContent.trim() : '';
+
+            const fallbackLogoSrc = '/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png';
 
             const stored = readStoredBranding();
             const storedLogoOriginal = stored && typeof stored.logoSrc === 'string' && stored.logoSrc.trim() ? stored.logoSrc.trim() : '';
@@ -232,8 +1587,11 @@
             let currentTagline = fallbackTagline;
 
             const setInitials = (name) => {
-                if (!initialsEl) return;
-                initialsEl.textContent = extractInitials(name || fallbackName);
+                if (!initialsEls.length) return;
+                const initials = extractInitials(name || fallbackName);
+                initialsEls.forEach((el) => {
+                    el.textContent = initials;
+                });
             };
 
             const setTexts = (name, tagline) => {
@@ -243,8 +1601,13 @@
                 currentName = safeName;
                 currentTagline = safeTagline;
 
-                if (brandNameEl) brandNameEl.textContent = safeName;
-                if (taglineEl) taglineEl.textContent = safeTagline;
+                brandNameEls.forEach((el) => {
+                    el.textContent = safeName;
+                });
+
+                taglineEls.forEach((el) => {
+                    el.textContent = safeTagline;
+                });
 
                 if (navBrand) {
                     navBrand.textContent = safeName;
@@ -256,32 +1619,48 @@
             };
 
             const showImage = (name) => {
-                if (!logoWrapper || !logoImg) return;
-                logoWrapper.classList.add('has-image');
-                logoImg.alt = name || '品牌識別';
-                logoWrapper.setAttribute('title', name || fallbackName);
+                if (!logoWrappers.length || !logoImgs.length) return;
+                const label = name || fallbackName;
+                logoWrappers.forEach((wrapper) => {
+                    wrapper.classList.add('has-image');
+                    if (label) {
+                        wrapper.setAttribute('title', label);
+                    } else {
+                        wrapper.removeAttribute('title');
+                    }
+                });
+                logoImgs.forEach((img) => {
+                    img.alt = label || '品牌識別';
+                });
             };
 
             const hideImage = (name, options = {}) => {
-                if (!logoWrapper || !logoImg) return;
-                logoWrapper.classList.remove('has-image');
+                if (!logoWrappers.length || !logoImgs.length) return;
+                const label = name || fallbackName;
+                logoWrappers.forEach((wrapper) => {
+                    wrapper.classList.remove('has-image');
+                    if (label) {
+                        wrapper.setAttribute('title', label);
+                    } else {
+                        wrapper.removeAttribute('title');
+                    }
+                });
                 if (options.clearSrc !== false) {
-                    logoImg.removeAttribute('src');
-                    delete logoImg.dataset.brandSrc;
+                    logoImgs.forEach((img) => {
+                        img.removeAttribute('src');
+                        delete img.dataset.brandSrc;
+                    });
                 }
-                logoImg.alt = '';
-                if (name) {
-                    logoWrapper.setAttribute('title', name);
-                } else {
-                    logoWrapper.removeAttribute('title');
-                }
-                setInitials(name);
+                logoImgs.forEach((img) => {
+                    img.alt = '';
+                });
+                setInitials(label);
             };
 
             const applyLogoSrc = (src, name, options = {}) => {
                 const { persist = false, original = null } = options;
 
-                if (!logoWrapper || !logoImg) return;
+                if (!logoWrappers.length || !logoImgs.length) return;
 
                 const resolvedName = name || fallbackName;
 
@@ -318,20 +1697,24 @@
                     return;
                 }
 
-                if (logoImg.dataset.brandSrc !== resolvedSrc) {
-                    logoImg.dataset.brandSrc = resolvedSrc;
-                    logoWrapper.classList.remove('has-image');
-                    logoImg.src = resolvedSrc;
-                }
+                logoImgs.forEach((img, index) => {
+                    if (img.dataset.brandSrc !== resolvedSrc) {
+                        img.dataset.brandSrc = resolvedSrc;
+                        if (logoWrappers[index]) {
+                            logoWrappers[index].classList.remove('has-image');
+                        }
+                        img.src = resolvedSrc;
+                    }
 
-                logoImg.decoding = 'async';
-                logoImg.setAttribute('loading', 'lazy');
-                logoImg.onload = () => showImage(resolvedName);
-                logoImg.onerror = () => hideImage(resolvedName);
+                    img.decoding = 'async';
+                    img.setAttribute('loading', 'lazy');
+                    img.onload = () => showImage(resolvedName);
+                    img.onerror = () => hideImage(resolvedName, { clearSrc: false });
 
-                if (logoImg.complete && logoImg.naturalWidth > 0) {
-                    showImage(resolvedName);
-                }
+                    if (img.complete && img.naturalWidth > 0) {
+                        showImage(resolvedName);
+                    }
+                });
 
                 if (persist) {
                     writeStoredBranding({
@@ -341,6 +1724,13 @@
                         logoResolved: resolvedSrc
                     });
                 }
+            };
+
+            const useFallbackLogo = (name, options = {}) => {
+                if (!fallbackLogoSrc) return false;
+                const { persist = false } = options;
+                applyLogoSrc(fallbackLogoSrc, name, { persist, original: fallbackLogoSrc });
+                return true;
             };
 
             if (stored) {
@@ -361,15 +1751,19 @@
                         original: storedLogoOriginal || storedLogoResolved || storedLogoCandidate
                     });
                 } else {
-                    hideImage(storedName, { clearSrc: false });
+                    if (!useFallbackLogo(storedName)) {
+                        hideImage(storedName, { clearSrc: false });
+                    }
                 }
             } else {
                 setTexts(currentName, currentTagline);
-                hideImage(currentName, { clearSrc: false });
+                if (!useFallbackLogo(currentName)) {
+                    hideImage(currentName, { clearSrc: false });
+                }
             }
 
             try {
-                const cfg = await fetchSiteCfg({ force: true });
+                const cfg = preloadedCfg || await loadNavSiteConfig();
                 const branding = cfg && typeof cfg === 'object' && cfg.branding ? cfg.branding : {};
                 const brandNameRaw = branding.brandName != null ? String(branding.brandName).trim() : '';
                 const taglineRaw = branding.tagline != null ? String(branding.tagline).trim() : '';
@@ -405,6 +1799,18 @@
                             logoResolved: resolvedStored
                         });
                     } else {
+                        if (!useFallbackLogo(currentName, { persist: true })) {
+                            hideImage(currentName);
+                            writeStoredBranding({
+                                brandName: currentName,
+                                tagline: currentTagline,
+                                logoSrc: null,
+                                logoResolved: null
+                            });
+                        }
+                    }
+                } else {
+                    if (!useFallbackLogo(currentName, { persist: true })) {
                         hideImage(currentName);
                         writeStoredBranding({
                             brandName: currentName,
@@ -413,14 +1819,6 @@
                             logoResolved: null
                         });
                     }
-                } else {
-                    hideImage(currentName);
-                    writeStoredBranding({
-                        brandName: currentName,
-                        tagline: currentTagline,
-                        logoSrc: null,
-                        logoResolved: null
-                    });
                 }
             } catch (err) {
                 console.warn('載入品牌設定失敗', err);
@@ -429,11 +1827,18 @@
                         persist: false,
                         original: storedLogoOriginal || storedLogoResolved || storedLogoCandidate
                     });
+                } else {
+                    if (!useFallbackLogo(currentName)) {
+                        hideImage(currentName);
+                    }
                 }
             }
         }
 
-        function highlightActiveLink() {
+    /**
+     * 根據目前網址標記側欄的啟用連結，協助使用者辨識所在頁面。
+     */
+    function highlightActiveLink() {
             const links = sidebar.querySelectorAll('.client-sidebar-link[href]');
             const currentPath = window.location.pathname.split('/').pop() || 'index.html';
             links.forEach((link) => {
@@ -459,17 +1864,31 @@
             body.classList.add('client-sidebar-collapsed');
         }
 
-        applyBranding();
+        loadNavSiteConfig()
+            .then((cfg) => {
+                applyBranding(cfg);
+                hydratePromoTicker(cfg);
+                initSupportMenu(cfg);
+            })
+            .catch((err) => {
+                console.warn('Nav enhancements: failed to load site config', err);
+                applyBranding();
+                hydratePromoTicker();
+                initSupportMenu();
+            });
 
+        /** 更新漢堡按鈕的 aria-expanded 屬性，反映側欄狀態。 */
         function setTriggerExpanded(expanded) {
             button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         }
 
+        /** 收集側欄內可聚焦元素，供焦點陷阱與鍵盤導覽使用。 */
         function getFocusableElements() {
             return Array.from(sidebar.querySelectorAll(focusableSelector))
                 .filter((el) => !el.hasAttribute('disabled') && el.getAttribute('tabindex') !== '-1');
         }
 
+        /** 將焦點移到側欄第一個可互動元件，若無則聚焦於容器本身。 */
         function focusFirstElement() {
             const focusables = getFocusableElements();
             if (focusables.length > 0) {
@@ -479,10 +1898,14 @@
             }
         }
 
+        /** 判斷目前側欄模式是否為覆蓋模式（行動裝置使用）。 */
         function isOverlay() {
             return currentMode === 'overlay';
         }
 
+        /**
+         * 行動覆蓋模式下的鍵盤陷阱：攔截 Tab 與 Esc，避免焦點離開側欄。
+         */
         function trapKeydown(event) {
             if (!isOverlay()) {
                 return;
@@ -519,7 +1942,10 @@
             }
         }
 
-        function updateMode(force) {
+    /**
+     * 依視窗寬度切換覆蓋或 rail 模式，並同步相關監聽與外觀狀態。
+     */
+    function updateMode(force) {
             const nextMode = window.innerWidth < BREAKPOINT ? 'overlay' : 'rail';
             if (!force && nextMode === currentMode) {
                 return;
@@ -553,7 +1979,10 @@
             }
         }
 
-        function handleOutsideClick(event) {
+    /**
+     * 桌面模式下的外點關閉邏輯：僅當點擊在內容區以外時才收合側欄。
+     */
+    function handleOutsideClick(event) {
             // 在桌面「rail」模式，只在點擊『內文以外的空白區域』時才收合
             if (isOverlay()) return; // 行動覆蓋模式已用 backdrop 處理
             if (!body.classList.contains('client-sidebar-expanded')) return;
@@ -576,7 +2005,10 @@
             closeSidebar({ restoreFocus: false });
         }
 
-        function openSidebar(options = {}) {
+    /**
+     * 開啟側欄：處理 body 樣式、焦點、偏好儲存與覆蓋模式的監聽。
+     */
+    function openSidebar(options = {}) {
             const overlay = isOverlay();
             body.classList.add('client-sidebar-expanded');
             body.classList.remove('client-sidebar-collapsed');
@@ -605,7 +2037,10 @@
             }
         }
 
-        function closeSidebar(options = {}) {
+    /**
+     * 關閉側欄：根據模式調整外觀、釋放監聽並視需求回復焦點。
+     */
+    function closeSidebar(options = {}) {
             const overlay = isOverlay();
             const force = options.force === true;
 
@@ -639,7 +2074,8 @@
             }
         }
 
-        function toggleSidebar() {
+    /** 切換側欄展開/收合，供漢堡按鈕與側欄連結使用。 */
+    function toggleSidebar() {
             if (body.classList.contains('client-sidebar-expanded')) {
                 closeSidebar();
             } else {

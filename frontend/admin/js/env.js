@@ -1,3 +1,8 @@
+//
+//  管理後台環境設定：
+//    - 統一定義 API 端點、常數與預設資料。
+//    - 初始化 Admin.state 儲存全域狀態。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
 
@@ -15,6 +20,7 @@
     })();
 
     config.API_BASE_URL = `${API_ORIGIN}/api`;
+    // API 路徑集中於 config.endpoints，方便其他模組復用。
     config.endpoints = {
         product: `${config.API_BASE_URL}/products`,
         category: `${config.API_BASE_URL}/categories`,
@@ -39,6 +45,7 @@
     config.MAX_IMAGES = 10;
     config.VISIBLE_THUMBS = 5;
 
+    // 當後端尚未設定站台資訊時，提供預設輸出以避免界面空白。
     config.DEFAULT_SITE_CONFIG = {
         hero: {
             title: '探索世界零食的靈感地圖',
@@ -56,10 +63,17 @@
             { icon: 'gift', title: '會員回饋', desc: '點數折抵更划算' }
         ],
         featuredProductIds: [],
-        branding: {
-            logoUrl: '',
-            brandName: 'SnackForest',
-            tagline: '探索零食世界'
+        promotions: [
+            { text: '全館滿 NT$999 免運', link: 'product.html' },
+            { text: '加入會員立即享 95 折優惠', link: 'member.html' },
+            { text: '最新上架零食！把握限量好味道', link: 'product.html?category=all' }
+        ],
+        support: {
+            email: 'snackforest1688@gmail.com',
+            phone: '0909-585-898',
+            hours: '週一至週五 09:00 - 18:00',
+            liveChatUrl: '',
+            liveChatLabel: ''
         },
         footer: {
             text: '© 2025 SnackForest. 保留所有權利。'
@@ -68,6 +82,7 @@
 
     Admin.config = config;
 
+    // 初始化全域 state，供資料快取、模態視窗與 carousel 等模組共用。
     const state = Admin.state || {};
     state.allProducts = [];
     state.allCategories = [];
@@ -84,7 +99,8 @@
     state.siteConfig = {
         data: null,
         original: null,
-    dirty: { hero: false, benefits: false, featured: false, footer: false, branding: false },
+        // 逐一標記各區段是否有異動，方便決定是否需要儲存。
+        dirty: { hero: false, benefits: false, featured: false, promotions: false, support: false, footer: false },
         loading: false,
         saving: false,
         bound: false

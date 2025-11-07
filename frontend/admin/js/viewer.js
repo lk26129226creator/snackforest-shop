@@ -1,8 +1,12 @@
+//
+//  圖片檢視器模組：於後台查看商品圖片，支援縮圖瀏覽、鍵盤導航與上傳預覽。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { config, state, images } = Admin;
     const viewer = Admin.viewer || {};
 
+    // 關閉 modal 後清除暫存 URL 與指標，避免記憶體洩漏。
     function cleanupModalState() {
         state.imageViewer.blobUrls.forEach((url) => URL.revokeObjectURL(url));
         state.imageViewer.blobUrls = [];
@@ -22,6 +26,7 @@
         });
     }
 
+    // 控制縮圖視窗顯示範圍，使目前選取的圖片保持在可見範圍內。
     function refreshThumbWindow() {
         const total = state.imageViewer.images.length;
         if (total === 0) return;
@@ -46,6 +51,7 @@
         }
     }
 
+    // 根據目前索引更新主視圖，支援 File 預覽。
     function updateMainImage() {
         const main = document.getElementById('iv-main-img');
         const current = state.imageViewer.images[state.imageViewer.current];
@@ -70,6 +76,7 @@
         }
     }
 
+    // 根據圖片數量啟用或停用前後按鈕。
     function updateThumbNav() {
         const prevBtn = document.getElementById('iv-thumb-prev');
         const nextBtn = document.getElementById('iv-thumb-next');
@@ -78,6 +85,7 @@
         if (nextBtn) nextBtn.classList.toggle('disabled', count <= 1);
     }
 
+    // 將圖片列表渲染進 modal，並綁定縮圖點擊事件。
     function populateModal() {
         const main = document.getElementById('iv-main-img');
         const thumbs = document.getElementById('iv-thumbs');
@@ -121,6 +129,9 @@
         setTimeout(updateThumbNav, 80);
     }
 
+    /**
+     * 顯示上一張圖片並更新縮圖狀態。
+     */
     viewer.ivPrev = function () {
         if (!state.imageViewer.images.length) return;
         state.imageViewer.current = (state.imageViewer.current - 1 + state.imageViewer.images.length) % state.imageViewer.images.length;
@@ -133,6 +144,9 @@
         ensureThumbVisibility(state.imageViewer.current);
     };
 
+    /**
+     * 顯示下一張圖片並更新縮圖狀態。
+     */
     viewer.ivNext = function () {
         if (!state.imageViewer.images.length) return;
         state.imageViewer.current = (state.imageViewer.current + 1) % state.imageViewer.images.length;
@@ -145,6 +159,10 @@
         ensureThumbVisibility(state.imageViewer.current);
     };
 
+    /**
+     * 依商品編號載入圖片檢視器。
+     * @param {number} productId 商品 ID。
+     */
     viewer.viewProductImages = function (productId) {
         const product = state.allProducts.find((p) => p.id === productId);
         if (!product) return alert('找不到商品');
@@ -158,6 +176,10 @@
         if (state.modals.imageView) state.modals.imageView.show();
     };
 
+    /**
+     * 直接開啟單張圖片檢視。
+     * @param {string} url 圖片來源。
+     */
     viewer.viewImage = function (url) {
         state.imageViewer.images = [url];
         state.imageViewer.rendered = [url];
@@ -169,6 +191,9 @@
     viewer.updateThumbNav = updateThumbNav;
     viewer.ensureThumbVisibility = ensureThumbVisibility;
 
+    /**
+     * 初始化圖片檢視器：建構 modal、綁定鍵盤與縮圖事件。
+     */
     viewer.init = function () {
         const modalEl = document.getElementById('imageViewModal');
         if (modalEl && window.bootstrap) {

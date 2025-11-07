@@ -1,4 +1,5 @@
 (function(){
+    // 首頁模組整合輪播、分類與精選商品，從後端載入資料並套用客製化站台設定。
     const env = window.SF_ENV || {};
     const utils = window.SF_UTILS || {};
     const API_BASE = env.API_BASE || 'http://localhost:8000/api';
@@ -6,6 +7,33 @@
     const formatPrice = utils.formatPrice || ((v) => v);
     const fetchSiteConfig = window.fetchSiteConfig || (async () => ({}));
 
+    // 依分類名稱關鍵字推測最適合的 Font Awesome icon，用於分類卡片視覺呈現。
+    const CATEGORY_ICON_RULES = [
+        { pattern: /(餅|cookie|cracker|biscuit)/i, icon: 'fa-cookie-bite' },
+        { pattern: /(糖|candy|sweet|巧克|choco)/i, icon: 'fa-candy-cane' },
+        { pattern: /(肉|jerky|meat|牛肉|豬肉|雞)/i, icon: 'fa-drumstick-bite' },
+        { pattern: /(飲|drink|beverage|茶|coffee|酒|汁)/i, icon: 'fa-mug-hot' },
+        { pattern: /(組|禮盒|combo|pack|箱|合)/i, icon: 'fa-box-open' },
+        { pattern: /(果|fruit|莓|乾|nut|堅果)/i, icon: 'fa-apple-whole' }
+    ];
+
+    /**
+     * 依分類名稱關鍵字推測最適合的 Font Awesome icon。
+     * @param {string} name 分類名稱。
+     * @returns {string}
+     */
+    function resolveCategoryIcon(name) {
+        const value = (name || '').toString().trim();
+        if (!value) return 'fa-basket-shopping';
+        for (const rule of CATEGORY_ICON_RULES) {
+            if (rule.pattern.test(value)) {
+                return rule.icon;
+            }
+        }
+        return 'fa-basket-shopping';
+    }
+
+    // bootstrap.Carousel 初始化設定，確保首頁輪播具備自動播放與觸控體驗。
     const HOME_CAROUSEL_CONFIG = {
         interval: 3000,
         ride: 'carousel',
@@ -15,6 +43,11 @@
         keyboard: true
     };
 
+    // 初始化輪播流程：取得資料、渲染 DOM、啟動 bootstrap Carousel，並緩存於 localStorage。
+    /**
+     * 初始化首頁輪播：載入資料並啟動 bootstrap Carousel。
+     * @returns {Promise<void>}
+     */
     async function setupHomeCarousel() {
         const root = document.getElementById('homeCarousel');
         if (!root) return;
@@ -24,6 +57,11 @@
         try { localStorage.setItem('sf_carousel_slides', JSON.stringify(slides)); } catch (e) {}
     }
 
+    // 優先走後端資料，若缺少則回落至本機快取或預設示意圖片。
+    /**
+     * 優先抓取後端輪播資料，失敗時回落至快取或預設。
+     * @returns {Promise<Array>}
+     */
     async function loadCarouselSlides() {
         const cacheKey = 'sf_carousel_slides';
         let slides = await fetchCarouselFromBackend();
@@ -44,6 +82,11 @@
         return slides;
     }
 
+    // 從後端同步輪播設定，盡可能避免 cache 以確保顯示最新內容。
+    /**
+     * 從後端抓取輪播設定。
+     * @returns {Promise<Array>}
+     */
     async function fetchCarouselFromBackend() {
         try {
             const res = await fetch((env.API_BASE || 'http://localhost:8000/api') + '/carousel', { cache: 'no-store' });
@@ -59,6 +102,12 @@
         }
     }
 
+    // 根據傳入的 slides 重新產生 indicators 與 carousel-item，並處理載入優化設定。
+    /**
+     * 根據輪播資料重新渲染 indicators 與 carousel-item。
+     * @param {HTMLElement} root 目標 carousel 元素。
+     * @param {Array} slides 輪播資料。
+     */
     function renderCarousel(root, slides) {
         const indicators = root.querySelector('.carousel-indicators');
         const inner = root.querySelector('.carousel-inner');
@@ -131,6 +180,11 @@
         });
     }
 
+    // 將最新內容交給 bootstrap.Carousel 控制，確保重新渲染後狀態一致。
+    /**
+     * 啟動或重建 bootstrap.Carousel 實例，並重設狀態。
+     * @param {HTMLElement} root carousel 根節點。
+     */
     function bootHomeCarousel(root) {
         if (!root || typeof bootstrap === 'undefined' || !bootstrap.Carousel) return;
         const items = Array.from(root.querySelectorAll('.carousel-item'));
@@ -163,6 +217,11 @@
         }
     }
 
+    // 將後端 Site Config 套用至 hero 區塊與優勢列表，輔以預設 fallback。
+    /**
+     * 套用站台設定至首頁 hero 與優勢列表。
+     * @returns {Promise<void>}
+     */
     async function applySiteConfig() {
         const DEFAULT_CONFIG = {
             hero: {
@@ -241,6 +300,11 @@
         }
     }
 
+    // 載入分類資料後以 8 張卡片快速導向對應的商品列表頁面。
+    /**
+     * 載入分類資料並渲染首頁分類卡片。
+     * @returns {Promise<void>}
+     */
     async function loadCategories() {
         const grid = document.getElementById('home-categories-grid');
         if (!grid) return;
@@ -251,9 +315,12 @@
             grid.innerHTML = '';
             (data || []).slice(0, 8).forEach((category) => {
                 const name = category.name || category.categoryname || '分類';
+                const iconClass = resolveCategoryIcon(name);
                 const card = document.createElement('div');
                 card.className = 'category-card';
-                card.innerHTML = `<div class="icon"><i class="fa-solid fa-cookie-bite"></i></div><div class="name">${name}</div>`;
+                card.innerHTML = `<div class="icon"><i class="fa-solid ${iconClass}" aria-hidden="true"></i></div><div class="name">${name}</div>`;
+                card.setAttribute('role', 'button');
+                card.setAttribute('aria-label', `${name}分類`);
                 card.addEventListener('click', () => {
                     window.location.href = 'product.html?category=' + encodeURIComponent(name);
                 });
@@ -264,6 +331,11 @@
         }
     }
 
+    // 精選商品區塊：依 Site Config 指定的 featured IDs 排序顯示，缺少設定則抓前 8 筆商品。
+    /**
+     * 依站台設定載入精選商品卡片，無設定時取前幾筆商品。
+     * @returns {Promise<void>}
+     */
     async function loadFeaturedProducts() {
         const grid = document.getElementById('home-featured-grid');
         if (!grid) return;
@@ -347,6 +419,10 @@
         }
     }
 
+    // 首頁進入點，依序開啟輪播、站台設定、分類與精選商品。
+    /**
+     * 首頁進入點：依序初始化輪播、站台設定、分類與精選商品。
+     */
     function initHomePage() {
         setupHomeCarousel();
         applySiteConfig();

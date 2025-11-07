@@ -4,10 +4,11 @@
 
 :root{
     /* 管理端專用樣式變數：側邊欄寬度、背景色與按鈕主題。 */
-    --admin-bg: #f3f6fb;
+    --admin-bg: #f2f5ff;
     --card-bg: #ffffff;
     --muted: #6c757d;
     --accent: #0d6efd;
+    --accent-soft: rgba(13, 110, 253, 0.08);
     --admin-navbar-height: 64px;
     --admin-sidebar-width-collapsed: 88px;
     --admin-sidebar-width-expanded: 312px;
@@ -21,6 +22,11 @@
     --border-radius: 0.75rem;
     --font-sans-serif: 'Poppins', 'Noto Sans TC', sans-serif;
     --background-color: var(--admin-bg);
+    --admin-gradient-start: #f4f6ff;
+    --admin-gradient-end: #f7f8fb;
+    --admin-highlight: rgba(74, 124, 89, 0.15);
+    --glass-bg: rgba(255, 255, 255, 0.86);
+    --glass-blur: saturate(180%) blur(18px);
 }
 
 body{
@@ -28,7 +34,7 @@ body{
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: var(--admin-bg);
+    background: var(--admin-gradient-end);
     font-family: var(--font-sans-serif);
     color: var(--text-color);
     line-height: 1.7;
@@ -38,6 +44,17 @@ body{
     --admin-main-gutter: 48px;
 }
 
+body::before{
+    /* 背景柔和光暈：營造管理端儀表板的層次感。 */
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: none;
+    z-index: -1;
+}
+
+/* 主內容容器：讓 main 彈性填滿剩餘高度。 */
 body > main{ flex: 1 0 auto; }
 
 h1, h2, h3, h4, h5, h6{
@@ -55,7 +72,107 @@ h1, h2, h3, h4, h5, h6{
     max-width: clamp(320px, 50vw, 560px); /* 左右集中：桌面約 560px，行動保持彈性 */
     pointer-events: none; /* 容器不吃事件，讓點擊落到 Alert 上 */
 }
+/* 單筆通知：保留互動讓管理者可關閉訊息。 */
 #sf-admin-notifications .alert{ pointer-events: auto; }
+
+/* 新訂單右下角提示容器 */
+#sf-admin-order-toasts {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 1400;
+    pointer-events: none;
+}
+
+/* 新訂單提示卡片：滑出顯示新增訂單摘要。 */
+.admin-order-toast {
+    min-width: 240px;
+    max-width: min(360px, 70vw);
+    background: rgba(212, 233, 219, 0.95);
+    border: 1px solid rgba(129, 178, 154, 0.9);
+    color: #234a2b;
+    border-radius: 14px;
+    padding: 14px 18px;
+    box-shadow: 0 18px 36px rgba(26, 43, 31, 0.18);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: auto;
+}
+
+/* 顯示狀態：淡入並歸零位移。 */
+.admin-order-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 關閉狀態：淡出並稍微下滑。 */
+.admin-order-toast.hide {
+    opacity: 0;
+    transform: translateY(16px);
+}
+
+/* 提示圖示圓角徽章。 */
+.admin-order-toast-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(74, 124, 89, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+/* 主要訊息容器，允許文字換行。 */
+.admin-order-toast-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* 訊息標題：顯示訂單通知主旨。 */
+.admin-order-toast-title {
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: #214028;
+}
+
+/* 訊息內文：簡短描述訂單狀態。 */
+.admin-order-toast-message {
+    margin: 0 0 2px 0;
+    font-size: 0.95rem;
+    color: #2a4d34;
+}
+
+/* 附註文字：補充下單時間或備註。 */
+.admin-order-toast-sub {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #30563b;
+}
+
+/* 關閉按鈕：允許快速關閉提醒。 */
+.admin-order-toast-close {
+    border: none;
+    background: transparent;
+    color: rgba(33, 64, 40, 0.7);
+    font-size: 1rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+/* 關閉按鈕滑過：轉為深色提高辨識。 */
+.admin-order-toast-close:hover,
+.admin-order-toast-close:focus-visible {
+    color: rgba(33, 64, 40, 1);
+}
 
 /* 頂部導覽列：index.html 的固定管理端導覽，對應 admin.js。 */
 .navbar{
@@ -71,8 +188,10 @@ h1, h2, h3, h4, h5, h6{
     z-index: 1300;
 }
 
+/* 導覽列內部容器：讓左右項目垂直對齊。 */
 .navbar .container-fluid{ align-items: center; }
 
+/* 導覽列品牌與連結：維持白色字與平滑過渡。 */
 .navbar-brand,
 .nav-link{
     color: #fff !important;
@@ -80,6 +199,36 @@ h1, h2, h3, h4, h5, h6{
     transition: color 0.2s ease;
 }
 
+/* 管理端識別字樣：放置品牌文字與徽章。 */
+.brand-signature{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+
+/* 品牌徽章：載入 LOGO 圖示並帶入陰影。 */
+.brand-signature::before{
+    content: '';
+    display: inline-block;
+    width: 34px;
+    height: 34px;
+    margin-right: 0.5rem;
+    border-radius: 10px;
+    background-image: url("/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    box-shadow: 0 8px 20px rgba(12, 32, 18, 0.25);
+}
+
+/* 尊重減少動態的偏好設定：停用品牌徽章動畫。 */
+@media (prefers-reduced-motion: reduce){
+    .brand-signature::before{ animation: none; }
+}
+
+/* 導覽列互動：滑過與當前頁面稍微提亮。 */
 .nav-link:hover,
 .nav-link.active{ color: #e9ecef !important; }
 
@@ -91,11 +240,13 @@ h1, h2, h3, h4, h5, h6{
     transition: all 0.3s ease;
 }
 
+/* 主要按鈕：採用品牌強調色並移除邊框。 */
 .btn-primary{
     background-color: var(--accent);
     border: none;
 }
 
+/* 主要按鈕滑過：稍微提亮並給予陰影回饋。 */
 .btn-primary:hover{
     background-color: var(--secondary-color);
     transform: translateY(-2px);
@@ -125,8 +276,9 @@ h1, h2, h3, h4, h5, h6{
     transition: all 0.3s ease;
 }
 
+/* 卡片滑過：僅調整陰影，避免位移造成浮動感。 */
 .card:hover{
-    transform: translateY(-5px);
+    transform: none;
     box-shadow: var(--shadow-hover);
 }
 /* 桌面模式展開側邊欄 (由 admin.js 切換)。 */
@@ -139,6 +291,7 @@ body.admin-sidebar-overlay{
     --admin-sidebar-width: 0px;
 }
 
+/* 再次定義導覽列層級以確保壓過其他元素。 */
 .navbar{
     z-index: 1300;
 }
@@ -161,13 +314,15 @@ body .main-content{
         calc((100% - var(--admin-sidebar-width) - var(--admin-main-width)) / 2)
     );
     padding: 28px;
-    border-radius: 24px;
-    background: #ffffff;
-    box-shadow: 0 18px 40px rgba(15,23,42,0.06);
+    border-radius: 26px;
+    background: var(--glass-bg);
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
+    backdrop-filter: var(--glass-blur);
     transition: margin-left .24s ease, width .24s ease;
     min-height: calc(100vh - var(--admin-navbar-height) - 56px);
 }
 
+/* 側欄覆蓋模式下調整主內容寬度與邊距。 */
 body.admin-sidebar-overlay .main-content{
     --admin-main-width: calc(100% - 32px);
     --admin-main-gutter: 16px;
@@ -175,8 +330,9 @@ body.admin-sidebar-overlay .main-content{
     margin-left: 16px;
     width: calc(100% - 32px);
     padding: 20px;
-    border-radius: 16px;
-    box-shadow: 0 14px 30px rgba(15,23,42,0.08);
+    border-radius: 20px;
+    backdrop-filter: none;
+    box-shadow: 0 14px 32px rgba(15,23,42,0.12);
 }
 
 /* 行動版展開側欄時禁止背景滾動。 */
@@ -186,9 +342,12 @@ body.admin-menu-open{ overflow: hidden; }
 #product-search{ max-width: 420px; }
 
 /* 主內容分頁：由 admin.js 控制的切換區塊。 */
+/* 管理分頁預設隱藏並套用淡入動畫。 */
 .admin-section{ display: none; animation: fadeIn 0.4s ease-in-out; }
+/* 被 admin.js 指定為 active 時顯示區塊。 */
 .admin-section.active{ display: block; }
 
+/* 切換分頁時的淡入動畫。 */
 @keyframes fadeIn{
     from{ opacity: 0; transform: translateY(15px); }
     to{ opacity: 1; transform: translateY(0); }
@@ -200,18 +359,18 @@ body.admin-menu-open{ overflow: hidden; }
 
 /* 管理首頁資料卡：儀表板右上角的管理者資訊。 */
 .admin-profile-card{
-    border: 1px solid #d6dce5;
-    border-radius: 1rem;
+    border: 1px solid rgba(13, 110, 253, 0.08);
+    border-radius: 1.25rem;
     background: #ffffff;
-    box-shadow: none;
-    padding: 1.5rem 1.75rem;
+    box-shadow: 0 22px 44px rgba(15, 23, 42, 0.08);
+    padding: 1.8rem 2rem;
 }
 /* 管理者頭像縮寫徽章。 */
 .admin-profile-avatar{
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: rgba(13,110,253,0.12);
+    width: 60px;
+    height: 60px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(13,110,253,0.14), rgba(13,110,253,0.32));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -219,6 +378,8 @@ body.admin-menu-open{ overflow: hidden; }
     color: #0d6efd;
     letter-spacing: 1px;
 }
+
+/* 管理者資訊欄位：垂直排列細節與標籤。 */
 .admin-profile-meta{ display: flex; flex-direction: column; gap: .35rem; }
 .admin-profile-meta-row{ display: flex; align-items: center; justify-content: space-between; }
 .admin-profile-meta-label{ font-size: .8rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #61708a; }
@@ -232,11 +393,11 @@ body.admin-menu-open{ overflow: hidden; }
 }
 /* 單張統計卡片：顯示訂單數、營收等指標。 */
 .admin-stat-card{
-    border-radius: 0.85rem;
-    background: #f4f6fb;
-    border: 1px solid #d6e0f5;
-    padding: 1rem;
-    box-shadow: none;
+    border-radius: 1rem;
+    background: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    padding: 1.2rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
     text-align: center;
     min-height: 120px;
     display: flex;
@@ -250,17 +411,18 @@ body.admin-menu-open{ overflow: hidden; }
 
 /* 常用捷徑卡片：快速連結到商品、訂單管理。 */
 .admin-quick-link{
-    border: 1px solid rgba(148,163,184,0.45);
-    border-radius: 0.9rem;
-    padding: 1.25rem 1.1rem;
-    min-height: 180px;
-    box-shadow: none;
+    border: 1px solid rgba(148,163,184,0.22);
+    border-radius: 1rem;
+    padding: 1.4rem 1.2rem;
+    min-height: 200px;
+    box-shadow: 0 20px 32px rgba(15,23,42,0.08);
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
     justify-content: space-between;
     background: #ffffff;
 }
+/* 捷徑標題：呈現卡片名稱。 */
 .admin-quick-title{ font-weight: 700; margin-bottom: .35rem; }
 
 /* 儀表板底部捷徑分布。 */
@@ -270,7 +432,36 @@ body.admin-menu-open{ overflow: hidden; }
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+/* 捷徑卡片內按鈕：保持原始寬度以利擺放。 */
 .admin-quick-link .btn{ width: auto; }
+
+/* 捷徑主要按鈕：使用亮面漸層凸顯 CTA。 */
+.admin-quick-link .btn.btn-primary{
+    background: linear-gradient(135deg, var(--accent) 0%, #3b82f6 100%);
+    box-shadow: 0 16px 28px rgba(37, 99, 235, 0.18);
+}
+
+/* 捷徑次要按鈕：保留外框風格並與主題色調一致。 */
+.admin-quick-link .btn.btn-outline-primary{
+    /* 使用較柔和的主題色並保留2px邊框以強調按鈕輪廓 */
+    border-width: 2px;
+    border-style: solid;
+    border-color: rgba(37,99,235,0.16); /* 與主色調配合但不刺眼 */
+    color: var(--accent); /* 使用變數以利全域調整 */
+    background: transparent;
+    padding: 0.56rem 1rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+    transition: background 0.18s ease, color 0.18s ease, transform 0.14s ease, box-shadow 0.18s ease;
+}
+
+/* hover 狀態採微弱填色並提升陰影，hover 後轉為淺色填滿以突出 CTA */
+.admin-quick-link .btn.btn-outline-primary:hover{
+    background: linear-gradient(135deg, rgba(59,130,246,0.10), rgba(74,124,89,0.04));
+    color: #ffffff; /* 與主按鈕一致的白字，利於辨識 */
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(37,99,235,0.12);
+    border-color: rgba(59,130,246,0.6);
+}
 
 /* 導覽列漢堡按鈕：id=admin-menu-button，與 admin.js 連動。 */
 .navbar-hamburger{
@@ -288,6 +479,7 @@ body.admin-menu-open{ overflow: hidden; }
     margin-left: 8px;
 }
 
+/* 漢堡線條：同步過渡以顯示開合效果。 */
 .navbar-hamburger span{
     display: block;
     width: 20px;
@@ -313,16 +505,19 @@ body.admin-menu-open{ overflow: hidden; }
     z-index: 1100;
 }
 
+/* 桌面展開時側欄放大並加入陰影。 */
 body.admin-sidebar-expanded .admin-sidebar{
     width: var(--admin-sidebar-width-expanded);
     box-shadow: 18px 0 48px rgba(15,23,42,0.16);
 }
 
+/* 縮小模式下保留最小寬度。 */
 body.admin-sidebar-collapsed .admin-sidebar{
     width: var(--admin-sidebar-width-collapsed);
 }
 
 /* 行動版隱藏側欄：等待漢堡按鈕打開。 */
+/* 行動版覆蓋模式預設收起側欄。 */
 body.admin-sidebar-overlay .admin-sidebar{
     top: 0;
     width: min(82vw, var(--admin-sidebar-width-expanded));
@@ -331,12 +526,14 @@ body.admin-sidebar-overlay .admin-sidebar{
 }
 
 /* 行動版展開側欄：顯示完整功能表。 */
+/* 行動版展開時將側欄推入畫面。 */
 body.admin-sidebar-overlay.admin-sidebar-expanded .admin-sidebar{
     transform: translateX(0);
     box-shadow: 18px 0 40px rgba(15,23,42,0.2);
 }
 
 
+/* 鍵盤操作聚焦時顯示白色框線。 */
 .navbar-hamburger:focus-visible{
     outline: 2px solid rgba(255,255,255,0.65);
     outline-offset: 2px;
@@ -375,6 +572,7 @@ body.admin-sidebar-collapsed .admin-sidebar-scroll{
     padding-inline: 6px;
 }
 
+/* 側欄區塊群組：分隔功能分類。 */
 .admin-sidebar-section{
     display: flex;
     flex-direction: column;
@@ -398,6 +596,7 @@ body.admin-sidebar-collapsed .admin-sidebar-link{
     min-height: 88px;
 }
 
+/* 縮小模式下放大圖示以維持清晰度。 */
 body.admin-sidebar-collapsed .admin-sidebar-link .admin-sidebar-icon{
     font-size: 1.32rem;
     margin: 0;
@@ -457,17 +656,21 @@ body.admin-sidebar-expanded .admin-sidebar-text{
 }
 
 
+/* 選取狀態下的文字改為主題藍色。 */
 .admin-sidebar-link.active .admin-sidebar-text{ color: #0d6efd; }
 
+/* 展開模式下增加側欄項目左右間距。 */
 body.admin-sidebar-expanded:not(.admin-sidebar-overlay) .admin-sidebar-link{
     padding: 11px 18px;
 }
 
+/* 展開模式下側欄底部操作區使用相同間距。 */
 body.admin-sidebar-expanded:not(.admin-sidebar-overlay) .admin-sidebar-actions{
     padding-inline: 18px;
 }
 
 
+/* 滑過或聚焦側欄項目時的凸顯效果。 */
 .admin-sidebar-link:hover,
 .admin-sidebar-link:focus{
     background: rgba(37,99,235,0.12);
@@ -475,17 +678,20 @@ body.admin-sidebar-expanded:not(.admin-sidebar-overlay) .admin-sidebar-actions{
     transform: translateX(2px);
 }
 
+/* 縮小側欄的 hover 狀態：移除位移僅保留背景強調。 */
 body.admin-sidebar-collapsed .admin-sidebar-link:hover,
 body.admin-sidebar-collapsed .admin-sidebar-link:focus{
     transform: none;
     background: rgba(37,99,235,0.12);
 }
 
+/* 縮小模式下 hover 時同步調整文字顏色。 */
 body.admin-sidebar-collapsed .admin-sidebar-link:hover .admin-sidebar-text,
 body.admin-sidebar-collapsed .admin-sidebar-link:focus .admin-sidebar-text{
     color: #0d6efd;
 }
 
+/* 滑過項目時也同步修改圖示顏色。 */
 .admin-sidebar-link:hover .admin-sidebar-icon,
 .admin-sidebar-link:focus .admin-sidebar-icon{
     color: #0d6efd;
@@ -498,17 +704,21 @@ body.admin-sidebar-collapsed .admin-sidebar-link:focus .admin-sidebar-text{
     box-shadow: inset 0 0 0 1px rgba(13,110,253,0.28);
 }
 
+/* 縮小模式下的選取狀態。 */
 body.admin-sidebar-collapsed .admin-sidebar-link.active{
     background: rgba(37,99,235,0.16);
     box-shadow: none;
 }
 
+/* 選取狀態文字顏色與主題一致。 */
 body.admin-sidebar-collapsed .admin-sidebar-link.active .admin-sidebar-text{
     color: #0d6efd;
 }
 
+/* 同步調整圖示顏色以保持一致。 */
 .admin-sidebar-link.active .admin-sidebar-icon{ color: #0d6efd; }
 
+/* 鍵盤焦點樣式，確保可見性。 */
 .admin-sidebar-link:focus-visible{
     outline: 2px solid rgba(13,110,253,0.45);
     outline-offset: 2px;
@@ -534,25 +744,41 @@ body.admin-sidebar-overlay .admin-sidebar-backdrop{
 /* 商品圖片檢視視窗：商品管理頁面的檢視功能 (admin/js/products.js)。 */
 #imageViewModal .modal-body{ padding: 0; background: #fff; }
 
+/* Modal 對話框寬度：保證圖片有足夠顯示空間。 */
 #imageViewModal .modal-dialog{ max-width: 920px; margin: 1.2rem auto; }
+/* Modal 外層內容：套用白底與圓角。 */
 #imageViewModal .modal-content{ background: #fff; border-radius: 6px; overflow: visible; }
 
 /* 圖片檢視器的版面配置 */
+ /* Viewer 主容器：讓主圖與側欄維持並排。 */
  #imageViewModal .image-viewer .iv-wrapper{ display:flex; align-items:stretch; min-height:48vh; max-width:820px; margin: 0 auto; }
+ /* Viewer 底色統一為白色。 */
  #imageViewModal .image-viewer{ background: #fff; }
+ /* 主圖區：撐滿剩餘空間並垂直置中。 */
  #imageViewModal .image-viewer .iv-main{ flex: 1 1 auto; display:flex; align-items:stretch; justify-content:center; background: #fff; flex-direction:column; }
+ /* 主圖包裹層：限制高度並置中圖片。 */
  #imageViewModal .image-viewer .iv-main-img-wrap{ width:100%; max-height:60vh; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#fff; padding-bottom:8px; position:relative; }
+ /* 主圖：等比例縮放不裁切。 */
  #imageViewModal .image-viewer .iv-main img{ width:100%; height:auto; max-height:60vh; object-fit:contain; display:block; background:#fff; }
+ /* 側邊縮圖欄寬度與置中。 */
  #imageViewModal .image-viewer .iv-sidebar{ width: 90px; background: transparent; border-left: 0; padding: 12px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+ /* 縮圖控制列：額外間距。 */
  #imageViewModal .image-viewer .iv-controls{ margin-top:4px; }
+ /* 縮圖容器：水平排列並置中。 */
  #imageViewModal .iv-thumbs-wrapper{ display:flex; align-items:center; gap:8px; position:relative; margin: 0 auto; }
  /* 讓縮圖區域呈現與主圖寬度一致的預覽，其餘縮圖保留在文件物件模型中以供快速切換但不顯示。 */
  /* 主圖下方的縮圖列：程式會為要顯示的縮圖加上 .visible 標記。 */
+ /* 縮圖列：對齊主圖寬度並留出間距。 */
  #imageViewModal .image-viewer .iv-thumbs{ margin-top:8px; width:100%; display:flex; justify-content:center; overflow:hidden; padding:6px 12px; gap:8px; }
+ /* 自訂縮圖捲動條高度。 */
  #imageViewModal .image-viewer .iv-thumbs::-webkit-scrollbar{ height:8px; }
+ /* 單顆縮圖：預設隱藏待程式控制顯示。 */
  #imageViewModal .image-viewer .iv-thumbs .iv-thumb{ display:none; width:72px; height:72px; border-radius:6px; overflow:hidden; cursor:pointer; border:2px solid transparent; flex: 0 0 auto; }
+ /* 縮圖內的圖片填滿容器。 */
  #imageViewModal .image-viewer .iv-thumbs .iv-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+ /* .visible 標記讓縮圖顯示。 */
  #imageViewModal .image-viewer .iv-thumbs .iv-thumb.visible{ display:inline-block; }
+ /* 當前縮圖：使用主色描邊。 */
  #imageViewModal .image-viewer .iv-thumbs .iv-thumb.active{ border-color: var(--accent); }
 
 /* 預設顯示最多 5 張縮圖，其餘保留在文件物件模型中以利未來擴充。 */
@@ -567,16 +793,19 @@ body.admin-sidebar-overlay .admin-sidebar-backdrop{
                 background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.06);
                 transition: none !important; cursor: pointer; border: 1px solid rgba(0,0,0,0.04);
             }
+            /* 箭頭內的圖示避免攔截滑鼠事件。 */
             #imageViewModal .iv-thumbs-wrapper .thumb-nav svg, #imageViewModal .iv-thumbs-wrapper .thumb-nav i{ pointer-events:none; }
             /* 滑過時轉為灰色並保持無動畫 */
             #imageViewModal .iv-thumbs-wrapper .thumb-nav:hover{
                 background: #efefef !important; color: #222 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.04) !important; transform: none !important;
             }
+ /* 停用狀態下降低透明度並移除互動。 */
  #imageViewModal .thumb-nav.disabled, #imageViewModal .thumb-nav:disabled{ opacity: 0.45; pointer-events: none; }
 
  /* 移除滑過或點選時的位移，以避免跳動感 */
  #imageViewModal .thumb-nav:hover, #imageViewModal .thumb-nav:active{ transform:none !important; }
 
+/* 900px 以下將圖片檢視器改為縱向排版。 */
 @media (max-width: 900px){
     .image-viewer .iv-wrapper{ flex-direction:column; }
     .image-viewer .iv-sidebar{ width:100%; flex-direction:row; gap:8px; padding:8px; overflow:auto; order:2; }
@@ -607,6 +836,7 @@ body.admin-sidebar-overlay .admin-sidebar-backdrop{
     .image-preview-item{ width: 72px; height: 72px; }
 }
 
+/* 768px 以下簡化捷徑卡片每列顯示數量。 */
 @media (max-width: 768px){
     .admin-quick-grid{ grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 }
@@ -628,10 +858,15 @@ input[type="file"]{ cursor: pointer; }
 
 /* 精選商品排序：網站設定頁面的拖拉操作。 */
 #site-featured-list .featured-row-item{ transition: background-color 0.18s ease, box-shadow 0.18s ease; }
+/* 被點選的精選商品卡片游標樣式。 */
 #site-featured-list .featured-selected-item{ cursor: grab; }
+/* 拖曳時更新游標顯示抓取。 */
 #site-featured-list .featured-selected-item:active{ cursor: grabbing; }
+/* 拖曳中的卡片降低不透明度並浮起。 */
 #site-featured-list .featured-dragging{ opacity: 0.65; cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.16); }
+/* 拖曳目標高亮顯示邊框。 */
 #site-featured-list .featured-drop-target{ border-color: var(--accent); box-shadow: 0 0 0 2px rgba(13,110,253,0.25); }
+/* 精選卡片的按鈕群保持同列排列。 */
 #site-featured-list .featured-row-item .btn-group{ flex-wrap: nowrap; }
 
 /* 站台設定佈局調整：表單欄位的排列方式。 */
@@ -660,9 +895,12 @@ input[type="file"]{ cursor: pointer; }
     align-items: start;
 }
 
+/* 優勢項目標籤字體加粗。 */
 .site-benefit-field .form-label{ font-weight: 600; }
+/* 保持欄位高度，提升輸入舒適度。 */
 .site-benefit-field .form-control{ min-height: 40px; }
 
+/* 優勢項目右側操作按鈕群。 */
 .site-benefit-actions{
     display: flex;
     gap: 8px;
@@ -672,18 +910,22 @@ input[type="file"]{ cursor: pointer; }
     grid-column: 4 / 5;
 }
 
+/* 保持操作按鈕寬度避免換行。 */
 .site-benefit-actions .btn{ white-space: nowrap; min-width: 58px; }
 
+/* 1200px 以下調整網格為兩欄配置。 */
 @media (max-width: 1200px){
     .site-benefit-grid{ grid-template-columns: repeat(2, minmax(200px, 1fr)); }
     .site-benefit-actions{ grid-column: 1 / -1; justify-content: flex-start; }
 }
 
+/* 768px 以下改為單欄並允許按鈕換行。 */
 @media (max-width: 768px){
     .site-benefit-grid{ grid-template-columns: minmax(220px, 1fr); }
     .site-benefit-actions{ flex-wrap: wrap; }
 }
 
+/* 精選列表外層捲動時保留 gutter，避免跳動。 */
 .site-featured-scroll{ scrollbar-gutter: stable both-edges; /* 讓精選列表滾動保持穩定。 */ }
 
 /* 精選商品選取器固定在列表頂端。 */
@@ -697,10 +939,13 @@ input[type="file"]{ cursor: pointer; }
     border: 1px solid #e5e7eb;
 }
 
+/* 精選商品選擇器維持一致高度。 */
 .site-featured-selector .form-select{ min-height: 42px; }
 /* 單一精選商品項目。 */
 .site-featured-item{ border-radius: 0.85rem; border: 1px solid #e5e7eb; box-shadow: none; }
+/* 精選項目內的按鈕群保持單行呈現。 */
 .site-featured-item .btn-group .btn{ white-space: nowrap; }
+/* 列表為空時的提示區域。 */
 .site-featured-empty{ padding: 12px 2px; }
 
 /* 網站頁尾預覽：即時顯示設定結果。 */
@@ -718,6 +963,7 @@ input[type="file"]{ cursor: pointer; }
     line-height: 1.6;
 }
 
+/* 尚未設定內容時的預覽樣式。 */
 .site-footer-preview.text-muted{
     background: #e9ecef;
     color: #6c757d !important;
@@ -746,6 +992,7 @@ input[type="file"]{ cursor: pointer; }
     border-color: var(--border-color);
 }
 
+/* 表頭欄位：統一底色與粗體字重。 */
 .table thead th{
     background-color: #f8f9fa;
     color: var(--text-color);
@@ -753,6 +1000,7 @@ input[type="file"]{ cursor: pointer; }
     border-bottom-width: 2px;
 }
 
+/* 資料列滑過：以淡灰底凸顯所在列。 */
 .table tbody tr:hover{
     background-color: #f1f3f5;
 }
@@ -787,6 +1035,7 @@ input[type="file"]{ cursor: pointer; }
     height: 100px;
 }
 
+/* 預覽圖片填滿容器並套用圓角陰影。 */
 .image-preview-item img{
     width: 100%;
     height: 100%;
@@ -826,7 +1075,7 @@ input[type="file"]{ cursor: pointer; }
     font-size: 1rem;
 }
 
-/* 單筆資訊標籤，例如價格與庫存。 */
+/* 單筆商品資訊欄位：強調價格、庫存等細節。 */
 #product-metadata .meta-item{
     background: rgba(255,255,255,0.92);
     padding: 0.5rem 0.9rem;
@@ -846,8 +1095,10 @@ input[type="file"]{ cursor: pointer; }
     margin-bottom: 0.35rem;
 }
 
-#product-introduction-wrapper{ max-width: 100%; /* 商品介紹容器滿版延伸。 */ }
+/* 商品介紹容器滿版延伸。 */
+#product-introduction-wrapper{ max-width: 100%; }
 
+/* 768px 以下調整商品資訊區排版。 */
 @media (max-width: 768px){
     /* 行動版商品資訊卡片縮排。 */
     #product-meta-card{ padding: 0.4rem; }
@@ -855,6 +1106,7 @@ input[type="file"]{ cursor: pointer; }
     #product-meta-card::before{ left: 10px; top: 10px; bottom: 10px; }
 }
 
+/* 992px 以上放大文字與內容寬度。 */
 @media (min-width: 992px){
     /* 桌面版放大商品詳情文字。 */
     #product-detail-container h1,
@@ -869,6 +1121,7 @@ input[type="file"]{ cursor: pointer; }
     #product-introduction-wrapper{ margin-left: 0; }
 }
 
+/* 1200px 以上進一步放大商品詳情。 */
 @media (min-width: 1200px){
     /* 大螢幕上額外放大商品詳情。 */
     #product-detail-container h1,
@@ -876,4 +1129,5 @@ input[type="file"]{ cursor: pointer; }
     .product-intro{ font-size: 1.12rem; max-width: 1300px; }
 }
 
+/* 商品資訊區全局字級微調，避免大螢幕時文字過小。 */
 #product-metadata{ font-size: 0.95rem; color: #495057; }

@@ -10,13 +10,11 @@ import model.OrderDetail;
 import model.Product;
 
 /**
- * 訂單與訂單明細的資料存取物件（DAO）。Customer.java
+ * 訂單與訂單明細的資料存取物件（DAO），統一封裝訂單建立、查詢與明細儲存邏輯。
  * 專責處理與訂單相關的所有資料庫操作。
  */
 public class OrderDAO {
-    /**
-     * 資料庫連線物件
-     */
+    /** 共用資料庫連線，採最小責任原則直接由外部管理生命週期 */
     private final Connection conn;
 
     /**
@@ -83,7 +81,7 @@ public class OrderDAO {
         } catch (SQLException e) {
             // 發生錯誤則回復交易
             conn.rollback();
-            throw e; // Re-throw the exception to notify the caller
+            throw e; // 例外重新拋出給呼叫端，由上層決定錯誤回應
         } finally {
             // 5. 恢復自動提交模式
             conn.setAutoCommit(true);
@@ -106,7 +104,7 @@ public class OrderDAO {
             }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    orders.add(new Order(
+            orders.add(new Order(
                             rs.getInt("idOrders"),
                             rs.getTimestamp("OrderDate"),
                             rs.getBigDecimal("TotalAmount"),

@@ -8,7 +8,8 @@
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-Avb2QiuDEEvB4bZJYdft2mNjVShBftLdPG8FJ0V7irTLQ8Uo0qcPxh4Plq7G5tGm0rU+1SPhVotteLpBERwTkw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 	<link rel="stylesheet" href="/frontend/client/css/client.css">
-	<link rel="icon" href="data:,">
+	<link rel="stylesheet" href="/frontend/client/css/client.mobile.css" media="(max-width: 991.98px)">
+	<link rel="icon" type="image/png" href="/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png">
 	<style>
 		.member-avatar {
 			width: 128px;
@@ -33,6 +34,7 @@
 			height: 100%;
 			object-fit: contain;
 			object-position: center;
+			border-radius: 50%;
 			display: none;
 		}
 
@@ -103,32 +105,72 @@
 		}
 
 		.member-tabs .nav-link {
-			border: none;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.4rem;
+			border: 1px solid rgba(74, 124, 89, 0.28);
 			border-radius: 999px;
 			padding: 0.65rem 1.6rem;
-			background-color: rgba(74, 124, 89, 0.10);
-			color: #2f3a32;
+			background: rgba(248, 250, 248, 0.92);
+			color: var(--primary-600) !important;
 			font-weight: 600;
-			transition: background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease;
+			letter-spacing: 0.02em;
+			transition: background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+			position: relative;
+			overflow: hidden;
 		}
 
 		.member-tabs .nav-link:hover {
-			background-color: rgba(74, 124, 89, 0.24);
-			color: #1f2721;
+			background: #ffffff;
+			color: var(--primary-700) !important;
+			border-color: rgba(74, 124, 89, 0.45);
+			box-shadow: 0 10px 22px rgba(31, 44, 36, 0.14);
 		}
 
 		.member-tabs .nav-link:focus-visible {
-			background-color: rgba(74, 124, 89, 0.24);
-			color: #1f2721;
-			outline: 2px solid rgba(32, 45, 35, 0.4);
-			outline-offset: 2px;
+			background: #ffffff;
+			color: var(--primary-700) !important;
+			outline: 2px solid rgba(74, 124, 89, 0.45);
+			outline-offset: 3px;
+			box-shadow: 0 10px 22px rgba(31, 44, 36, 0.18);
 		}
 
-		.member-tabs .nav-link:hover { box-shadow: 0 8px 20px rgba(15,23,42,0.10); transform: translateY(-1px); }
+		.member-tabs .nav-link[href],
+		.member-tabs .nav-link:focus-visible { text-decoration: none; }
+
+		.member-tabs .nav-link:not(.active) {
+			opacity: 0.9;
+			box-shadow: 0 6px 16px rgba(31, 44, 36, 0.08);
+		}
+
 		.member-tabs .nav-link.active {
-			background: linear-gradient(90deg, var(--primary-600), var(--secondary-color));
-			color: #fff;
-			box-shadow: 0 12px 24px rgba(15,23,42,0.16);
+			background: linear-gradient(120deg, var(--primary-600), var(--secondary-color));
+			color: #fff !important;
+			border-color: transparent;
+			box-shadow: 0 16px 32px rgba(74, 124, 89, 0.32);
+			transform: translateY(-1px);
+		}
+
+		.member-tabs .nav-link::after {
+			content: "";
+			position: absolute;
+			left: 28px;
+			right: 28px;
+			bottom: -10px;
+			height: 6px;
+			border-radius: 999px;
+			background: rgba(74, 124, 89, 0.2);
+			opacity: 0;
+			transform: translateY(4px);
+			transition: opacity .2s ease, transform .2s ease;
+			pointer-events: none;
+		}
+
+		.member-tabs .nav-link.active::after {
+			background: rgba(255, 255, 255, 0.85);
+			opacity: 1;
+			transform: translateY(0);
 		}
 
 		.member-card,
@@ -183,37 +225,100 @@
 
 <nav class="navbar navbar-expand-lg navbar-dark">
 	<div class="container-fluid">
-		<div class="d-flex align-items-center gap-3">
-			<button class="client-navbar-hamburger" id="client-menu-button" type="button" aria-label="開啟選單" aria-controls="client-sidebar" aria-expanded="false">
-				<span></span>
-				<span></span>
-				<span></span>
-			</button>
-			<a class="navbar-brand" href="index.html" aria-label="回到首頁">SnackForest</a>
-		</div>
-		<div class="collapse navbar-collapse" id="navbarNav"></div>
-		<div class="ms-auto d-flex align-items-center">
-			<a href="member.html" class="btn btn-outline-light btn-sm d-inline-flex align-items-center" aria-label="會員中心">
-				<i class="fa-solid fa-user me-2" aria-hidden="true"></i>
-				<span>會員中心</span>
-			</a>
+		<div class="client-topbar-container">
+			<div class="client-topbar-left">
+				<button class="client-navbar-hamburger" id="client-menu-button" type="button" aria-label="開啟選單" aria-controls="client-sidebar" aria-expanded="false">
+					<span></span>
+					<span></span>
+					<span></span>
+				</button>
+				<a class="navbar-brand brand-signature" href="index.html" aria-label="回到首頁" title="回到 SnackForest 首頁">SnackForest</a>
+				<button type="button" class="client-topbar-promo" id="client-topbar-promo" aria-label="查看最新優惠" hidden>
+					<i class="fa-solid fa-sparkles" aria-hidden="true"></i>
+					<span data-promo-text aria-live="polite">全館滿 NT$999 免運</span>
+				</button>
+			</div>
+			<div class="client-topbar-center">
+				<form id="client-nav-search" class="client-nav-search" role="search" aria-label="站內搜尋">
+					<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+					<label class="visually-hidden" for="client-nav-search-input">搜尋商品</label>
+					<input id="client-nav-search-input" type="search" name="keyword" placeholder="搜尋熱銷或輸入關鍵字" autocomplete="off" minlength="1">
+					<button type="submit" aria-label="開始搜尋">
+						<i class="fa-solid fa-arrow-right"></i>
+					</button>
+					<div class="client-nav-search-results" id="client-nav-search-results" role="listbox" hidden>
+						<div class="client-nav-search-empty" data-empty>找不到符合的商品</div>
+						<div data-results></div>
+					</div>
+				</form>
+			</div>
+			<div class="client-topbar-right">
+				<div class="client-support" id="client-support">
+					<button type="button" class="btn btn-outline-light btn-sm client-support-btn d-inline-flex align-items-center" id="client-support-button" aria-expanded="false" aria-controls="client-support-panel">
+						<i class="fa-solid fa-headset me-2" aria-hidden="true"></i>
+						<span>客服支援</span>
+					</button>
+					<div class="client-support-panel" id="client-support-panel" role="dialog" aria-label="客服支援選項" hidden>
+						<h6 class="fw-semibold mb-2">需要協助嗎？</h6>
+						<a href="mailto:snackforest1688@gmail.com" class="client-support-link" data-support-email>
+							<i class="fa-solid fa-envelope" aria-hidden="true"></i>
+							<span>snackforest1688@gmail.com</span>
+						</a>
+						<a href="tel:0909585898" class="client-support-link" data-support-phone>
+							<i class="fa-solid fa-phone" aria-hidden="true"></i>
+							<span>0909-585-898</span>
+						</a>
+						<a href="#" class="client-support-link" data-support-chat hidden>
+							<i class="fa-solid fa-comments" aria-hidden="true"></i>
+							<span>線上客服</span>
+						</a>
+						<div class="client-support-hours text-muted" data-support-hours>週一至週五 09:00 - 18:00</div>
+					</div>
+				</div>
+				<div class="client-nav-cart" id="client-nav-cart">
+					<button type="button" class="btn btn-outline-light btn-sm d-inline-flex align-items-center" id="client-cart-button" aria-expanded="false" aria-controls="client-cart-panel">
+						<i class="fa-solid fa-cart-shopping me-2" aria-hidden="true"></i>
+						<span>購物車</span>
+						<span class="client-nav-cart-badge badge rounded-pill bg-danger" data-cart-badge>0</span>
+					</button>
+					<div class="client-nav-cart-panel" id="client-cart-panel" role="dialog" aria-label="購物車快覽" hidden>
+						<div class="client-nav-cart-header">
+							<span>購物車快覽</span>
+							<button type="button" class="btn btn-link btn-sm p-0" data-nav-cart-action="view-cart">查看全部</button>
+						</div>
+						<div class="client-nav-cart-items" data-cart-items></div>
+						<div class="client-nav-cart-empty" data-cart-empty>購物車還是空的，去逛逛吧！</div>
+						<div class="client-nav-cart-total" data-cart-total hidden>
+							<span>小計</span>
+							<span class="amount" data-cart-total-amount>NT$0</span>
+						</div>
+						<div class="client-nav-cart-footer">
+							<a href="cart.html" class="btn btn-success btn-sm w-100">前往結帳</a>
+						</div>
+					</div>
+				</div>
+				<a href="member.html" class="btn btn-sm client-member-btn d-inline-flex align-items-center" aria-label="會員中心">
+					<i class="fa-solid fa-user-check me-2" aria-hidden="true"></i>
+					<span>會員中心</span>
+				</a>
+			</div>
 		</div>
 	</div>
 </nav>
 
+
 <aside class="client-sidebar" id="client-sidebar" aria-hidden="false" tabindex="-1" aria-label="客戶端側邊選單">
-	<div class="client-sidebar-header">
-		<div class="client-sidebar-brand">
-			<span class="client-sidebar-logo" aria-hidden="true">
-				<img class="client-sidebar-logo-img" src="" alt="" loading="lazy">
-				<span class="client-sidebar-logo-initials">SF</span>
+	<div class="client-sidebar-profile" data-client-sidebar-profile>
+		<a class="client-sidebar-link client-sidebar-profile-link" href="member.html" data-client-menu-close data-client-profile-link aria-label="會員中心">
+			<span class="client-sidebar-avatar" data-client-profile-avatar aria-hidden="true">
+				<img class="client-sidebar-avatar-img" data-client-profile-avatar-img src="" alt="" loading="lazy">
+				<span class="client-sidebar-avatar-initial" data-client-profile-avatar-initial>會</span>
 			</span>
-			<div>
-				<span class="client-sidebar-title">SnackForest</span>
-				<span class="client-sidebar-subtitle">探索零食世界</span>
-			</div>
-		</div>
-		<button type="button" class="btn-close client-sidebar-close" aria-label="關閉選單" data-client-menu-close></button>
+			<span class="client-sidebar-profile-text">
+				<span class="client-sidebar-profile-primary" data-client-profile-primary>歡迎登入會員</span>
+				<span class="client-sidebar-profile-secondary" data-client-profile-secondary>會員中心</span>
+			</span>
+		</a>
 	</div>
 	<nav class="client-sidebar-nav" aria-label="客戶端主選單">
 		<a class="client-sidebar-link" href="index.html" data-client-menu-close aria-label="首頁">
@@ -228,10 +333,6 @@
 			<i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
 			<span class="client-sidebar-text">購物車</span>
 			<span class="client-sidebar-badge badge rounded-pill bg-danger" data-cart-badge>0</span>
-		</a>
-		<a class="client-sidebar-link" href="member.html" data-client-menu-close aria-label="會員中心">
-			<i class="fa-solid fa-user" aria-hidden="true"></i>
-			<span class="client-sidebar-text">會員中心</span>
 		</a>
 	</nav>
 	<div class="client-sidebar-footer">
@@ -427,9 +528,13 @@
 	const filterKeyword = document.getElementById('filter-keyword');
 	const filterStatus = document.getElementById('filter-status');
 	const filterRange = document.getElementById('filter-range');
+	const ordersTab = document.getElementById('orders-tab');
+	const ordersPanel = document.getElementById('orders-panel');
 
 	let currentProfile = null;
 	let allOrders = [];
+	let hasLoadedOrders = false;
+	let isLoadingOrders = false;
 	let visibleCount = 10;
 	let keywordValue = '';
 	let statusValue = '';
@@ -533,6 +638,38 @@
 		}
 		if (displayName && displayName !== storedCustomerName) {
 			localStorage.setItem('customerName', displayName);
+		} else if (!displayName) {
+			localStorage.removeItem('customerName');
+		}
+		try {
+			if (displayName) {
+				localStorage.setItem('sf-client-name', displayName);
+			} else {
+				localStorage.removeItem('sf-client-name');
+			}
+			if (cid) {
+				localStorage.setItem('sf-client-id', cid);
+			} else {
+				localStorage.removeItem('sf-client-id');
+			}
+			if (avatarUrl) {
+				localStorage.setItem('sf-client-avatar', avatarUrl);
+			} else {
+				localStorage.removeItem('sf-client-avatar');
+			}
+		} catch (_) {
+			// ignore storage failures
+		}
+		try {
+			window.dispatchEvent(new CustomEvent('sf:profile-updated', {
+				detail: {
+					name: displayName || '',
+					avatarUrl: avatarUrl || '',
+					customerId: cid || ''
+				}
+			}));
+		} catch (_) {
+			// ignore event dispatch errors
 		}
 	}
 
@@ -839,12 +976,21 @@
 		renderOrders(currentFiltered());
 	}
 
-	async function loadOrders() {
+	async function loadOrders(options = {}) {
+		if (isLoadingOrders) return;
+		const force = options && options.force === true;
+		if (!force && hasLoadedOrders) {
+			applyFilters(false);
+			return;
+		}
+		isLoadingOrders = true;
 		const container = document.getElementById('orders-container');
 		if (container) showLoadingSkeleton();
 		if (!window.api || typeof window.api.getOrders !== 'function') {
 			computeStats([]);
 			renderOrders([]);
+			isLoadingOrders = false;
+			hasLoadedOrders = false;
 			return;
 		}
 		try {
@@ -860,12 +1006,15 @@
 				return db - da;
 			});
 			allOrders = list;
+			hasLoadedOrders = true;
 			applyFilters(true);
 		} catch (err) {
 			console.error('載入訂單失敗', err);
 			if (container) container.innerHTML = `<div class="alert alert-danger">${err.message || '載入訂單失敗'}</div>`;
 			computeStats([]);
+			hasLoadedOrders = false;
 		}
+		isLoadingOrders = false;
 	}
 
 	if (filterKeyword) {
@@ -890,7 +1039,7 @@
 	}
 
 	if (btnRefresh) {
-		btnRefresh.addEventListener('click', () => loadOrders());
+		btnRefresh.addEventListener('click', () => loadOrders({ force: true }));
 	}
 
 	if (btnShowMore) {
@@ -900,10 +1049,24 @@
 		});
 	}
 
+	if (ordersTab) {
+		ordersTab.addEventListener('shown.bs.tab', () => {
+			loadOrders();
+		});
+	}
+
 	document.addEventListener('DOMContentLoaded', () => {
 		applyProfile({ customerId: cid, displayName: storedCustomerName });
 		loadProfile();
-		loadOrders();
+		if (window.location.hash === '#orders') {
+			if (ordersTab && window.bootstrap?.Tab) {
+				window.bootstrap.Tab.getOrCreateInstance(ordersTab).show();
+			} else {
+				ordersTab?.classList.add('active');
+				ordersPanel?.classList.add('show', 'active');
+				loadOrders({ force: true });
+			}
+		}
 	}, { once: true });
 })();
 </script>

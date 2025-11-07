@@ -1,13 +1,18 @@
+//
+//  輪播管理模組：提供載入、儲存、編輯器渲染與本機暫存流程。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { config, state, images } = Admin;
     const { escapeAttr, deepClone } = Admin.utils;
     const carousel = Admin.carousel || {};
 
+    // 透過 deepClone 避免直接操作 state.carousel.slides。
     function cloneSlides(slides) {
         return deepClone(Array.isArray(slides) ? slides : [], []);
     }
 
+    // 將輪播資料正規化，必要時過濾沒有圖片的項目。
     function sanitizeSlides(slides, options) {
         const dropEmptyImage = options && options.dropEmptyImage === true;
         const source = Array.isArray(slides) ? slides : [];
@@ -25,6 +30,7 @@
         return cleaned;
     }
 
+    // 將編輯內容暫存到 localStorage，避免網路不穩導致資料流失。
     function persistLocal(slides) {
         try {
             const payload = sanitizeSlides(slides, { dropEmptyImage: false });
@@ -34,15 +40,27 @@
         }
     }
 
+    /**
+     * 取得輪播資料的深拷貝，避免直接修改 state。
+     * @returns {Array}
+     */
     carousel.getSlidesClone = function () {
         return cloneSlides(state.carousel.slides);
     };
 
+    /**
+     * 標記輪播編輯器是否有未儲存變更。
+     * @param {boolean} dirty 是否有變更。
+     */
     carousel.setDirty = function (dirty) {
         state.carousel.dirty = !!dirty;
         carousel.updateSaveButtonState();
     };
 
+    /**
+     * 控制輪播操作是否忙碌，用於阻擋重複操作。
+     * @param {boolean} busy 是否忙碌。
+     */
     carousel.setBusy = function (busy) {
         state.carousel.busy = !!busy;
         const addBtn = document.getElementById('carousel-add-btn');
@@ -50,6 +68,9 @@
         carousel.updateSaveButtonState();
     };
 
+    /**
+     * 更新儲存按鈕的文字與狀態，顯示儲存中或未存變更。
+     */
     carousel.updateSaveButtonState = function () {
         const saveBtn = document.getElementById('carousel-save-btn');
         if (!saveBtn) return;
@@ -66,6 +87,11 @@
         saveBtn.disabled = false;
     };
 
+    /**
+     * 載入輪播資料，失敗時改讀本機暫存。
+     * @param {{force?: boolean}} [options]
+     * @returns {Promise<Array>}
+     */
     carousel.loadSlides = async function (options) {
         const force = !!(options && options.force);
         if (!force && state.carousel.slides.length && !state.carousel.loading) {
@@ -102,6 +128,17 @@
         return cloned;
     };
 
+    //
+    //  儲存輪播設定：
+    //    - 先 sanitize 移除空圖片。
+    //    - 成功時同步事件與本機暫存。
+    //    - 失敗時保留原資料並提示使用者。
+    //
+    /**
+     * 儲存輪播設定，成功後同步事件並更新本機暫存。
+     * @param {Array} slides 目前編輯器的資料。
+     * @returns {Promise<boolean>} 是否儲存成功。
+     */
     carousel.saveSlides = async function (slides) {
         const sanitized = sanitizeSlides(slides, { dropEmptyImage: true });
         const original = cloneSlides(slides);
@@ -138,6 +175,10 @@
         return success;
     };
 
+    /**
+     * 渲染輪播編輯器 UI 並綁定互動事件。
+     * @param {Array} [slides] 指定要顯示的資料。
+     */
     carousel.renderEditor = function (slides) {
         const list = document.getElementById('carousel-editor-list');
         if (!list) return;
@@ -203,6 +244,10 @@
         carousel.updateSaveButtonState();
     };
 
+    /**
+     * 偵測輸入框變更後更新 state，若變更圖片欄位則同步預覽。
+     * @param {Event} event input 事件。
+     */
     carousel.handleInputChange = function (event) {
         const target = event.target;
         if (!target || !target.dataset) return;
@@ -221,6 +266,10 @@
         }
     };
 
+    /**
+     * 處理輪播編輯器內的按鈕事件（上移、下移、刪除、上傳）。
+     * @param {MouseEvent} event 點擊事件。
+     */
     carousel.handleListClick = function (event) {
         const button = event.target.closest('button[data-action]');
         if (!button) return;
@@ -250,6 +299,10 @@
         carousel.renderEditor(slides);
     };
 
+    /**
+     * 監聽隱藏的 file input，上傳完成後更新對應 slide。
+     * @param {Event} event change 事件。
+     */
     carousel.handleFileChange = async function (event) {
         const input = event.target;
         if (!input || input.type !== 'file') return;
@@ -286,6 +339,9 @@
         }
     };
 
+    /**
+     * 在編輯器尾端新增一筆空白輪播項目。
+     */
     carousel.addSlide = function () {
         const slides = carousel.getSlidesClone();
         slides.push({ imageUrl: '', title: '', text: '', link: '' });
@@ -294,11 +350,19 @@
         carousel.renderEditor(slides);
     };
 
+    /**
+     * 回傳編輯器內容，可選擇是否保留缺少圖片的項目。
+     * @param {{includeEmpty?: boolean}} [options]
+     * @returns {Array}
+     */
     carousel.collectEditorData = function (options) {
         const includeEmpty = options && options.includeEmpty === true;
         return sanitizeSlides(state.carousel.slides, { dropEmptyImage: !includeEmpty });
     };
 
+    /**
+     * 綁定輪播新增與儲存按鈕，並負責顯示結果通知。
+     */
     carousel.bindEditorButtons = function () {
         const addBtn = document.getElementById('carousel-add-btn');
         const saveBtn = document.getElementById('carousel-save-btn');

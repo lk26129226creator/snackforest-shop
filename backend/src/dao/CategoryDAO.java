@@ -13,6 +13,7 @@ import model.Category;
  * 商品分類資料存取物件（DAO）
  */
 public class CategoryDAO {
+    /** 共用資料庫連線，由外部注入以方便測試與資源管理 */
     private Connection conn;
 
     public CategoryDAO(Connection conn) {
@@ -22,7 +23,7 @@ public class CategoryDAO {
     /**
      * 查詢所有商品分類
      * @return 包含所有分類的 List
-     * @throws SQLException
+     * @throws SQLException 當資料庫連線或查詢失敗時拋出
      */
     public List<Category> findAll() throws SQLException {
         List<Category> category = new ArrayList<>();
@@ -42,7 +43,7 @@ public class CategoryDAO {
      * 新增商品分類
      * @param category 要新增的 Category 物件
      * @return 新增成功後生成的 ID，如果失敗則為 -1
-     * @throws SQLException
+     * @throws SQLException 寫入新分類時若與資料庫連線或欄位限制衝突會拋出
      */
     public int save(Category category) throws SQLException {
         // 首先嘗試只插入名稱並透過資料庫的 AUTO_INCREMENT 取得新主鍵
@@ -60,6 +61,7 @@ public class CategoryDAO {
         } catch (SQLException e) {
             // 若資料表沒有 AUTO_INCREMENT 或無法取得產生鍵，改為手動產生新的 id 再插入
             // 例如：Field 'idcategories' doesn't have a default value
+            // 這裡不再次拋出例外，改由回退流程處理以保持兼容舊版資料庫
         }
 
         // 回退方案：自行取得下一個 id 再插入（相容沒有 AUTO_INCREMENT 的資料表）
@@ -73,7 +75,7 @@ public class CategoryDAO {
                 return nextId;
             }
         }
-        return -1;
+        return -1; // 兩種策略皆失敗，回傳 -1 讓呼叫端得知未建立成功
     }
 
     /**
@@ -92,7 +94,7 @@ public class CategoryDAO {
      * 更新商品分類
      * @param category 要更新的 Category 物件
      * @return 更新是否成功
-     * @throws SQLException
+     * @throws SQLException 更新過程中若資料庫拒絕請求則拋出
      */
     public boolean update(Category category) throws SQLException {
         String sql = "UPDATE category SET categoryname = ? WHERE idcategories = ?";
@@ -108,7 +110,7 @@ public class CategoryDAO {
      * 刪除商品分類
      * @param id 要刪除的分類 ID
      * @return 刪除是否成功
-     * @throws SQLException
+     * @throws SQLException 執行刪除時若發生資料庫錯誤則拋出
      */
     public boolean delete(int id) throws SQLException {
         String sql = "DELETE FROM category WHERE idcategories = ?";

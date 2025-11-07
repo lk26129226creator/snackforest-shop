@@ -37,7 +37,7 @@ public class CustomerDAO {
      */
     private String generateSalt() {
         SecureRandom random = new SecureRandom();
-        byte[] salt = new byte[16]; // 16 bytes = 128 bits
+    byte[] salt = new byte[16]; // 16 位元組約等於 128 位元，滿足通用安全需求
         random.nextBytes(salt);
         return Base64.getEncoder().encodeToString(salt);
     }
@@ -65,19 +65,39 @@ public class CustomerDAO {
      * @throws SQLException 資料庫存取發生錯誤時拋出
      */
     public Customer findByAccountAndPassword(String account, String password) throws SQLException, NoSuchAlgorithmException {
-        String sql = "SELECT idCustomers, CustomerName, Account, PasswordHash, Salt FROM customers WHERE Account = ?";
+        String sql = "SELECT * FROM customers WHERE LOWER(Account) = LOWER(?) LIMIT 1";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, account);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    Customer customer = mapRowToCustomer(rs);
-                    // 驗證密碼
-                    String storedHash = customer.getPasswordHash();
-                    String storedSalt = customer.getSalt();
-                    String providedPasswordHash = hashPassword(password, storedSalt);
+                if (!rs.next()) {
+                    return null;
+                }
 
-                    if (storedHash.equals(providedPasswordHash)) {
-                        return customer;
+                // 優先使用新版 PasswordHash + Salt 欄位驗證
+                if (hasColumn(rs, "PasswordHash") && hasColumn(rs, "Salt")) {
+                    String storedHash = rs.getString("PasswordHash");
+                    String storedSalt = rs.getString("Salt");
+                    if (storedHash != null && storedSalt != null && !storedHash.isEmpty() && !storedSalt.isEmpty()) {
+                        String providedPasswordHash = hashPassword(password, storedSalt);
+                        if (storedHash.equals(providedPasswordHash)) {
+                            return mapRowToCustomer(rs);
+                        }
+                    }
+                }
+
+                // 回溯支援：處理舊版直接將明碼寫入 Password 欄位的資料
+                if (hasColumn(rs, "Password")) {
+                    String legacyPassword = rs.getString("Password");
+                    if (legacyPassword != null && legacyPassword.equals(password)) {
+                        return mapRowToCustomer(rs);
+                    }
+                }
+
+                // 回溯支援：歷史版本曾以 Phone 欄位作為登入驗證依據
+                if (hasColumn(rs, "Phone")) {
+                    String phonePassword = rs.getString("Phone");
+                    if (phonePassword != null && phonePassword.equals(password)) {
+                        return mapRowToCustomer(rs);
                     }
                 }
             }
@@ -90,7 +110,7 @@ public class CustomerDAO {
      * 適用於尚未建置雜湊密碼欄位的情境，直接用 customers.Phone 做比對。
      */
     public Customer findByAccountAndPhone(String account, String phone) throws SQLException {
-        // case-insensitive match on Account to be user-friendly
+    // 將 Account 轉成小寫再比較，避免使用者大小寫輸入差異造成驗證失敗
         String sql = "SELECT idCustomers, CustomerName, Account FROM customers WHERE LOWER(Account) = LOWER(?) AND Phone = ? LIMIT 1";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, account);
@@ -118,7 +138,7 @@ public class CustomerDAO {
      */
     public List<Customer> findAll() throws SQLException {
         List<Customer> customers = new ArrayList<>();
-        String sql = "SELECT idCustomers, CustomerName, Account, PasswordHash, Salt FROM customers";
+        String sql = "SELECT * FROM customers";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
                 ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
@@ -177,7 +197,19 @@ public class CustomerDAO {
                 rs.getInt("idCustomers"),
                 rs.getString("CustomerName"),
                 rs.getString("Account"),
-                rs.getString("PasswordHash"),
-                rs.getString("Salt"));
+                hasColumn(rs, "PasswordHash") ? rs.getString("PasswordHash") : null,
+                hasColumn(rs, "Salt") ? rs.getString("Salt") : null);
+    }
+
+    /**
+     * 確認 ResultSet 是否包含指定欄位，避免因資料庫 schema 差異造成例外
+     */
+    private boolean hasColumn(ResultSet rs, String columnLabel) {
+        try {
+            rs.findColumn(columnLabel);
+            return true;
+        } catch (SQLException ignore) {
+            return false;
+        }
     }
 }

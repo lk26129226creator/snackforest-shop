@@ -1,8 +1,22 @@
+//
+//  商品管理模組：負責渲染列表、搜尋、建立 / 編輯 / 刪除與圖片預覽流程。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { config, state, images } = Admin;
     const products = Admin.products || {};
 
+    //
+    //  將商品陣列渲染為表格：
+    //    - 提供錯誤提示或空列表訊息。
+    //    - 預設使用 state.allProducts。
+    //    - 每列附上編輯、刪除、查看圖片按鈕。
+    //
+    /**
+     * 將商品陣列渲染為表格，並處理錯誤或空資料顯示。
+     * @param {Array} [list] 指定要渲染的商品清單；預設取 state.allProducts。
+     * @param {{error?: Error}} [options] 可傳入錯誤物件顯示提示。
+     */
     products.renderProducts = function (list, options = {}) {
         const container = document.getElementById('product-list');
         if (!container) return;
@@ -52,6 +66,10 @@
         container.appendChild(wrapper);
     };
 
+    /**
+     * 依關鍵字在前端過濾商品列表，僅比對名稱欄位。
+     * @param {string} query 搜尋字串。
+     */
     products.filterProducts = function (query) {
         const q = String(query || '').trim().toLowerCase();
         const filtered = state.allProducts.filter((p) => p.name && p.name.toLowerCase().includes(q));
@@ -62,6 +80,10 @@
         ? Admin.utils.debounce(products.filterProducts, 150)
         : products.filterProducts;
 
+    /**
+     * 新增商品：收集表單資料與圖片上傳結果後送出 API。
+     * @param {SubmitEvent} event 表單提交事件。
+     */
     products.createProduct = async function (event) {
         event.preventDefault();
         const form = event.target;
@@ -100,6 +122,10 @@
         }
     };
 
+    /**
+     * 開啟商品編輯視窗並帶入原始資料。
+     * @param {number} id 商品編號。
+     */
     products.openEditProductModal = function (id) {
         const product = state.allProducts.find((p) => p.id === id);
         if (!product) return;
@@ -118,6 +144,9 @@
         if (state.modals.editProduct) state.modals.editProduct.show();
     };
 
+    /**
+     * 提交編輯後的商品資料並刷新列表。
+     */
     products.handleUpdateProduct = async function () {
         const form = document.getElementById('edit-product-form');
         if (!form) return;
@@ -156,6 +185,10 @@
         }
     };
 
+    /**
+     * 刪除指定商品，完成後重新整理資料。
+     * @param {number} id 商品編號。
+     */
     products.deleteProduct = async function (id) {
         if (!confirm(`確定要刪除商品 #${id} 嗎?`)) return;
         try {

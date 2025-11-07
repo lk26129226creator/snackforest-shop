@@ -5,10 +5,18 @@
 <title>SnackForest 管理端</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/png" href="/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png">
 <link rel="stylesheet" href="css/admin.css">
 </head>
 <body class="admin-sidebar-collapsed">
+
+<!--
+  管理端入口頁面：整體結構採用
+    1. 固定頂部導覽列（navbar）處理主導覽與登出。
+    2. 左側側邊欄（aside.admin-sidebar）提供模組切換。
+    3. 主要內容區（main.main-content）承載各管理模組 section。
+  重要元素皆搭配 aria-* 屬性與資料屬性，方便 JS 模組識別與操作。
+-->
 
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
   <div class="container-fluid">
@@ -18,7 +26,7 @@
         <span></span>
         <span></span>
       </button>
-    <a class="navbar-brand" href="#" id="admin-home-link">SnackForest 管理後台</a>
+  <a class="navbar-brand brand-signature" href="#" id="admin-home-link">SnackForest 管理後台</a>
     </div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
@@ -38,7 +46,10 @@
 </nav>
 
 <div class="admin-shell">
+  <!-- 側邊欄：桌機常駐、行動裝置以遮罩覆蓋的方式切換顯示 -->
   <aside class="admin-sidebar" id="admin-sidebar" aria-label="管理選單">
+
+<div id="sf-admin-order-toasts" aria-live="polite" aria-atomic="true"></div>
     <div class="admin-sidebar-scroll">
       <div class="admin-sidebar-section">
         <button class="admin-sidebar-link" type="button" data-target-section="dashboard-section" aria-label="管理首頁" title="管理首頁">
@@ -75,8 +86,10 @@
     </div>
   </aside>
   <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop" hidden data-close-admin-sidebar></div>
+  <!-- 主要內容：各管理模組以 .admin-section 區塊劃分，由 navigation.js 控制顯示 -->
   <main class="main-content">
   <div id="dashboard-section" class="admin-section active">
+    <!-- 儀表板：呈現管理者資料、統計數字與快捷操作 -->
     <div class="vstack gap-4">
       <div class="card admin-profile-card p-4">
         <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
@@ -137,14 +150,14 @@
           <div class="admin-quick-link">
             <div class="admin-quick-title">整理分類</div>
             <p class="text-muted small mb-3">管理商品分類，保持目錄清晰。</p>
-            <button class="btn btn-sm btn-outline-primary w-100" data-target-section="categories-section">前往分類管理</button>
+            <button class="btn btn-sm btn-primary w-100" data-target-section="categories-section">前往分類管理</button>
           </div>
           <div class="admin-quick-link">
             <div class="admin-quick-title">輪播與首頁內容</div>
             <p class="text-muted small mb-3">調整首頁輪播與精選商品設定。</p>
             <div class="d-grid gap-2">
-              <button class="btn btn-sm btn-outline-primary" data-target-section="carousel-section">輪播管理</button>
-              <button class="btn btn-sm btn-outline-primary" data-target-section="site-section">網站設定</button>
+              <button class="btn btn-sm btn-primary" data-target-section="carousel-section">輪播管理</button>
+              <button class="btn btn-sm btn-primary" data-target-section="site-section">網站設定</button>
             </div>
           </div>
         </div>
@@ -153,6 +166,7 @@
   </div>
 
   <div id="products-section" class="admin-section">
+    <!-- 商品管理：包含新增表單與列表查詢 -->
     <h1>商品管理</h1>
     <section class="mb-4">
       <h2>新增商品</h2>
@@ -205,6 +219,7 @@
   </div>
 
   <div id="categories-section" class="admin-section">
+    <!-- 分類管理：新增分類與維護清單 -->
     <h1>分類管理</h1>
     <section class="mb-4">
       <h2>新增分類</h2>
@@ -222,12 +237,14 @@
   </div>
 
   <div id="orders-section" class="admin-section">
+    <!-- 訂單管理：列表與詳情展開由 orders.js 控制 -->
     <h1>訂單管理</h1>
     <h2>訂單列表</h2>
     <div id="order-list">載入中...</div>
   </div>
 
   <div id="carousel-section" class="admin-section">
+    <!-- 輪播管理：Carousel 模組負責載入與儲存編輯結果 -->
     <h1>輪播管理</h1>
     <p class="text-muted">輪播設定已改為儲存在後端（/api/carousel），全站共用。</p>
 
@@ -245,38 +262,9 @@
   </div>
 
   <div id="site-section" class="admin-section">
+    <!-- 網站設定：多個卡片對應首頁 Hero、亮點、促銷、客服等設定 -->
     <h1 class="mb-3">網站設定</h1>
     <div class="vstack gap-4">
-      <div class="card p-3">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <h5 class="mb-0">品牌外觀</h5>
-          <button id="site-branding-save" type="button" class="btn btn-primary btn-sm">儲存</button>
-        </div>
-        <hr/>
-        <div class="row g-3 align-items-center">
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="site-branding-name">品牌名稱</label>
-            <input id="site-branding-name" class="form-control" placeholder="例如：SnackForest">
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="site-branding-tagline">品牌標語</label>
-            <input id="site-branding-tagline" class="form-control" placeholder="例如：探索零食世界">
-          </div>
-          <div class="col-12">
-            <label class="form-label" for="site-branding-logo">側欄 Logo 圖片 URL</label>
-            <div class="input-group">
-              <input id="site-branding-logo" class="form-control" placeholder="https:// 或 /frontend/images/...">
-              <button id="site-branding-upload" type="button" class="btn btn-outline-secondary">上傳圖片</button>
-            </div>
-            <input type="file" id="site-branding-logo-file" class="d-none" accept="image/*">
-            <div class="mt-3 text-center">
-              <img id="site-branding-logo-preview" src="" alt="Logo 預覽" class="img-fluid rounded border d-none" style="max-height:120px; object-fit:contain;" hidden>
-            </div>
-            <div class="form-text">建議使用正方形 PNG 或 SVG，會同步顯示於客戶端側欄與導覽列。</div>
-          </div>
-        </div>
-      </div>
-
       <div class="card p-3">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h5 class="mb-0">首頁 Hero</h5>
@@ -341,6 +329,51 @@
 
       <div class="card p-3 d-flex flex-column">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h5 class="mb-0">頂部優惠公告</h5>
+          <div class="d-flex gap-2">
+            <button id="site-promo-add" type="button" class="btn btn-outline-secondary btn-sm">新增一則</button>
+            <button id="site-promotions-save" type="button" class="btn btn-success btn-sm">儲存</button>
+          </div>
+        </div>
+        <hr/>
+        <p class="text-muted small mb-3">顯示於客戶端頁面最上方，依序輪播。連結可留空。</p>
+        <div id="site-promo-list" class="vstack gap-3 flex-grow-1"></div>
+      </div>
+
+      <div class="card p-3 d-flex flex-column">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h5 class="mb-0">客服支援資訊</h5>
+          <button id="site-support-save" type="button" class="btn btn-success btn-sm">儲存</button>
+        </div>
+        <hr/>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="site-support-email">客服信箱</label>
+            <input id="site-support-email" class="form-control" placeholder="例如：service@example.com">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="site-support-phone">客服電話</label>
+            <input id="site-support-phone" class="form-control" placeholder="例如：0909-585-898">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="site-support-hours">服務時間</label>
+            <input id="site-support-hours" class="form-control" placeholder="例如：週一至週五 09:00 - 18:00">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="site-support-livechat">線上客服連結（選填）</label>
+            <input id="site-support-livechat" class="form-control" placeholder="例如：https://chat.example.com">
+            <div class="form-text">留空則不顯示線上客服連結。</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="site-support-livechat-label">線上客服顯示文字（選填）</label>
+            <input id="site-support-livechat-label" class="form-control" placeholder="例如：立即聊聊">
+            <div class="form-text">留空則顯示「線上客服」。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-3 d-flex flex-column">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h5 class="mb-0">首頁精選商品</h5>
           <button id="site-featured-save" type="button" class="btn btn-success btn-sm">儲存</button>
         </div>
@@ -367,7 +400,7 @@
   </main>
 </div>
 
-<!-- Edit Product Modal -->
+<!-- Edit Product Modal：商品編輯彈窗（由 Bootstrap modal 控制） -->
 <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -424,7 +457,7 @@
   </div>
 </div>
 
-<!-- Edit Category Modal -->
+<!-- Edit Category Modal：分類編輯彈窗，搭配 categories.js 的開啟/儲存流程 -->
 <div class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -449,7 +482,7 @@
   </div>
 </div>
 
-<!-- Image View Modal (full viewer with thumbnails on the right) -->
+<!-- 圖片查看 Modal：提供大圖預覽與左右縮圖導覽，由 images.js/viewer.js 控制 -->
 <div class="modal fade" id="imageViewModal" tabindex="-1" aria-labelledby="imageViewModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
@@ -482,6 +515,7 @@
   </div>
 </div>
 
+<!-- 核心腳本：main.js 會依序載入各 admin JS 模組；Bootstrap 提供 modal/event 依賴 -->
 <script src="main.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

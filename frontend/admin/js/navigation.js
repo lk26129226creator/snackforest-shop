@@ -1,9 +1,16 @@
+//
+//  管理後台導覽模組：負責側邊欄切換、響應式布局、頁籤切換與登出流程。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { config, state } = Admin;
     const navigation = Admin.navigation || {};
     let currentMode = null;
 
+    /**
+     * 快取側邊欄與遮罩的關鍵節點，減少重複查詢 DOM。
+     * @returns {{sidebar: HTMLElement|null, backdrop: HTMLElement|null, trigger: HTMLElement|null}}
+     */
     function getSidebarElements() {
         return {
             sidebar: document.getElementById('admin-sidebar'),
@@ -12,11 +19,25 @@
         };
     }
 
+    /**
+     * 同步選單按鈕的 aria 標記，維持無障礙語意正確性。
+     * @param {boolean} expanded 側邊欄是否展開。
+     */
     function syncTrigger(expanded) {
         const { trigger } = getSidebarElements();
         if (trigger) trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     }
 
+    //
+    //  根據螢幕寬度決定側邊欄呈現模式：
+    //    - overlay：窄螢幕，以遮罩覆蓋的方式顯示。
+    //    - rail：寬螢幕，常駐於畫面側邊。
+    //  同時調整 body class 與遮罩狀態。
+    //
+    /**
+     * 依照螢幕寬度決定側邊欄呈現模式，並更新相關 class。
+     * @param {boolean} [force=false] 是否強制重新套用。
+     */
     function applyLayout(force) {
         const nextMode = window.innerWidth < config.SIDEBAR_BREAKPOINT ? 'overlay' : 'rail';
         if (!force && nextMode === currentMode) return;
@@ -43,6 +64,9 @@
         syncTrigger(body.classList.contains('admin-sidebar-expanded'));
     }
 
+    /**
+     * 將焦點移到目前的 active 導航項目，提升鍵盤操作體驗。
+     */
     function focusSidebarDefault() {
         const { sidebar } = getSidebarElements();
         if (!sidebar) return;
@@ -51,6 +75,11 @@
         if (focusTarget) focusTarget.focus();
     }
 
+    /**
+     * 控制側邊欄展開或收合，必要時顯示遮罩與調整焦點。
+     * @param {boolean} expanded 是否展開。
+     * @param {{focusSidebar?: boolean, focusTrigger?: boolean}} [options]
+     */
     function setExpanded(expanded, options = {}) {
         applyLayout(true);
 
@@ -81,6 +110,10 @@
         if (focusTrigger && trigger) trigger.focus();
     }
 
+    /**
+     * 判斷目前是否為遮罩模式（通常是行動寬度）。
+     * @returns {boolean}
+     */
     navigation.isSidebarOverlayMode = function () {
         if (currentMode === null) {
             return window.innerWidth < config.SIDEBAR_BREAKPOINT;
@@ -88,15 +121,24 @@
         return currentMode === 'overlay';
     };
 
+    /**
+     * 展開側邊欄並視情況將焦點移到第一個選項。
+     */
     navigation.openSidebar = function (options) {
         const shouldFocus = options?.focusFirst ?? navigation.isSidebarOverlayMode();
         setExpanded(true, { focusSidebar: shouldFocus });
     };
 
+    /**
+     * 收合側邊欄。
+     */
     navigation.closeSidebar = function (options) {
         setExpanded(false, options);
     };
 
+    /**
+     * 切換側邊欄展開狀態。
+     */
     navigation.toggleSidebar = function () {
         const expanded = document.body.classList.contains('admin-sidebar-expanded');
         setExpanded(!expanded, {
@@ -105,6 +147,9 @@
         });
     };
 
+    /**
+     * 綁定側邊欄按鈕、遮罩與快捷鍵事件，初始化 responsive 行為。
+     */
     navigation.bindAdminMenu = function () {
         const elements = getSidebarElements();
         const { trigger, backdrop, sidebar } = elements;
@@ -156,6 +201,9 @@
         syncTrigger(document.body.classList.contains('admin-sidebar-expanded'));
     };
 
+    /**
+     * 綁定導覽列 Logo 連結，快速切換回預設儀表板。
+     */
     navigation.bindAdminHomeLink = function () {
         const link = document.getElementById('admin-home-link');
         if (!link || link.dataset.bound) return;
@@ -172,6 +220,10 @@
         });
     };
 
+    /**
+     * 顯示指定 section，並更新側邊欄與導覽列的 active 樣式。
+     * @param {string} sectionId 要顯示的區塊 ID。
+     */
     navigation.showSection = function (sectionId) {
         const target = config.SECTION_NAV_MAP[sectionId] ? sectionId : config.DEFAULT_SECTION;
         state.activeSection = target;
@@ -198,6 +250,10 @@
         });
     };
 
+    /**
+     * 取得上次瀏覽的頁籤，若不存在則回傳預設值。
+     * @returns {string}
+     */
     navigation.getSavedSection = function () {
         try {
             const saved = sessionStorage.getItem('sf_admin_active_section');
@@ -207,6 +263,17 @@
         }
     };
 
+    //
+    //  切換 section 時還會觸發對應模組的資料載入：
+    //    - carousel-section：載入輪播並渲染編輯器。
+    //    - site-section：確保網站設定表單就緒。
+    //    - dashboard / products / categories / orders：預先取得列表資料。
+    //
+    /**
+     * 切換頁籤，同步載入對應模組的資料。
+     * @param {string} sectionId 目標 section。
+     * @param {{force?: boolean}} [options] 是否強制刷新。
+     */
     navigation.switchToSection = async function (sectionId, options) {
         const target = config.SECTION_NAV_MAP[sectionId] ? sectionId : config.DEFAULT_SECTION;
         const isSame = state.activeSection === target;
@@ -270,11 +337,16 @@
         }
     };
 
+    /**
+     * 登出管理端：清除相關 storage 後導回登入頁。
+     */
     navigation.logout = function () {
         try {
             localStorage.removeItem('sf-admin-role');
             localStorage.removeItem('sf-admin-name');
+            localStorage.removeItem('sf-admin-username');
             localStorage.removeItem('sf-admin-session');
+            localStorage.removeItem('username');
             if (!localStorage.getItem('sf-client-role')) {
                 localStorage.removeItem('userRole');
                 localStorage.removeItem('userName');

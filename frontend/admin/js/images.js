@@ -1,8 +1,16 @@
+//
+//  圖片處理模組：負責上傳、刪除、預覽與蒐集 imageUrl，供商品維護使用。
+//
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { config, state } = Admin;
     const images = Admin.images || {};
 
+    /**
+     * 將單一檔案上傳至後端並取得 imageUrl。
+     * @param {File} file 使用者選取的檔案。
+     * @returns {Promise<string|null>} 成功回傳 imageUrl，失敗回傳 null。
+     */
     images.uploadImage = async function (file) {
         const apiUrl = config.endpoints.imageUpload;
         const fileName = file?.name || (`upload-${Date.now()}`);
@@ -40,6 +48,11 @@
         }
     };
 
+    /**
+     * 將後端回傳的相對路徑轉換為可直接載入的完整 URL。
+     * @param {string} value 原始 imageUrl。
+     * @returns {string} 可顯示的圖片連結。
+     */
     images.normalizeImageUrl = function (value) {
         if (!value) return config.IMAGE_PLACEHOLDER_DATAURI;
         let source = String(value).trim().replace(/["']/g, '');
@@ -51,6 +64,12 @@
         return source.startsWith('/') ? `${backendOrigin}${source}` : `${backendOrigin}/frontend/images/products/${source}`;
     };
 
+    /**
+     * 依據陣列資料產生圖片預覽縮圖。
+     * @param {Array<string|File>} list 圖片來源陣列。
+     * @param {string|HTMLElement} previewContainer 目標容器或 ID。
+     * @param {boolean} isEditForm 是否為編輯商品用的預覽。
+     */
     images.renderPreviewsFromArray = function (list, previewContainer, isEditForm) {
         const container = typeof previewContainer === 'string' ? document.getElementById(previewContainer) : previewContainer;
         if (!container) return;
@@ -83,6 +102,12 @@
         });
     };
 
+    /**
+     * 從預覽清單移除指定圖片，必要時會呼叫後端刪除。
+     * @param {number} index 目標索引。
+     * @param {boolean} isEditForm 是否來自編輯表單。
+     * @param {string|HTMLElement} previewContainer 預覽容器。
+     */
     images.deleteImageFromPreview = async function (index, isEditForm, previewContainer) {
         const imageArray = isEditForm ? state.editProductImages : state.newProductImages;
         const target = imageArray[index];
@@ -116,6 +141,11 @@
         images.renderPreviewsFromArray(imageArray, previewContainer, isEditForm);
     };
 
+    /**
+     * 收集目前預覽清單的網址，遇到 File 會先上傳取得 imageUrl。
+     * @param {Array<string|File>} imageArray 預覽資料。
+     * @returns {Promise<string[]>}
+     */
     images.collectImageUrls = async function (imageArray) {
         const urls = [];
         for (const item of imageArray) {
@@ -133,6 +163,11 @@
         return urls;
     };
 
+    /**
+     * 處理檔案上傳變化，檢查上限並更新預覽。
+     * @param {Event} event input change 事件。
+     * @param {boolean} isEditForm 是否來自編輯表單。
+     */
     images.handleImageUploadChange = function (event, isEditForm) {
         const files = Array.from(event.target.files || []);
         const targetList = isEditForm ? state.editProductImages : state.newProductImages;

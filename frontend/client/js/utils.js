@@ -1,9 +1,23 @@
 (function(){
+    // 客戶端共用工具庫：提供圖片路徑標準化、價格格式化與字串安全處理等。
+
+    /** 由 env.js 注入的環境設定（可能含 API_ORIGIN 與 API_BASE）。 */
     const env = window.SF_ENV || {};
+    /** API 伺服器的 Origin，若未設定則退回到瀏覽器目前來源。 */
     const API_ORIGIN = env.API_ORIGIN || (window.location && window.location.origin) || '';
+    /** 預設商品佔位圖路徑（相對於專案根目錄）。 */
     const FALLBACK_PATH = '/frontend/images/products/no-image.svg';
+    /** 依照環境自動套上來源的預設商品圖片絕對網址。 */
     const FALLBACK_IMAGE = API_ORIGIN ? (API_ORIGIN + FALLBACK_PATH) : FALLBACK_PATH;
 
+    /**
+     * 將傳入的圖片路徑轉為可直接使用的絕對網址，並處理可能出錯的案例。
+     * - 支援 data URL / http(s) / protocol-relative / 相對路徑。
+     * - 遇到 placeholder/dummyimage 會改為預設圖，以保持品牌一致性。
+     * - 若為本機開發的 localhost 圖片，會改用 API_ORIGIN 以避免跨來源問題。
+     * @param {string} u 由 API 或使用者輸入的圖片來源字串。
+     * @returns {string} 可直接在 <img> 使用的安全絕對網址。
+     */
     function normalizeImageUrl(u) {
         if (u === undefined || u === null) return FALLBACK_IMAGE;
         try {
@@ -49,6 +63,11 @@
         }
     }
 
+    /**
+     * 將數值轉為「NT$」加千分位的字串，保留 fallback 行為避免例外。
+     * @param {*} value 可被轉為數字的輸入。
+     * @returns {string|*}
+     */
     function formatPrice(value) {
         try {
             const num = Number(value || 0);
@@ -58,12 +77,18 @@
         }
     }
 
+    /**
+     * 安全轉字串：避免 null/undefined 或字串 'null' 在畫面上產生雜訊。
+     * @param {*} v 任意來源值。
+     * @returns {string}
+     */
     function safeStr(v) {
         if (v === null || v === undefined) return '';
         if (typeof v === 'string' && v.trim().toLowerCase() === 'null') return '';
         return String(v);
     }
 
+    // 將工具函式掛到全域，給其他模組（navigation.js 等）呼叫。
     window.SF_UTILS = {
         normalizeImageUrl,
         formatPrice,
@@ -71,6 +96,7 @@
         fallbackProductImage: FALLBACK_IMAGE
     };
 
+    // 兼容舊版頁面：若全域尚未定義對應函式則補上。
     if (typeof window.normalizeImageUrl !== 'function') window.normalizeImageUrl = normalizeImageUrl;
     if (typeof window.formatPrice !== 'function') window.formatPrice = formatPrice;
     if (typeof window.safeStr !== 'function') window.safeStr = safeStr;

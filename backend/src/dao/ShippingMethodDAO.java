@@ -9,7 +9,7 @@ import model.ShippingMethod;
  * 專責處理與運送方式相關的所有資料庫操作。
  */
 public class ShippingMethodDAO {
-    /** 資料庫連線物件 */
+    /** 共用資料庫連線，保持 DAO 輕量並易於單元測試 */
     private Connection conn;
 
     /**
@@ -29,7 +29,8 @@ public class ShippingMethodDAO {
      */
     public List<ShippingMethod> getAll() throws SQLException {
         List<ShippingMethod> methods = new ArrayList<>();
-        String sql = "SELECT idshipping_methods, shipping_methodsName FROM shipping_methods";
+    // 明確列出欄位名稱，減少 SELECT * 對 schema 變動的敏感度
+    String sql = "SELECT idshipping_methods, shipping_methodsName FROM shipping_methods";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
                 ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {

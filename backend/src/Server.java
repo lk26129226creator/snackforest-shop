@@ -17,28 +17,42 @@ import java.util.UUID;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+/**
+ * SnackForest 後端 HTTP 伺服器入口點，負責啟動嵌入式 HttpServer、註冊 API 與靜態資源處理器，
+ * 並在啟動前執行輕量資料庫遷移以確保必備欄位存在。
+ */
 public class Server {
 
+    /**
+     * 應用程式進入點：建立 HttpServer、註冊所有 API 上下文並啟動常駐迴圈。
+     * @param args CLI 參數，目前未使用。
+     */
     public static void main(String[] args) {
         try {
             System.out.println("啟動 SnackForest 伺服器...");
             
+            // 伺服器核心：綁定 8000 埠口，供前後台頁面透過 fetch 與瀏覽器直接連線。
             HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
-            // Run light-weight DB migrations (safe if run multiple times)
+            // 啟動前執行資料庫欄位檢查：確保管理端客製功能需要的欄位都存在。
             try (Connection conn = DBConnect.getConnection()) {
                 ensureCustomerColumns(conn);
             } catch (Exception e) {
                 System.err.println("啟動前資料庫欄位檢查/建立失敗（可稍後再試）：" + e.getMessage());
             }
 
+            // API: 商品列表，供前台 client/js/product-list.js 與 admin/js/products.js 讀取。
             HttpContext productsCtx = server.createContext("/api/products", new ProductsHandler());
+            // API: 資料庫除錯介面，僅管理端工具使用。
             HttpContext dbDebugCtx = server.createContext("/api/debug/db", new DbDebugHandler());
-        HttpContext staticCtx = server.createContext("/frontend", new StaticHandler());
-        // serve root as static too so requests like /index.html or /cart.html work
-        HttpContext rootCtx = server.createContext("/", new StaticHandler());
+            // 靜態資源：對應 /frontend 目錄，給管理端/前台 HTML、JS、CSS 使用。
+            HttpContext staticCtx = server.createContext("/frontend", new StaticHandler());
+            // 靜態資源：根路徑導到前端頁面（例如 /index.html、/cart.html）。
+            HttpContext rootCtx = server.createContext("/", new StaticHandler());
+            // 圖片資源：提供預設產品圖片，與 client/js/product-detail.js 連動。
             HttpContext imagesCtx = server.createContext("/frontend/images/products/", new ImageFileHandler());
-            // New context to serve files saved under data/uploads/images
+            // 圖片資源：提供管理端上傳的使用者自訂圖片。
             HttpContext uploadsCtx = server.createContext("/uploads/images/", new UploadsImageFileHandler());
+            // 健康檢查：前端 env.js 或監控工具可呼叫 /ping 檢查伺服器是否存活。
             HttpContext pingCtx = server.createContext("/ping", exchange -> {
                 try {
                     JSONObject resp = new JSONObject();
@@ -50,25 +64,37 @@ public class Server {
                     e.printStackTrace();
                 }
             });
+            // API: 單一分類 CRUD，供 admin/js/categories.js 操作表單使用。
             HttpContext categoryCtx = server.createContext("/api/category", new CategoryHandler());
+            // API: 分類清單列表，供前台與管理端載入下拉與側邊導航。
             HttpContext categoriesCtx = server.createContext("/api/categories", new CategoryHandler());
+            // API: 訂單管理，對應 admin/js/orders.js 與 client/js/cart.js 結帳流程。
             HttpContext orderCtx = server.createContext("/api/order", new OrderHandler());
+            // API: 配送方式清單，供 admin/js/orders.js 與 client/js/cart-page.js 使用。
             HttpContext shipCtx = server.createContext("/api/shippingmethod", new ShippingMethodHandler());
+            // API: 付款方式清單，供 admin/js/orders.js 與 client/js/cart-page.js 使用。
             HttpContext payCtx = server.createContext("/api/paymentmethod", new PaymentMethodHandler());
+            // API: 登入驗證，對應 client/js/auth-guard.js 與 admin/js/auth 模組。
             HttpContext loginCtx = server.createContext("/api/login", new LoginHandler());
+            // API: 圖片上傳，同步管理端商品與輪播管理上傳需求。
             HttpContext uploadCtx = server.createContext("/api/upload/image", new ImageUploadHandler());
+            // API: 圖片刪除，與 admin/js/images.js 清理功能對應。
             HttpContext deleteCtx = server.createContext("/api/upload/image/delete", new ImageDeleteHandler());
-        HttpContext carouselCtx = server.createContext("/api/carousel", new CarouselHandler());
-        HttpContext siteConfigCtx = server.createContext("/api/site-config", new SiteConfigHandler());
-        HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
+            // API: 首頁輪播設定，供 admin/js/carousel.js 管理輪播資料。
+            HttpContext carouselCtx = server.createContext("/api/carousel", new CarouselHandler());
+            // API: 網站設定，對應 admin/js/site-config.js 控制基本資訊。
+            HttpContext siteConfigCtx = server.createContext("/api/site-config", new SiteConfigHandler());
+            // API: 客戶輪廓資料，提供 admin/js/customer-profiles.js 與前台會員頁面。
+            HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
 
-    HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, customerProfileCtx};
+            // 彙總所有 Context，統一加入 CORS Filter 以支援跨來源的前端 fetch。
+            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, customerProfileCtx};
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
             System.out.println("✅ Server started at http://localhost:8000");
             
-            // Prevent main thread from exiting so HttpServer keeps running
+            // 保持主執行緒存活，避免 HttpServer 因 main 結束而停止服務。
             while (true) {
                 Thread.sleep(30_000);
                 System.out.println("伺服器運行中... " + new java.util.Date());
@@ -80,7 +106,14 @@ public class Server {
         }
     }
 
-    // --- Local minimal HttpUtils replacement ---
+    // --- 內建 Http 工具函式（取代額外依賴） ---
+    /**
+     * 送出 JSON 回應，統一設定 Content-Type 與 UTF-8 編碼。
+     * @param exchange 當前請求的交換物件。
+     * @param body 要回傳的 JSON 字串內容，允許為 null。
+     * @param status HTTP 狀態碼。
+     * @throws IOException 回應寫入失敗時拋出。
+     */
     private static void sendJsonResponse(HttpExchange exchange, String body, int status) throws IOException {
         byte[] bytes = body == null ? new byte[0] : body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
@@ -88,11 +121,25 @@ public class Server {
         try (OutputStream os = exchange.getResponseBody()) { os.write(bytes); }
     }
 
+    /**
+     * 傳送無內容回應（例如 OPTIONS 預檢），維持 JSON Content-Type 與 -1 內容長度。
+     * @param exchange 當前請求。
+     * @param status HTTP 狀態碼。
+     * @throws IOException 回應寫入失敗時拋出。
+     */
     private static void sendNoContent(HttpExchange exchange, int status) throws IOException {
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
         exchange.sendResponseHeaders(status, -1);
     }
 
+    /**
+     * 以統一格式回傳錯誤 JSON，並視需要附上 detail 訊息與堆疊輸出。
+     * @param exchange 當前請求。
+     * @param status HTTP 狀態碼。
+     * @param message 對客戶端顯示的錯誤訊息，可為 null。
+     * @param e 例外物件，若提供則會在 detail 中附上 message。
+     * @throws IOException 回應寫入失敗時拋出。
+     */
     private static void sendErrorResponse(HttpExchange exchange, int status, String message, Exception e) throws IOException {
         JSONObject obj = new JSONObject();
         obj.put("error", message == null ? JSONObject.NULL : message);
@@ -109,7 +156,12 @@ public class Server {
         if (e != null) e.printStackTrace();
     }
 
-    // --- DB migrations ---
+    // --- 啟動時的資料庫欄位補強 ---
+    /**
+     * 檢查 customers 資料表是否具備新欄位，缺少時動態補上，允許在啟動時重複執行。
+     * @param conn SQL 連線。
+     * @throws SQLException 取得資料庫資訊或 ALTER TABLE 失敗時拋出。
+     */
     static void ensureCustomerColumns(Connection conn) throws SQLException {
         String dbName = null;
         try (PreparedStatement ps = conn.prepareStatement("SELECT DATABASE()")) {
@@ -124,7 +176,7 @@ public class Server {
             {"UpdatedAt", "DATETIME NULL"}
         };
 
-        for (String[] col : columns) {
+    for (String[] col : columns) {
             String name = col[0];
             String ddl = col[1];
             boolean exists = false;
@@ -135,13 +187,17 @@ public class Server {
                 try (ResultSet rs = ps.executeQuery()) { if (rs.next()) exists = rs.getInt(1) > 0; }
             }
             if (!exists) {
+                // 管理端客戶資料維護需要這些欄位，缺少就即時補上避免前端欄位錯誤。
                 String sql = "ALTER TABLE customers ADD COLUMN " + name + " " + ddl;
                 try (PreparedStatement alter = conn.prepareStatement(sql)) { alter.executeUpdate(); }
             }
         }
     }
 
-    // --- Simple CORS filter ---
+    // --- 簡易 CORS 過濾器 ---
+    /**
+     * 最小化的 CORS Filter，允許所有來源並處理預檢請求。
+     */
     static class CorsFilter extends com.sun.net.httpserver.Filter {
         @Override
         public void doFilter(HttpExchange exchange, Chain chain) throws IOException {
@@ -159,15 +215,23 @@ public class Server {
         public String description() { return "Adds CORS headers"; }
     }
 
-    // --- Utility Methods ---
+    // --- 共用工具函式與路徑常數 ---
+    // 前端預設產品圖目錄，供 normalizeImageUrl 對應 /frontend/images/products/ 靜態資源。
     private static final Path IMAGES_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
-    // New location for user uploads, outside of frontend so Live Server won't auto-reload
+    // 使用者上傳檔案儲存位置，管理端商品/輪播上傳皆寫入此處。
     private static final Path UPLOADS_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
+    // data 目錄根路徑，供其他 handler 讀寫 JSON seed 資料。
     private static final Path DATA_DIR = Paths.get("..", "data").toAbsolutePath().normalize();
 
+    /**
+     * 清理影像網址清單，移除 null 與多餘的引號，保持路徑格式一致。
+     * @param raw 從資料庫或外部輸入取得的原始列表。
+     * @return 處理後的新陣列，永不為 null。
+     */
     private static List<String> cleanImageUrlList(List<String> raw) {
         List<String> out = new ArrayList<>();
         if (raw == null) return out;
+        // 逐一處理 DAO 回傳的路徑字串，去除外圍引號與空白，確保回傳 JSON 整潔。
         for (String s : raw) {
             if (s == null) continue;
             String t = s.trim();
@@ -179,13 +243,18 @@ public class Server {
         return out;
     }
 
+    /**
+     * 將傳入的圖片路徑正規化為前端可存取的 URL，優先對應 uploads，再回落至預設產品圖目錄。
+     * @param rawUrl 來源字串，可為絕對或相對路徑。
+     * @return 正規化後的路徑，若無法對應有效檔案則回傳 null。
+     */
     private static String normalizeImageUrl(String rawUrl) {
         if (rawUrl == null) return null;
         String trimmed = rawUrl.trim().replace('\\', '/');
         if (trimmed.isEmpty()) return null;
         final String productsPrefix = "/frontend/images/products/";
         final String uploadsPrefix = "/uploads/images/";
-        // If already absolute path with known prefixes and file exists, return as-is
+        // 若已是帶有既有前綴的絕對路徑且檔案存在，直接回傳原始值。
         if (trimmed.startsWith(productsPrefix)) {
             String filename = trimmed.substring(productsPrefix.length());
             Path candidate = IMAGES_DIR.resolve(filename).normalize();
@@ -196,7 +265,7 @@ public class Server {
             Path candidate = UPLOADS_DIR.resolve(filename).normalize();
             if (candidate.startsWith(UPLOADS_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
         }
-        // If it's an absolute path without known prefix, try to map filename to either directory
+        // 若為其他絕對路徑，嘗試將檔名映射到 uploads 或預設產品圖目錄。
         if (trimmed.startsWith("/")) {
             String base = trimmed.substring(trimmed.lastIndexOf('/') + 1);
             if (!base.isEmpty()) {
@@ -206,7 +275,7 @@ public class Server {
                 if (p.startsWith(IMAGES_DIR) && Files.exists(p) && Files.isRegularFile(p)) return productsPrefix + base;
             }
         }
-        // Fallback: search by base name in uploads first, then products
+            // 最後備援：遍歷 uploads 與 products 目錄，以檔名開頭對應第一個找到的檔案。
         String filenameToSearch = trimmed;
         int lastSlash = trimmed.lastIndexOf('/');
         if (lastSlash > -1) filenameToSearch = trimmed.substring(lastSlash + 1);
@@ -231,13 +300,17 @@ public class Server {
         return null;
     }
 
-    // --- Handlers ---
+    // --- 各 API 與靜態資源處理器 ---
 
+    /**
+     * 提供付款方式列表的 API 處理器，對應 /api/paymentmethod。
+     */
     static class PaymentMethodHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             JSONArray jsonArray = new JSONArray();
             try (Connection conn = DBConnect.getConnection()) {
+                // 從 dao.PaymentMethodDAO 取得資料，供購物車與管理端下拉選單串接。
                 List<model.PaymentMethod> methods = new dao.PaymentMethodDAO(conn).getAll();
                 for (model.PaymentMethod method : methods) {
                     JSONObject jsonObject = new JSONObject();
@@ -252,11 +325,15 @@ public class Server {
         }
     }
 
+    /**
+     * 提供物流/配送方式列表的 API 處理器，對應 /api/shippingmethod。
+     */
     static class ShippingMethodHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             JSONArray jsonArray = new JSONArray();
             try (Connection conn = DBConnect.getConnection()) {
+                // 透過 dao.ShippingMethodDAO 讀取資料，對應前台結帳與管理端表單。
                 List<model.ShippingMethod> methods = new dao.ShippingMethodDAO(conn).getAll();
                 for (model.ShippingMethod m : methods) {
                     JSONObject o = new JSONObject();
@@ -271,10 +348,14 @@ public class Server {
         }
     }
 
+    /**
+     * 處理訂單查詢與建立的 API（/api/order），支援 GET 列表與 POST 建立訂單。
+     */
     static class OrderHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
+                // GET：提供管理端訂單列表，POST：由 client/js/cart.js 建立訂單。
                 if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
                     JSONArray ordersArray = new JSONArray();
                     try (Connection conn = DBConnect.getConnection()) {
@@ -301,9 +382,9 @@ public class Server {
                                 String rName = rs.getString("RecipientName"); if (rName == null) rName = "";
                                 String rAddr = rs.getString("RecipientAddress"); if (rAddr == null) rAddr = "";
                                 String rPhone = rs.getString("RecipientPhone"); if (rPhone == null) rPhone = "";
-                                // If recipient name is empty, fallback to customer name so admin list shows something
+                                // 若收件人姓名為空，改採用顧客姓名，以免管理端列表無法辨識訂單。
                                 if (rName.isEmpty()) rName = customerNameVal == null ? "" : customerNameVal;
-                                // Debug: log what we read from DB for recipient fields
+                                // 偵錯用途：確認資料庫讀出的收件資訊內容。
                                 System.err.println("OrderHandler - DB values for orderId=" + rs.getInt("idOrders") + ": RecipientName='" + rName + "', RecipientAddress='" + rAddr + "', RecipientPhone='" + rPhone + "'");
                                 order.put("recipientName", rName);
                                 order.put("recipientAddress", rAddr);
@@ -328,10 +409,8 @@ public class Server {
                             }
                         }
                         ordersArray = new JSONArray(ordersMap.values());
-                        // Some setups may return empty recipient fields in the first query (e.g. permissions,
-                        // driver quirks or unexpected NULLs). As a robust fallback, for any order that
-                        // has empty recipient info, re-query the orders table for that single order id
-                        // and fill the missing values before returning the response.
+                        // 部分環境第一次查詢 orders 時收件人欄位可能為空（例如帳號權限、資料庫驅動差異或非預期的 NULL）。
+                        // 為避免管理端列表出現空值，若偵測到任一訂單資料缺漏，就再查詢一次單筆訂單，補齊缺少欄位後再回應。
                         try (PreparedStatement refillStmt = conn.prepareStatement(
                                 "SELECT RecipientName, RecipientAddress, RecipientPhone FROM orders WHERE idOrders = ?")) {
                             for (Map.Entry<Integer, JSONObject> e : ordersMap.entrySet()) {
@@ -347,7 +426,7 @@ public class Server {
                                                 String rName2 = rrs.getString("RecipientName"); if (rName2 == null) rName2 = "";
                                                 String rAddr2 = rrs.getString("RecipientAddress"); if (rAddr2 == null) rAddr2 = "";
                                                 String rPhone2 = rrs.getString("RecipientPhone"); if (rPhone2 == null) rPhone2 = "";
-                                                // only overwrite when the existing value is empty to avoid clobbering valid data
+                                                // 只有在原本為空值時才覆寫，避免覆蓋既有的正確資料。
                                                 if (rn == null || rn.isEmpty()) ord.put("recipientName", rName2);
                                                 if (ra == null || ra.isEmpty()) ord.put("recipientAddress", rAddr2);
                                                 if (rp == null || rp.isEmpty()) ord.put("recipientPhone", rPhone2);
@@ -360,7 +439,7 @@ public class Server {
                                 }
                             }
                         } catch (SQLException e) {
-                            // non-fatal: we'll still return whatever we have
+                            // 非致命錯誤：即使補資料失敗仍會回傳現有資訊。
                             System.err.println("OrderHandler - refill loop failed: " + e.getMessage());
                         }
 
@@ -443,6 +522,9 @@ public class Server {
         }
     }
 
+    /**
+     * 提供簡易資料庫健康檢查資訊的端點（/api/debug/db）。
+     */
     static class DbDebugHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -472,6 +554,9 @@ public class Server {
         }
     }
 
+    /**
+     * 商品 CRUD API 處理器（/api/products），依 HTTP 方法對應查詢、新增、更新與刪除。
+     */
     static class ProductsHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -482,7 +567,7 @@ public class Server {
                 if ("GET".equalsIgnoreCase(method)) {
                     String path = exchange.getRequestURI().getPath();
                     String[] parts = path.split("/");
-                    // If no specific ID provided, return list of all products
+                    // 未指定產品編號時，預設回傳全部商品清單。
                     if (parts.length <= 3) {
                         try {
                             List<model.Product> products = productDAO.findAll();
@@ -602,6 +687,9 @@ public class Server {
         }
     }
 
+    /**
+     * 商品分類 CRUD API 處理器，覆蓋 /api/category 與 /api/categories。
+     */
     static class CategoryHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -629,7 +717,7 @@ public class Server {
                         sendErrorResponse(exchange, 400, "Missing 'name' for category", null);
                         return;
                     }
-                    model.Category newCategory = new model.Category(0, name); // ID will be generated by DB
+                    model.Category newCategory = new model.Category(0, name); // 主鍵由資料庫自動產生。
                     int newId = categoryDAO.save(newCategory);
                     if (newId != -1) {
                         sendJsonResponse(exchange, new JSONObject().put("id", newId).toString(), 201);
@@ -650,7 +738,7 @@ public class Server {
                     try {
                         id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
                     } catch (Exception ignore) {
-                        // fallback to body field below
+                        // 若路徑解析失敗，改由請求本文的欄位提供 id。
                     }
                     String body;
                     try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
@@ -672,6 +760,9 @@ public class Server {
         }
     }
 
+    /**
+     * 處理登入請求（/api/login），支援內建 admin 帳號與客戶驗證。
+     */
     static class LoginHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -718,8 +809,11 @@ public class Server {
         }
     }
 
+    /**
+     * 處理前台與後台圖片上傳請求，將檔案儲存至 data/uploads/images。
+     */
     static class ImageUploadHandler implements HttpHandler {
-        // store uploads under data/uploads/images so Live Server won't reload
+    // 將上傳檔案放在 data/uploads/images，避免前端 Live Server 監聽到變動而重新載入。
         private static final Path UPLOAD_DIR_PATH = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
 
         @Override
@@ -738,7 +832,7 @@ public class Server {
                     return;
                 }
 
-                // Sanitize filename to prevent directory traversal
+                // 清理檔名，避免目錄穿越等安全風險。
                 fileName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
                 InputStream is = exchange.getRequestBody();
@@ -784,6 +878,9 @@ public class Server {
         }
     }
 
+    /**
+     * 負責刪除上傳或舊版目錄中的圖片，支援以 imageUrl 或 filename 指定檔案。
+     */
     static class ImageDeleteHandler implements HttpHandler {
         private static final Path LEGACY_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
         private static final Path UPLOAD_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
@@ -807,14 +904,14 @@ public class Server {
                     return;
                 }
                 if (imageUrl != null) {
-                    // extract filename from url
+                    // 從提供的 URL 解析出檔名，方便定位本機檔案。
                     int idx = imageUrl.lastIndexOf('/');
                     if (idx >= 0) filename = imageUrl.substring(idx + 1);
                     else filename = imageUrl;
                 }
-                // sanitize
+                // 再次清理檔名，排除非法字元。
                 filename = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
-                // try uploads first
+                // 先嘗試刪除使用者上傳目錄中的檔案，再回頭檢查舊版目錄。
                 Path target = UPLOAD_DIR.resolve(filename).normalize();
                 boolean deleted = false;
                 if (target.startsWith(UPLOAD_DIR) && Files.exists(target)) {
@@ -840,6 +937,9 @@ public class Server {
         }
     }
 
+    /**
+     * 服務舊版產品圖片目錄（frontend/images/products）的靜態檔案。
+     */
     static class ImageFileHandler implements HttpHandler {
         private static final Path IMAGES_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
 
@@ -872,7 +972,10 @@ public class Server {
         }
     }
 
-    // Serve files from the new uploads directory under data/uploads/images
+    // 專門服務 data/uploads/images 目錄下的使用者上傳檔案。
+    /**
+     * 服務使用者上傳的圖片目錄（data/uploads/images）的靜態檔案。
+     */
     static class UploadsImageFileHandler implements HttpHandler {
         private static final Path BASE_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
 
@@ -897,6 +1000,9 @@ public class Server {
         }
     }
 
+    /**
+     * 一般靜態檔案處理器，支援根目錄與 /frontend 底下的 HTML/CSS/JS 讀取。
+     */
     static class StaticHandler implements HttpHandler {
         private final Path baseDir;
 
@@ -912,25 +1018,25 @@ public class Server {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             String uriPath = exchange.getRequestURI().getPath();
-            // normalize common root requests
+            // 正規化常見的根目錄請求，讓 / 或 /frontend 轉向首頁。
             if (uriPath.equals("/") || uriPath.equals("/frontend") || uriPath.equals("/frontend/")) {
                 uriPath = "/frontend/client/index.html";
             }
 
-            // If request starts with /frontend, resolve normally under baseDir
+            // 如果路徑以 /frontend 起頭，就直接以 baseDir 為根目錄解析。
             Path resolved = null;
             if (uriPath.startsWith("/frontend")) {
                 String rel = uriPath.substring("/frontend".length());
                 resolved = baseDir.resolve(rel.substring(1)).normalize();
             } else {
-                // Try resolving directly under baseDir first (e.g., /frontend/client/cart.html -> handled above),
-                // but for root-level requests like /cart.html, try mapping to frontend/client/<name>
+                // 先嘗試在 baseDir 下尋找同名檔案（如 /frontend/client/cart.html 會於前段處理），
+                // 若是根目錄請求（例：/cart.html）則改映射到 frontend/client/<檔名>。
                 String candidatePath = uriPath.startsWith("/") ? uriPath.substring(1) : uriPath;
                 Path direct = baseDir.resolve(candidatePath).normalize();
                 if (Files.exists(direct) && direct.startsWith(baseDir) && Files.isReadable(direct)) {
                     resolved = direct;
                 } else {
-                    // fallback: try frontend/client/<candidatePath>
+                    // 最後備援：轉向 frontend/client/<檔名> 掃描實際檔案。
                     Path clientCandidate = baseDir.resolve("client").resolve(candidatePath).normalize();
                     if (Files.exists(clientCandidate) && clientCandidate.startsWith(baseDir) && Files.isReadable(clientCandidate)) {
                         resolved = clientCandidate;
@@ -954,7 +1060,10 @@ public class Server {
         }
     }
 
-    // Carousel slides persistence (shared across site)
+    // 輪播資料儲存：站內各頁共用 carousel.json。
+    /**
+     * 管理首頁輪播資料（data/carousel.json）的讀寫。
+     */
     static class CarouselHandler implements HttpHandler {
         private static final Path CAROUSEL_FILE = DATA_DIR.resolve("carousel.json");
 
@@ -976,7 +1085,7 @@ public class Server {
                     try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
                         body = s.hasNext() ? s.next() : "[]";
                     }
-                    // Validate it's an array
+                    // 驗證輸入內容確實為 JSON 陣列格式。
                     try { new org.json.JSONArray(body); } catch (Exception e) {
                         sendErrorResponse(exchange, 400, "Invalid JSON array for carousel", e);
                         return;
@@ -994,15 +1103,31 @@ public class Server {
         }
     }
 
-    // Site config (hero/benefits/branding/footer)
+    // 站台設定：涵蓋主視覺、優勢、精選商品與頁尾資訊。
+    /**
+     * 管理站台設定（data/site-config.json）的讀寫與預設值載入。
+     */
     static class SiteConfigHandler implements HttpHandler {
         private static final Path CONFIG_FILE = DATA_DIR.resolve("site-config.json");
 
+        /**
+         * 讀取指定檔案內容，若不存在則回傳預設 JSON 字串。
+         * @param path 設定檔路徑。
+         * @param defaultJson 檔案不存在時使用的預設內容。
+         * @return 檔案內容或預設字串。
+         * @throws IOException 讀檔失敗時拋出。
+         */
         private static String readFileOrDefault(Path path, String defaultJson) throws IOException {
             if (!Files.exists(path)) return defaultJson;
             return Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
         }
 
+        /**
+         * 將 JSON 字串寫入指定檔案，必要時建立目錄。
+         * @param path 目標檔案路徑。
+         * @param json 要儲存的內容。
+         * @throws IOException 寫檔失敗時拋出。
+         */
         private static void writeJsonToFile(Path path, String json) throws IOException {
             Files.createDirectories(path.getParent());
             Files.writeString(path, json, java.nio.charset.StandardCharsets.UTF_8,
@@ -1024,11 +1149,17 @@ public class Server {
                         .put(new JSONObject().put("icon", "shield-halved").put("title", "安全付款").put("desc", "多元支付、SSL 安全"))
                         .put(new JSONObject().put("icon", "arrows-rotate").put("title", "七日鑑賞").put("desc", "不滿意可退換"))
                         .put(new JSONObject().put("icon", "gift").put("title", "會員回饋").put("desc", "點數折抵更划算")))
+        .put("promotions", new JSONArray()
+            .put(new JSONObject().put("text", "全館滿 NT$999 免運").put("link", "product.html"))
+            .put(new JSONObject().put("text", "加入會員立即享 95 折優惠").put("link", "member.html"))
+            .put(new JSONObject().put("text", "最新上架零食！把握限量好味道").put("link", "product.html?category=all")))
+        .put("support", new JSONObject()
+            .put("email", "snackforest1688@gmail.com")
+            .put("phone", "0909-585-898")
+            .put("hours", "週一至週五 09:00 - 18:00")
+            .put("liveChatUrl", "")
+            .put("liveChatLabel", ""))
                 .put("featuredProductIds", new JSONArray())
-                .put("branding", new JSONObject()
-                        .put("logoUrl", "")
-                        .put("brandName", "SnackForest")
-                        .put("tagline", "探索零食世界"))
                 .put("footer", new JSONObject().put("text", "© 2025 SnackForest. 保留所有權利。"))
                 .toString();
 
@@ -1044,7 +1175,7 @@ public class Server {
                     try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
                         body = s.hasNext() ? s.next() : DEFAULT_CONFIG;
                     }
-                    // validate JSON object
+                    // 驗證上傳內容為合法的 JSON 物件。
                     try { new JSONObject(body); } catch (Exception e) {
                         sendErrorResponse(exchange, 400, "Invalid JSON object for site-config", e);
                         return;
@@ -1060,11 +1191,18 @@ public class Server {
         }
     }
 
-    // Customer profile: GET /api/customer-profile/{id}, PUT /api/customer-profile/{id}
+    // 顧客檔案 API：支援 GET /api/customer-profile/{id} 與 PUT 同一路徑。
+    /**
+     * 處理顧客檔案的取得與更新（/api/customer-profile/{id}）。
+     */
     static class CustomerProfileHandler implements HttpHandler {
         private static final Path PROFILES_FILE = DATA_DIR.resolve("customer-profiles.json");
 
-        private static JSONObject readProfiles() {
+    /**
+     * 讀取顧客檔案 JSON 資料，若檔案不存在或解析失敗則回傳空物件。
+     * @return 代表所有顧客資料的 JSONObject。
+     */
+    private static JSONObject readProfiles() {
             try {
                 if (!Files.exists(PROFILES_FILE)) return new JSONObject();
                 String json = Files.readString(PROFILES_FILE, java.nio.charset.StandardCharsets.UTF_8);
@@ -1075,14 +1213,24 @@ public class Server {
             }
         }
 
-        private static void writeProfiles(JSONObject obj) throws IOException {
+    /**
+     * 將顧客檔案 JSON 寫回磁碟，必要時建立目錄。
+     * @param obj 要儲存的顧客資料集合。
+     * @throws IOException 寫檔失敗時拋出。
+     */
+    private static void writeProfiles(JSONObject obj) throws IOException {
             Files.createDirectories(PROFILES_FILE.getParent());
             Files.writeString(PROFILES_FILE, obj.toString(), java.nio.charset.StandardCharsets.UTF_8,
                     java.nio.file.StandardOpenOption.CREATE,
                     java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
         }
 
-        private static String getCustomerNameById(int id) {
+    /**
+     * 依顧客編號查詢資料庫的顧客姓名，用於補強檔案資料缺漏。
+     * @param id 顧客 ID。
+     * @return 顧客姓名，若查無則回傳空字串。
+     */
+    private static String getCustomerNameById(int id) {
             try (Connection conn = DBConnect.getConnection()) {
                 try (PreparedStatement ps = conn.prepareStatement("SELECT CustomerName FROM customers WHERE idCustomers = ?")) {
                     ps.setInt(1, id);
@@ -1099,7 +1247,13 @@ public class Server {
             return "";
         }
 
-        private static String inferExtension(String fileName, String contentType) {
+    /**
+     * 根據檔名或 Content-Type 推測適當的副檔名，預設為 .png。
+     * @param fileName 上傳時提供的檔名。
+     * @param contentType HTTP Content-Type。
+     * @return 合適的副檔名。
+     */
+    private static String inferExtension(String fileName, String contentType) {
             String ext = "";
             if (fileName != null) {
                 int dot = fileName.lastIndexOf('.');
@@ -1117,13 +1271,13 @@ public class Server {
             return ext;
         }
 
-        // use outer Server.ensureCustomerColumns for migrations
+    // 資料庫欄位補強已由外層 Server.ensureCustomerColumns 處理，這裡不再重複。
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             String method = exchange.getRequestMethod();
             String path = exchange.getRequestURI().getPath();
-            // Expect /api/customer-profile/{id}
+            // 預期路徑格式為 /api/customer-profile/{id}
             String[] parts = path.split("/");
             if (parts.length < 4) {
                 sendErrorResponse(exchange, 400, "Missing customer id", null);
@@ -1141,7 +1295,7 @@ public class Server {
                 if (profile == null) profile = new JSONObject();
                 profile.put("customerId", String.valueOf(id));
 
-                // Merge with DB values (DB takes precedence when present)
+                // 將檔案內容與資料庫欄位合併，資料庫值若存在則具有優先權。
                 try (Connection conn = DBConnect.getConnection()) {
                     Server.ensureCustomerColumns(conn);
                     try (PreparedStatement ps = conn.prepareStatement(
@@ -1162,7 +1316,7 @@ public class Server {
                                 if (avatar != null) profile.put("avatarUrl", avatar); else if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
                                 if (updated != null) profile.put("updatedAt", updated.toInstant().toString());
                             } else {
-                                // fallback if no row: seed with name if available
+                                    // 若資料庫沒有該筆紀錄，盡量帶入先前保存的名稱作為備援。
                                 String name = getCustomerNameById(id);
                                 if (name != null && !name.isEmpty()) profile.put("displayName", name);
                                 if (!profile.has("email")) profile.put("email", JSONObject.NULL);
@@ -1199,7 +1353,7 @@ public class Server {
                 JSONObject existing = store.optJSONObject(String.valueOf(id));
                 if (existing == null) existing = new JSONObject();
 
-                // Merge updatable fields
+                // 合併可更新的欄位值，僅覆寫使用者透過表單提交的內容。
                 String displayName = req.optString("displayName", null);
                 String email = req.optString("email", null);
                 String phone = req.optString("phone", null);
@@ -1210,7 +1364,7 @@ public class Server {
                 if (phone != null) existing.put("phone", phone.isEmpty() ? JSONObject.NULL : phone);
                 if (address != null) existing.put("address", address.isEmpty() ? JSONObject.NULL : address);
 
-                // Handle avatar upload if present
+                // 若請求內帶有頭像資料，將 base64 內容解碼並儲存成檔案。
                 String avatarData = req.optString("avatarData", null);
                 String avatarFileName = req.optString("avatarFileName", null);
                 String avatarContentType = req.optString("avatarContentType", null);
@@ -1229,7 +1383,7 @@ public class Server {
                         finalAvatarUrl = avatarUrl;
                     } catch (Exception e) {
                         System.err.println("Failed to save avatar: " + e.getMessage());
-                        // Keep previous avatar on failure
+                        // 若儲存失敗，保留舊有頭像以免造成斷圖。
                     }
                 }
 
@@ -1238,7 +1392,7 @@ public class Server {
                 store.put(String.valueOf(id), existing);
                 writeProfiles(store);
 
-                // Persist into customers table
+                // 將同樣資料同步寫回 customers 資料表，維持前台/後台資料一致。
                 try (Connection conn = DBConnect.getConnection()) {
                     Server.ensureCustomerColumns(conn);
                     String sql = "UPDATE customers SET CustomerName = COALESCE(?, CustomerName), " +
