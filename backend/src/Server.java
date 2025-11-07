@@ -522,10 +522,6 @@ public class Server {
             return bytesToHex(digest);
         }
 
-        private static String sha256Hex(String data) throws Exception {
-            return sha256Hex(data.getBytes(StandardCharsets.UTF_8));
-        }
-
         private static byte[] hmacSha256(byte[] key, String data) throws Exception {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(key, "HmacSHA256"));
@@ -1173,8 +1169,6 @@ public class Server {
      * 處理前台與後台圖片上傳請求，將檔案儲存至 data/uploads/images。
      */
     static class ImageUploadHandler implements HttpHandler {
-        // 將上傳檔案放在 data/uploads/images，避免前端 Live Server 監聽到變動而重新載入。
-        private static final Path UPLOAD_DIR_PATH = UPLOADS_DIR;
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
