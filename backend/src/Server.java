@@ -1360,15 +1360,26 @@ public class Server {
                 String uriPath = exchange.getRequestURI().getPath();
                 String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
                 Path imagePath = UPLOADS_DIR.resolve(fileName).normalize();
-                if (!imagePath.startsWith(UPLOADS_DIR) || !Files.exists(imagePath) || !Files.isReadable(imagePath)) {
-                    sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
+                if (imagePath.startsWith(UPLOADS_DIR) && Files.exists(imagePath) && Files.isReadable(imagePath)) {
+                    String contentType = Files.probeContentType(imagePath);
+                    if (contentType == null) contentType = "application/octet-stream";
+                    exchange.getResponseHeaders().set("Content-Type", contentType);
+                    exchange.sendResponseHeaders(200, Files.size(imagePath));
+                    try (OutputStream os = exchange.getResponseBody()) { Files.copy(imagePath, os); }
                     return;
                 }
-                String contentType = Files.probeContentType(imagePath);
-                if (contentType == null) contentType = "application/octet-stream";
-                exchange.getResponseHeaders().set("Content-Type", contentType);
-                exchange.sendResponseHeaders(200, Files.size(imagePath));
-                try (OutputStream os = exchange.getResponseBody()) { Files.copy(imagePath, os); }
+
+                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                    String remoteUrl = R2_CLIENT.toPublicUrl(uriPath);
+                    if (remoteUrl == null) remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fileName);
+                    if (remoteUrl != null) {
+                        exchange.getResponseHeaders().set("Location", remoteUrl);
+                        exchange.sendResponseHeaders(302, -1);
+                        return;
+                    }
+                }
+
+                sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
             } catch (Exception e) {
                 sendErrorResponse(exchange, 500, "Error serving upload image", e);
             }
@@ -1416,6 +1427,28 @@ public class Server {
             }
 
             if (resolved == null || !resolved.startsWith(baseDir) || !Files.exists(resolved) || !Files.isReadable(resolved)) {
+                String fallbackName = null;
+                int idx = uriPath.lastIndexOf('/') + 1;
+                if (idx > 0 && idx < uriPath.length()) fallbackName = uriPath.substring(idx);
+                if (fallbackName != null && !fallbackName.isEmpty()) {
+                    Path uploadCandidate = UPLOADS_DIR.resolve(fallbackName).normalize();
+                    if (uploadCandidate.startsWith(UPLOADS_DIR) && Files.exists(uploadCandidate) && Files.isReadable(uploadCandidate)) {
+                        String contentType = Files.probeContentType(uploadCandidate);
+                        if (contentType == null) contentType = "application/octet-stream";
+                        exchange.getResponseHeaders().set("Content-Type", contentType);
+                        exchange.sendResponseHeaders(200, Files.size(uploadCandidate));
+                        try (OutputStream os = exchange.getResponseBody()) { Files.copy(uploadCandidate, os); }
+                        return;
+                    }
+                    if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                        String remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fallbackName);
+                        if (remoteUrl != null) {
+                            exchange.getResponseHeaders().set("Location", remoteUrl);
+                            exchange.sendResponseHeaders(302, -1);
+                            return;
+                        }
+                    }
+                }
                 sendErrorResponse(exchange, 404, "Static file not found", null);
                 return;
             }
