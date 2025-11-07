@@ -5,15 +5,18 @@
     //    - 解析 API_ORIGIN / API_BASE，讓其他模組共享。
     //    - 提供 fetchSiteConfig() 與快取失效控制。
     //
-    const DEFAULT_BACKEND = 'http://localhost:8000';
-    let apiOrigin;
-    try {
-        apiOrigin = new URL(DEFAULT_BACKEND).origin;
-    } catch (_) {
-        apiOrigin = (window.location && window.location.origin) ? window.location.origin : DEFAULT_BACKEND;
-    }
-
-    const API_ORIGIN = apiOrigin;
+        const FALLBACK_BACKEND = 'http://localhost:8000';
+        const API_ORIGIN = (() => {
+            try {
+                if (typeof window !== 'undefined' && window.location && window.location.origin) {
+                    const origin = window.location.origin;
+                    if (origin && origin !== 'null' && origin !== 'file://') {
+                        return origin;
+                    }
+                }
+            } catch (_) {}
+            return new URL(FALLBACK_BACKEND).origin;
+        })();
     const API_BASE = API_ORIGIN + '/api';
     const SITE_CONFIG_ENDPOINT = API_BASE + '/site-config';
 

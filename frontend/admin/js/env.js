@@ -10,13 +10,14 @@
 
     const API_ORIGIN = (() => {
         try {
-            const protocol = window.location?.protocol || 'http:';
-            const hostname = window.location?.hostname || 'localhost';
-            const port = 8000;
-            return `${protocol}//${hostname}:${port}`;
-        } catch (_) {
-            return 'http://localhost:8000';
-        }
+            if (typeof window !== 'undefined' && window.location && window.location.origin) {
+                const origin = window.location.origin;
+                if (origin && origin !== 'null' && origin !== 'file://') {
+                    return origin;
+                }
+            }
+        } catch (_) {}
+        return 'http://localhost:8000';
     })();
 
     config.API_BASE_URL = `${API_ORIGIN}/api`;
