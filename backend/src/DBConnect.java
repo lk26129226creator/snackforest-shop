@@ -42,7 +42,51 @@ public class DBConnect {
      * @throws SQLException 當連線資訊錯誤或資料庫無法連線時拋出
      */
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
+        int maxRetries = parseInt(firstNonBlank(System.getenv("DB_CONN_RETRIES"), "5"), 5);
+        long baseDelayMs = parseLong(firstNonBlank(System.getenv("DB_CONN_BACKOFF_MS"), "2000"), 2000L);
+
+        SQLException last = null;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                System.err.println(String.format(
+                    "DBConnect: attempt %d/%d host=%s port=%s db=%s user=%s",
+                    attempt, maxRetries, DB_HOST, DB_PORT, DB_NAME, USER
+                ));
+                Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+                System.err.println("DBConnect: connection established on attempt " + attempt);
+                return conn;
+            } catch (SQLException ex) {
+                last = ex;
+                System.err.println("DBConnect: attempt " + attempt + " failed: " + ex.getMessage());
+                if (attempt < maxRetries) {
+                    try {
+                        Thread.sleep(baseDelayMs * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        throw new SQLException("Could not create connection to database server after " + maxRetries + " attempts.", last);
+    }
+
+    private static int parseInt(String text, int defaultValue) {
+        if (text == null) return defaultValue;
+        try {
+            return Integer.parseInt(text.trim());
+        } catch (NumberFormatException ignore) {
+            return defaultValue;
+        }
+    }
+
+    private static long parseLong(String text, long defaultValue) {
+        if (text == null) return defaultValue;
+        try {
+            return Long.parseLong(text.trim());
+        } catch (NumberFormatException ignore) {
+            return defaultValue;
+        }
     }
 
     /**
