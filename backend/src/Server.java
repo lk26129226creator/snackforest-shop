@@ -1204,15 +1204,15 @@ public class Server {
                 }
                 byte[] fileContent = baos.toByteArray();
 
+                String contentType = exchange.getRequestHeaders().getFirst("Content-Type");
                 String fileExtension = "";
                 int dotIndex = fileName.lastIndexOf('.');
                 if (dotIndex > 0) {
                     fileExtension = fileName.substring(dotIndex);
                 }
                 if (fileExtension.isEmpty()) {
-                    String ct = exchange.getRequestHeaders().getFirst("Content-Type");
-                    if (ct != null) {
-                        String l = ct.toLowerCase(java.util.Locale.ROOT);
+                    if (contentType != null) {
+                        String l = contentType.toLowerCase(java.util.Locale.ROOT);
                         if (l.contains("png")) fileExtension = ".png";
                         else if (l.contains("jpeg") || l.contains("jpg")) fileExtension = ".jpg";
                         else if (l.contains("gif")) fileExtension = ".gif";
