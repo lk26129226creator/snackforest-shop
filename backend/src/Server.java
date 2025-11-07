@@ -551,6 +551,22 @@ public class Server {
             }
         }
 
+        static boolean headExists(String url) {
+            if (url == null || url.trim().isEmpty()) return false;
+            try {
+                URL target = new URL(url);
+                HttpURLConnection conn = (HttpURLConnection) target.openConnection();
+                conn.setRequestMethod("HEAD");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                int code = conn.getResponseCode();
+                return code >= 200 && code < 300;
+            } catch (Exception e) {
+                System.err.println(java.time.LocalDateTime.now() + " - CloudflareR2Client.headExists failed: " + e.getMessage());
+                return false;
+            }
+        }
+
         static final class UploadResult {
             private final String objectKey;
             private final String publicUrl;
@@ -1373,9 +1389,12 @@ public class Server {
                     String remoteUrl = R2_CLIENT.toPublicUrl(uriPath);
                     if (remoteUrl == null) remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fileName);
                     if (remoteUrl != null) {
-                        exchange.getResponseHeaders().set("Location", remoteUrl);
-                        exchange.sendResponseHeaders(302, -1);
-                        return;
+                        // 先對 R2 公開網址做 HEAD 檢查，確保物件存在再轉向，避免把使用者導到會 404 的外部 URL。
+                        if (CloudflareR2Client.headExists(remoteUrl)) {
+                            exchange.getResponseHeaders().set("Location", remoteUrl);
+                            exchange.sendResponseHeaders(302, -1);
+                            return;
+                        }
                     }
                 }
 
@@ -1442,7 +1461,7 @@ public class Server {
                     }
                     if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
                         String remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fallbackName);
-                        if (remoteUrl != null) {
+                        if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
                             exchange.getResponseHeaders().set("Location", remoteUrl);
                             exchange.sendResponseHeaders(302, -1);
                             return;
