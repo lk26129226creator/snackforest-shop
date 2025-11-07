@@ -13,7 +13,7 @@ public class DBConnect {
     private static final String USER = firstNonBlank(System.getenv("MYSQLUSER"), System.getenv("DB_USER"), "root");
     private static final String PASSWORD = firstNonBlank(System.getenv("MYSQLPASSWORD"), System.getenv("DB_PASSWORD"), "lkjh890612");
     private static final String URL = String.format(
-        "jdbc:mysql://%s:%s/%s?autoReconnect=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8",
+        "jdbc:mysql://%s:%s/%s?autoReconnect=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true",
         DB_HOST, DB_PORT, DB_NAME
     );
 
