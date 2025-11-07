@@ -229,12 +229,44 @@ public class Server {
     }
 
     // --- 共用工具函式與路徑常數 ---
+    // 前端根目錄支援在本機（專案根目錄）與容器內（/app/frontend）執行。
+    private static final Path FRONTEND_DIR = resolveExistingDirectory(
+            Paths.get("frontend"),
+            Paths.get("..", "frontend")
+    );
     // 前端預設產品圖目錄，供 normalizeImageUrl 對應 /frontend/images/products/ 靜態資源。
-    private static final Path IMAGES_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
+    private static final Path IMAGES_DIR = resolveExistingDirectory(
+            FRONTEND_DIR.resolve("images").resolve("products"),
+            Paths.get("frontend", "images", "products"),
+            Paths.get("..", "frontend", "images", "products")
+    );
     // 使用者上傳檔案儲存位置，管理端商品/輪播上傳皆寫入此處。
-    private static final Path UPLOADS_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
+    private static final Path UPLOADS_DIR = resolveExistingDirectory(
+            Paths.get("data", "uploads", "images"),
+            Paths.get("..", "data", "uploads", "images")
+    );
     // data 目錄根路徑，供其他 handler 讀寫 JSON seed 資料。
-    private static final Path DATA_DIR = Paths.get("..", "data").toAbsolutePath().normalize();
+    private static final Path DATA_DIR = resolveExistingDirectory(
+            Paths.get("data"),
+            Paths.get("..", "data")
+    );
+
+    private static Path resolveExistingDirectory(Path... candidates) {
+        for (Path candidate : candidates) {
+            if (candidate == null) continue;
+            Path normalized = candidate.toAbsolutePath().normalize();
+            if (Files.exists(normalized) && Files.isDirectory(normalized)) {
+                return normalized;
+            }
+        }
+        Path fallback = candidates[candidates.length - 1].toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(fallback);
+        } catch (IOException ignored) {
+            // 目錄不存在且無法建立時，仍回傳正規化路徑，後續程式會處理實際錯誤。
+        }
+        return fallback;
+    }
 
     /**
      * 清理影像網址清單，移除 null 與多餘的引號，保持路徑格式一致。
@@ -954,8 +986,6 @@ public class Server {
      * 服務舊版產品圖片目錄（frontend/images/products）的靜態檔案。
      */
     static class ImageFileHandler implements HttpHandler {
-        private static final Path IMAGES_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
-
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
@@ -990,15 +1020,13 @@ public class Server {
      * 服務使用者上傳的圖片目錄（data/uploads/images）的靜態檔案。
      */
     static class UploadsImageFileHandler implements HttpHandler {
-        private static final Path BASE_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
-
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
                 String uriPath = exchange.getRequestURI().getPath();
                 String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                Path imagePath = BASE_DIR.resolve(fileName).normalize();
-                if (!imagePath.startsWith(BASE_DIR) || !Files.exists(imagePath) || !Files.isReadable(imagePath)) {
+                Path imagePath = UPLOADS_DIR.resolve(fileName).normalize();
+                if (!imagePath.startsWith(UPLOADS_DIR) || !Files.exists(imagePath) || !Files.isReadable(imagePath)) {
                     sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
                     return;
                 }
@@ -1020,11 +1048,7 @@ public class Server {
         private final Path baseDir;
 
         public StaticHandler() {
-            Path candidate1 = Paths.get("frontend").toAbsolutePath().normalize();
-            Path candidate2 = Paths.get("..", "frontend").toAbsolutePath().normalize();
-            if (Files.exists(candidate1) && Files.isDirectory(candidate1)) baseDir = candidate1;
-            else if (Files.exists(candidate2) && Files.isDirectory(candidate2)) baseDir = candidate2;
-            else baseDir = candidate1;
+            baseDir = FRONTEND_DIR;
             System.err.println(java.time.LocalDateTime.now() + " - StaticHandler baseDir = " + baseDir.toString());
         }
 
