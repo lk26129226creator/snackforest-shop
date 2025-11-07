@@ -30,9 +30,9 @@ public class Server {
     public static void main(String[] args) {
         try {
             System.out.println("啟動 SnackForest 伺服器...");
-            
-            // 伺服器核心：綁定 8000 埠口，供前後台頁面透過 fetch 與瀏覽器直接連線。
-            HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+
+            int port = resolvePort();
+            HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
             // 啟動前執行資料庫欄位檢查：確保管理端客製功能需要的欄位都存在。
             try (Connection conn = DBConnect.getConnection()) {
                 ensureCustomerColumns(conn);
@@ -92,7 +92,7 @@ public class Server {
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
-            System.out.println("✅ Server started at http://localhost:8000");
+            System.out.println("✅ Server started at http://localhost:" + port);
             
             // 保持主執行緒存活，避免 HttpServer 因 main 結束而停止服務。
             while (true) {
@@ -104,6 +104,19 @@ public class Server {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    private static int resolvePort() {
+        String envPort = System.getenv("PORT");
+        if (envPort != null) {
+            try {
+                int parsed = Integer.parseInt(envPort.trim());
+                if (parsed > 0 && parsed <= 65535) return parsed;
+            } catch (NumberFormatException ignored) {
+                System.err.println("無法解析 PORT 環境變數，改用預設 8000：" + envPort);
+            }
+        }
+        return 8000;
     }
 
     // --- 內建 Http 工具函式（取代額外依賴） ---

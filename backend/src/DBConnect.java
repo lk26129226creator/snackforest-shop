@@ -7,15 +7,25 @@ import java.sql.SQLException;
  */
 public class DBConnect {
     // MySQL 連線資訊（支援環境變數，保留預設值以支援本機開發）
-    private static final String DB_HOST = System.getenv().getOrDefault("DB_HOST", "localhost");
-    private static final String DB_PORT = System.getenv().getOrDefault("DB_PORT", "3306");
-    private static final String DB_NAME = System.getenv().getOrDefault("DB_NAME", "test0310");
-    private static final String USER = System.getenv().getOrDefault("DB_USER", "root");
-    private static final String PASSWORD = System.getenv().getOrDefault("DB_PASSWORD", "lkjh890612");
+    private static final String DB_HOST = firstNonBlank(System.getenv("MYSQLHOST"), System.getenv("DB_HOST"), "localhost");
+    private static final String DB_PORT = firstNonBlank(System.getenv("MYSQLPORT"), System.getenv("DB_PORT"), "3306");
+    private static final String DB_NAME = firstNonBlank(System.getenv("MYSQLDATABASE"), System.getenv("DB_NAME"), "test0310");
+    private static final String USER = firstNonBlank(System.getenv("MYSQLUSER"), System.getenv("DB_USER"), "root");
+    private static final String PASSWORD = firstNonBlank(System.getenv("MYSQLPASSWORD"), System.getenv("DB_PASSWORD"), "lkjh890612");
     private static final String URL = String.format(
         "jdbc:mysql://%s:%s/%s?autoReconnect=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8",
         DB_HOST, DB_PORT, DB_NAME
     );
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
 
     static {
         try {
