@@ -108,6 +108,9 @@
     window.SITE_CONFIG_ENDPOINT = SITE_CONFIG_ENDPOINT;
     window.SF_API_BASE = API_BASE;
     window.SF_STORAGE_BASE = API_ORIGIN;
+    if (window.api && typeof window.api.setBaseURL === 'function') {
+        window.api.setBaseURL(API_BASE);
+    }
     window.invalidateSiteConfigCache = invalidateSiteConfigCache;
 
     // 若尚未綁定全域 fetchSiteConfig（避免覆蓋其他模組自訂版本），則掛載預設實作。

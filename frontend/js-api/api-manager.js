@@ -7,15 +7,42 @@ class SnackForestAPI {
      * @param {string} [baseURL] 自訂 API 基底路徑；若未提供則自動偵測。
      */
     constructor(baseURL = '') {
-        // 自動偵測後端 API 位置：
-        // - 若目前頁面不是跑在 8000 連接埠（例如 Live Server 的 5500/5501），
-        //   則預設走 http://localhost:8000 作為 API 伺服器；
-        // - 也可透過 window.SF_API_BASE 進行覆寫。
-        const on8000 = (typeof window !== 'undefined' && window.location && window.location.port === '8000');
-        const detected = on8000 ? '' : 'http://localhost:8000';
-        this.baseURL = baseURL || (typeof window !== 'undefined' && window.SF_API_BASE) || detected;
+        this.baseURL = this.normalizeBaseURL(
+            baseURL ||
+            (typeof window !== 'undefined' && window.SF_API_BASE) ||
+            this.detectDefaultBaseURL()
+        );
         this.cache = new Map();
         this.cacheTimeout = 5 * 60 * 1000; // 5分鐘快取
+    }
+
+    detectDefaultBaseURL() {
+        if (typeof window === 'undefined' || !window.location) {
+            return 'http://localhost:8000';
+        }
+        const loc = window.location;
+        if (loc.origin && loc.origin !== 'null' && loc.origin !== 'file://') {
+            return loc.origin;
+        }
+        const protocol = loc.protocol || 'http:';
+        const hostname = loc.hostname || 'localhost';
+        const port = loc.port ? `:${loc.port}` : '';
+        return `${protocol}//${hostname}${port}`;
+    }
+
+    normalizeBaseURL(value) {
+        if (!value) return '';
+        const trimmed = String(value).trim();
+        if (!trimmed) return '';
+        // 不保留結尾的斜線，避免組合時出現雙斜線。
+        return trimmed.replace(/\/$/, '');
+    }
+
+    setBaseURL(baseURL) {
+        const resolved = this.normalizeBaseURL(baseURL);
+        if (resolved) {
+            this.baseURL = resolved;
+        }
     }
 
     /**
@@ -31,7 +58,7 @@ class SnackForestAPI {
             // 若 endpoint 已是絕對網址，直接使用；否則以 baseURL 拼接
             const url = /^(https?:)?\/\//i.test(endpoint)
                 ? endpoint
-                : `${this.baseURL}${endpoint}`;
+                : this.joinRelativeEndpoint(endpoint);
             const config = {
                 method: method,
                 headers: {
@@ -66,6 +93,19 @@ class SnackForestAPI {
                 data: null
             };
         }
+    }
+
+    joinRelativeEndpoint(endpoint) {
+        const base = this.baseURL || '';
+        if (!base) return endpoint;
+        const normalizedBase = base.replace(/\/$/, '');
+        let rel = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        if (normalizedBase.endsWith('/api') && rel.startsWith('/api/')) {
+            rel = rel.substring(4);
+        } else if (normalizedBase.endsWith('/api') && rel === '/api') {
+            rel = '';
+        }
+        return `${normalizedBase}${rel}`;
     }
 
     /**
@@ -429,6 +469,9 @@ class SnackForestAPI {
 
 // 建立全域實例
 window.api = new SnackForestAPI();
+if (typeof window !== 'undefined' && window.SF_API_BASE && typeof window.api.setBaseURL === 'function') {
+    window.api.setBaseURL(window.SF_API_BASE);
+}
 
 // 便利函數
 window.loadTable = (endpoint, containerSelector, options = {}) => {
