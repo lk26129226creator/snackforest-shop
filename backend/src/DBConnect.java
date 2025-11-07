@@ -58,6 +58,7 @@ public class DBConnect {
             } catch (SQLException ex) {
                 last = ex;
                 System.err.println("DBConnect: attempt " + attempt + " failed: " + ex.getMessage());
+                ex.printStackTrace();
                 if (attempt < maxRetries) {
                     try {
                         Thread.sleep(baseDelayMs * attempt);
