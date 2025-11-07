@@ -6,7 +6,9 @@ import com.sun.net.httpserver.HttpContext;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,6 +16,13 @@ import java.io.ByteArrayOutputStream;
 import java.sql.*;
 import java.util.*;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.MessageDigest;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -250,22 +259,315 @@ public class Server {
             Paths.get("data"),
             Paths.get("..", "data")
     );
+    private static final CloudflareR2Client R2_CLIENT = CloudflareR2Client.fromEnvironment();
 
     private static Path resolveExistingDirectory(Path... candidates) {
+        IOException lastIOException = null;
         for (Path candidate : candidates) {
             if (candidate == null) continue;
             Path normalized = candidate.toAbsolutePath().normalize();
-            if (Files.exists(normalized) && Files.isDirectory(normalized)) {
-                return normalized;
+            try {
+                if (!Files.exists(normalized)) {
+                    Files.createDirectories(normalized);
+                }
+                if (Files.isDirectory(normalized) && Files.isWritable(normalized)) {
+                    return normalized;
+                }
+            } catch (IOException ioe) {
+                lastIOException = ioe;
             }
         }
-        Path fallback = candidates[candidates.length - 1].toAbsolutePath().normalize();
-        try {
-            Files.createDirectories(fallback);
-        } catch (IOException ignored) {
-            // 目錄不存在且無法建立時，仍回傳正規化路徑，後續程式會處理實際錯誤。
+        Path fallback = candidates.length > 0 ? candidates[0] : Paths.get(".");
+        Path normalizedFallback = fallback.toAbsolutePath().normalize();
+        if (lastIOException != null) {
+            System.err.println(java.time.LocalDateTime.now() + " - Failed to resolve writable directory: " + lastIOException.getMessage());
         }
-        return fallback;
+        return normalizedFallback;
+    }
+
+    /**
+     * 與 Cloudflare R2 整合的最小客製簽名客戶端，使用 SigV4 直接對 R2 API 上傳/刪除物件。
+     */
+    static class CloudflareR2Client {
+        private static final DateTimeFormatter AMZ_DATE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
+        private static final String REGION = "auto";
+        private static final String SERVICE = "s3";
+
+        private final String accountId;
+        private final String accessKeyId;
+        private final String secretAccessKey;
+        private final String bucket;
+        private final String publicBaseUrl;
+        private final String pathPrefix;
+        private final String host;
+
+        private CloudflareR2Client(String accountId, String accessKeyId, String secretAccessKey, String bucket, String publicBaseUrl, String pathPrefix) {
+            this.accountId = accountId;
+            this.accessKeyId = accessKeyId;
+            this.secretAccessKey = secretAccessKey;
+            this.bucket = bucket;
+            this.publicBaseUrl = normalizeBaseUrl(publicBaseUrl);
+            this.pathPrefix = normalizePathPrefix(pathPrefix);
+            this.host = accountId + ".r2.cloudflarestorage.com";
+        }
+
+        static CloudflareR2Client fromEnvironment() {
+            String accountId = trimToNull(System.getenv("R2_ACCOUNT_ID"));
+            String accessKeyId = trimToNull(System.getenv("R2_ACCESS_KEY_ID"));
+            String secretAccessKey = trimToNull(System.getenv("R2_SECRET_ACCESS_KEY"));
+            String bucket = trimToNull(System.getenv("R2_BUCKET_NAME"));
+            if (accountId == null || accessKeyId == null || secretAccessKey == null || bucket == null) {
+                return null;
+            }
+            String publicBaseUrl = trimToNull(System.getenv("R2_PUBLIC_BASE_URL"));
+            String pathPrefix = trimToNull(System.getenv("R2_PATH_PREFIX"));
+            if (pathPrefix == null || pathPrefix.isEmpty()) {
+                pathPrefix = "uploads/images";
+            }
+            CloudflareR2Client client = new CloudflareR2Client(accountId, accessKeyId, secretAccessKey, bucket, publicBaseUrl, pathPrefix);
+            System.err.println(java.time.LocalDateTime.now() + " - Cloudflare R2 configured with bucket=" + bucket + " prefix=" + client.pathPrefix + " publicBase=" + client.publicBaseUrl);
+            return client;
+        }
+
+        boolean isConfigured() {
+            return accountId != null && accessKeyId != null && secretAccessKey != null && bucket != null;
+        }
+
+        String buildObjectKey(String filename) {
+            String safeName = sanitizeFilename(filename);
+            if (pathPrefix.isEmpty()) return safeName;
+            return pathPrefix + "/" + safeName;
+        }
+
+        UploadResult uploadObject(String objectKey, byte[] data, String contentType) throws Exception {
+            if (!isConfigured()) throw new IllegalStateException("Cloudflare R2 client is not configured");
+            if (objectKey == null || objectKey.isEmpty()) {
+                objectKey = buildObjectKey(UUID.randomUUID().toString());
+            }
+            String normalizedKey = objectKey.replace('\\', '/');
+            String finalContentType = (contentType == null || contentType.isEmpty()) ? "application/octet-stream" : contentType;
+            String payloadHash = sha256Hex(data);
+            ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+            String amzDate = AMZ_DATE_TIME.format(now);
+            String dateStamp = amzDate.substring(0, 8);
+
+            String canonicalUri = "/" + bucket + "/" + normalizedKey;
+            String canonicalHeaders =
+                    "content-type:" + finalContentType + "\n" +
+                    "host:" + host + "\n" +
+                    "x-amz-content-sha256:" + payloadHash + "\n" +
+                    "x-amz-date:" + amzDate + "\n";
+            String signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
+            String canonicalRequest = "PUT\n" + canonicalUri + "\n\n" + canonicalHeaders + "\n" + signedHeaders + "\n" + payloadHash;
+
+            String credentialScope = dateStamp + "/" + REGION + "/" + SERVICE + "/aws4_request";
+            String stringToSign = "AWS4-HMAC-SHA256\n" + amzDate + "\n" + credentialScope + "\n" + sha256Hex(canonicalRequest.getBytes(StandardCharsets.UTF_8));
+            byte[] signingKey = signingKey(secretAccessKey, dateStamp, REGION, SERVICE);
+            String signature = bytesToHex(hmacSha256(signingKey, stringToSign));
+
+            String authorization = "AWS4-HMAC-SHA256 Credential=" + accessKeyId + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
+
+            URL url = new URL("https://" + host + canonicalUri);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("PUT");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(15_000);
+            conn.setReadTimeout(30_000);
+            conn.setFixedLengthStreamingMode(data.length);
+            conn.setRequestProperty("Content-Type", finalContentType);
+            conn.setRequestProperty("x-amz-date", amzDate);
+            conn.setRequestProperty("x-amz-content-sha256", payloadHash);
+            conn.setRequestProperty("Authorization", authorization);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(data);
+            }
+
+            int status = conn.getResponseCode();
+            if (status < 200 || status >= 300) {
+                String errorBody = readStream(conn.getErrorStream());
+                throw new IOException("R2 upload failed with status " + status + ": " + errorBody);
+            }
+
+            String publicUrl = toPublicUrl(normalizedKey);
+            if (publicUrl == null) {
+                publicUrl = "https://" + host + canonicalUri;
+            }
+            return new UploadResult(normalizedKey, publicUrl);
+        }
+
+        boolean deleteByReference(String reference) throws Exception {
+            if (reference == null || reference.isEmpty()) return false;
+            String key = extractObjectKey(reference);
+            if (key == null || key.isEmpty()) return false;
+            return deleteObject(key);
+        }
+
+        String toPublicUrl(String pathOrUrl) {
+            if (pathOrUrl == null || pathOrUrl.trim().isEmpty()) return null;
+            String trimmed = pathOrUrl.trim();
+            if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                return trimmed;
+            }
+            String key = extractObjectKey(trimmed);
+            if (key == null) return null;
+            return buildPublicBaseUrl() + "/" + key;
+        }
+
+        private boolean deleteObject(String objectKey) throws Exception {
+            String normalizedKey = objectKey.replace('\\', '/');
+            ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+            String amzDate = AMZ_DATE_TIME.format(now);
+            String dateStamp = amzDate.substring(0, 8);
+
+            String canonicalUri = "/" + bucket + "/" + normalizedKey;
+            String payloadHash = sha256Hex(new byte[0]);
+            String canonicalHeaders =
+                    "host:" + host + "\n" +
+                    "x-amz-content-sha256:" + payloadHash + "\n" +
+                    "x-amz-date:" + amzDate + "\n";
+            String signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+            String canonicalRequest = "DELETE\n" + canonicalUri + "\n\n" + canonicalHeaders + "\n" + signedHeaders + "\n" + payloadHash;
+
+            String credentialScope = dateStamp + "/" + REGION + "/" + SERVICE + "/aws4_request";
+            String stringToSign = "AWS4-HMAC-SHA256\n" + amzDate + "\n" + credentialScope + "\n" + sha256Hex(canonicalRequest.getBytes(StandardCharsets.UTF_8));
+            byte[] signingKey = signingKey(secretAccessKey, dateStamp, REGION, SERVICE);
+            String signature = bytesToHex(hmacSha256(signingKey, stringToSign));
+
+            String authorization = "AWS4-HMAC-SHA256 Credential=" + accessKeyId + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
+
+            URL url = new URL("https://" + host + canonicalUri);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("DELETE");
+            conn.setConnectTimeout(10_000);
+            conn.setReadTimeout(20_000);
+            conn.setRequestProperty("x-amz-date", amzDate);
+            conn.setRequestProperty("x-amz-content-sha256", payloadHash);
+            conn.setRequestProperty("Authorization", authorization);
+
+            int status = conn.getResponseCode();
+            if (status == 404) return false;
+            if (status < 200 || status >= 300) {
+                String errorBody = readStream(conn.getErrorStream());
+                throw new IOException("R2 delete failed with status " + status + ": " + errorBody);
+            }
+            return true;
+        }
+
+        private String extractObjectKey(String reference) {
+            if (reference == null || reference.trim().isEmpty()) return null;
+            String trimmed = reference.trim();
+            if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                if (publicBaseUrl != null && trimmed.startsWith(publicBaseUrl)) {
+                    return trimmed.substring(publicBaseUrl.length()).replaceFirst("^/+", "");
+                }
+                String apiBase = "https://" + host + "/" + bucket + "/";
+                if (trimmed.startsWith(apiBase)) {
+                    return trimmed.substring(apiBase.length());
+                }
+                int idx = trimmed.indexOf("/" + bucket + "/");
+                if (idx >= 0) {
+                    return trimmed.substring(idx + bucket.length() + 2);
+                }
+                return null;
+            }
+            String normalized = trimmed.replace('\\', '/');
+            if (normalized.startsWith("/")) normalized = normalized.substring(1);
+            if (normalized.startsWith(pathPrefix)) return normalized;
+            int lastSlash = normalized.lastIndexOf('/');
+            String filename = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
+            if (pathPrefix.isEmpty()) return filename;
+            return pathPrefix + "/" + filename;
+        }
+
+        private String buildPublicBaseUrl() {
+            if (publicBaseUrl != null && !publicBaseUrl.isEmpty()) return publicBaseUrl;
+            return "https://" + host + "/" + bucket;
+        }
+
+        private static String normalizeBaseUrl(String value) {
+            if (value == null) return null;
+            String trimmed = value.trim();
+            if (trimmed.isEmpty()) return null;
+            while (trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+            return trimmed;
+        }
+
+        private static String normalizePathPrefix(String prefix) {
+            if (prefix == null) return "";
+            String normalized = prefix.replace('\\', '/');
+            while (normalized.startsWith("/")) normalized = normalized.substring(1);
+            while (normalized.endsWith("/")) normalized = normalized.substring(0, normalized.length() - 1);
+            return normalized;
+        }
+
+        private static String trimToNull(String value) {
+            if (value == null) return null;
+            String trimmed = value.trim();
+            return trimmed.isEmpty() ? null : trimmed;
+        }
+
+        private static String sanitizeFilename(String filename) {
+            if (filename == null || filename.isEmpty()) {
+                return UUID.randomUUID().toString();
+            }
+            String cleaned = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+            if (cleaned.isEmpty()) cleaned = UUID.randomUUID().toString();
+            return cleaned;
+        }
+
+        private static String sha256Hex(byte[] data) throws Exception {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(data);
+            return bytesToHex(digest);
+        }
+
+        private static String sha256Hex(String data) throws Exception {
+            return sha256Hex(data.getBytes(StandardCharsets.UTF_8));
+        }
+
+        private static byte[] hmacSha256(byte[] key, String data) throws Exception {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(key, "HmacSHA256"));
+            return mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        }
+
+        private static byte[] signingKey(String secretKey, String dateStamp, String regionName, String serviceName) throws Exception {
+            byte[] kSecret = ("AWS4" + secretKey).getBytes(StandardCharsets.UTF_8);
+            byte[] kDate = hmacSha256(kSecret, dateStamp);
+            byte[] kRegion = hmacSha256(kDate, regionName);
+            byte[] kService = hmacSha256(kRegion, serviceName);
+            return hmacSha256(kService, "aws4_request");
+        }
+
+        private static String bytesToHex(byte[] bytes) {
+            StringBuilder sb = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                sb.append(String.format(java.util.Locale.ROOT, "%02x", b));
+            }
+            return sb.toString();
+        }
+
+        private static String readStream(InputStream is) {
+            if (is == null) return "";
+            try (java.util.Scanner s = new java.util.Scanner(is, StandardCharsets.UTF_8).useDelimiter("\\A")) {
+                return s.hasNext() ? s.next() : "";
+            }
+        }
+
+        static final class UploadResult {
+            private final String objectKey;
+            private final String publicUrl;
+
+            UploadResult(String objectKey, String publicUrl) {
+                this.objectKey = objectKey;
+                this.publicUrl = publicUrl;
+            }
+
+            String objectKey() { return objectKey; }
+
+            String publicUrl() { return publicUrl; }
+        }
     }
 
     /**
@@ -297,6 +599,7 @@ public class Server {
         if (rawUrl == null) return null;
         String trimmed = rawUrl.trim().replace('\\', '/');
         if (trimmed.isEmpty()) return null;
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
         final String productsPrefix = "/frontend/images/products/";
         final String uploadsPrefix = "/uploads/images/";
         // 若已是帶有既有前綴的絕對路徑且檔案存在，直接回傳原始值。
@@ -309,6 +612,10 @@ public class Server {
             String filename = trimmed.substring(uploadsPrefix.length());
             Path candidate = UPLOADS_DIR.resolve(filename).normalize();
             if (candidate.startsWith(UPLOADS_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
+            if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                String remote = R2_CLIENT.toPublicUrl(trimmed);
+                if (remote != null) return remote;
+            }
         }
         // 若為其他絕對路徑，嘗試將檔名映射到 uploads 或預設產品圖目錄。
         if (trimmed.startsWith("/")) {
@@ -318,6 +625,10 @@ public class Server {
                 if (u.startsWith(UPLOADS_DIR) && Files.exists(u) && Files.isRegularFile(u)) return uploadsPrefix + base;
                 Path p = IMAGES_DIR.resolve(base).normalize();
                 if (p.startsWith(IMAGES_DIR) && Files.exists(p) && Files.isRegularFile(p)) return productsPrefix + base;
+                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                    String remote = R2_CLIENT.toPublicUrl(uploadsPrefix + base);
+                    if (remote != null) return remote;
+                }
             }
         }
             // 最後備援：遍歷 uploads 與 products 目錄，以檔名開頭對應第一個找到的檔案。
@@ -338,6 +649,10 @@ public class Server {
                     Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
                     if (found.isPresent()) return productsPrefix + found.get().getFileName().toString();
                 }
+            }
+            if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                String remote = R2_CLIENT.toPublicUrl(uploadsPrefix + baseName);
+                if (remote != null) return remote;
             }
         } catch (Exception e) {
             System.err.println(java.time.LocalDateTime.now() + " - Error in normalizeImageUrl: " + e.getMessage());
@@ -858,8 +1173,8 @@ public class Server {
      * 處理前台與後台圖片上傳請求，將檔案儲存至 data/uploads/images。
      */
     static class ImageUploadHandler implements HttpHandler {
-    // 將上傳檔案放在 data/uploads/images，避免前端 Live Server 監聽到變動而重新載入。
-        private static final Path UPLOAD_DIR_PATH = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
+        // 將上傳檔案放在 data/uploads/images，避免前端 Live Server 監聽到變動而重新載入。
+        private static final Path UPLOAD_DIR_PATH = UPLOADS_DIR;
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -906,14 +1221,30 @@ public class Server {
                 }
 
                 String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-                Files.createDirectories(UPLOAD_DIR_PATH);
-                Path filePath = UPLOAD_DIR_PATH.resolve(uniqueFilename);
-                Files.write(filePath, fileContent);
+                String effectiveContentType = (contentType == null || contentType.isEmpty()) ? "application/octet-stream" : contentType;
+                String storagePath = (R2_CLIENT != null && R2_CLIENT.isConfigured()) ? R2_CLIENT.buildObjectKey(uniqueFilename) : null;
+                String imageUrl = null;
+
+                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                    try {
+                        CloudflareR2Client.UploadResult res = R2_CLIENT.uploadObject(storagePath, fileContent, effectiveContentType);
+                        imageUrl = res.publicUrl();
+                        System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: uploaded to R2 key=" + res.objectKey());
+                    } catch (Exception r2Ex) {
+                        System.err.println(java.time.LocalDateTime.now() + " - R2 upload failed, falling back to local disk: " + r2Ex.getMessage());
+                    }
+                }
+
+                if (imageUrl == null) {
+                    Files.createDirectories(UPLOADS_DIR);
+                    Path filePath = UPLOADS_DIR.resolve(uniqueFilename);
+                    Files.write(filePath, fileContent);
+                    imageUrl = "/uploads/images/" + uniqueFilename;
+                    System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: saved " + filePath.toString() + " -> returning " + imageUrl);
+                }
 
                 JSONObject responseJson = new JSONObject();
-                String imageUrl = "/uploads/images/" + uniqueFilename;
                 responseJson.put("imageUrl", imageUrl);
-                System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: saved " + filePath.toString() + " -> returning " + imageUrl);
                 sendJsonResponse(exchange, responseJson.toString(), 200);
 
             } catch (Exception e) {
@@ -928,7 +1259,6 @@ public class Server {
      */
     static class ImageDeleteHandler implements HttpHandler {
         private static final Path LEGACY_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
-        private static final Path UPLOAD_DIR = Paths.get("..", "data", "uploads", "images").toAbsolutePath().normalize();
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -956,13 +1286,23 @@ public class Server {
                 }
                 // 再次清理檔名，排除非法字元。
                 filename = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
-                // 先嘗試刪除使用者上傳目錄中的檔案，再回頭檢查舊版目錄。
-                Path target = UPLOAD_DIR.resolve(filename).normalize();
                 boolean deleted = false;
-                if (target.startsWith(UPLOAD_DIR) && Files.exists(target)) {
-                    Files.delete(target);
-                    deleted = true;
-                } else {
+                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                    try {
+                        String ref = imageUrl != null ? imageUrl : filename;
+                        deleted = R2_CLIENT.deleteByReference(ref);
+                    } catch (Exception e) {
+                        System.err.println(java.time.LocalDateTime.now() + " - Failed to delete R2 object: " + e.getMessage());
+                    }
+                }
+                if (!deleted) {
+                    Path target = UPLOADS_DIR.resolve(filename).normalize();
+                    if (target.startsWith(UPLOADS_DIR) && Files.exists(target)) {
+                        Files.delete(target);
+                        deleted = true;
+                    }
+                }
+                if (!deleted) {
                     Path legacy = LEGACY_DIR.resolve(filename).normalize();
                     if (legacy.startsWith(LEGACY_DIR) && Files.exists(legacy)) {
                         Files.delete(legacy);

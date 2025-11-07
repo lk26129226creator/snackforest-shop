@@ -12,6 +12,7 @@ WORKDIR /app
 COPY --from=build /app/bin ./bin
 COPY --from=build /app/lib ./lib
 COPY frontend/ ./frontend
+COPY data/ ./data
 
 # Environment variables (can be overridden on Render)
 ENV DB_HOST=localhost \
