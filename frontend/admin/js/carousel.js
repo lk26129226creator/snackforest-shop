@@ -194,7 +194,8 @@
                 const item = document.createElement('div');
                 item.className = 'list-group-item carousel-editor-item';
                 item.dataset.index = String(idx);
-                const previewSrc = images.normalizeImageUrl(slide.imageUrl || '');
+                const rawValue = slide.imageUrlOriginal ?? slide.imageUrl ?? '';
+                const previewSrc = images.normalizeImageUrl(slide.imageUrlResolved || rawValue);
                 item.innerHTML = `
                     <div class="row g-3 align-items-center">
                         <div class="col-md-3 text-center">
@@ -204,7 +205,7 @@
                         <div class="col-md-6">
                             <div class="mb-2">
                                 <label class="form-label mb-1">圖片 URL</label>
-                                <input type="text" class="form-control" data-field="imageUrl" data-index="${idx}" value="${escapeAttr(slide.imageUrl || '')}" placeholder="https://... 或 /frontend/images/...">
+                                <input type="text" class="form-control" data-field="imageUrl" data-index="${idx}" value="${escapeAttr(rawValue)}" placeholder="https://... 或 /frontend/images/...">
                             </div>
                             <div class="mb-2">
                                 <button type="button" class="btn btn-sm btn-secondary" data-action="upload" data-index="${idx}">上傳圖片</button>
@@ -256,9 +257,14 @@
         const idx = Number(target.getAttribute('data-index'));
         if (!Number.isFinite(idx)) return;
         if (!state.carousel.slides[idx]) {
-            state.carousel.slides[idx] = { imageUrl: '', title: '', text: '', link: '' };
+            state.carousel.slides[idx] = { imageUrl: '', imageUrlResolved: '', title: '', text: '', link: '' };
         }
         state.carousel.slides[idx][field] = target.value;
+        if (field === 'imageUrl') {
+            state.carousel.slides[idx].imageUrlResolved = target.value;
+            delete state.carousel.slides[idx].imageUrlOriginal;
+            state.carousel.slides[idx].imageMissing = false;
+        }
         carousel.setDirty(true);
         if (field === 'imageUrl') {
             const preview = target.closest('.list-group-item')?.querySelector('img[data-role="carousel-preview"]');
@@ -319,8 +325,11 @@
             const url = await images.uploadImage(file);
             if (!url) throw new Error('未取得圖片網址');
             const slides = carousel.getSlidesClone();
-            if (!slides[idx]) slides[idx] = { imageUrl: '', title: '', text: '', link: '' };
+            if (!slides[idx]) slides[idx] = { imageUrl: '', imageUrlResolved: '', title: '', text: '', link: '' };
             slides[idx].imageUrl = url;
+            slides[idx].imageUrlResolved = url;
+            delete slides[idx].imageUrlOriginal;
+            delete slides[idx].imageMissing;
             state.carousel.slides = slides;
             carousel.setDirty(true);
             carousel.renderEditor(slides);
@@ -344,7 +353,7 @@
      */
     carousel.addSlide = function () {
         const slides = carousel.getSlidesClone();
-        slides.push({ imageUrl: '', title: '', text: '', link: '' });
+        slides.push({ imageUrl: '', imageUrlResolved: '', title: '', text: '', link: '' });
         state.carousel.slides = slides;
         carousel.setDirty(true);
         carousel.renderEditor(slides);

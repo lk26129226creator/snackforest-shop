@@ -260,6 +260,7 @@ public class Server {
             Paths.get("..", "data")
     );
     private static final CloudflareR2Client R2_CLIENT = CloudflareR2Client.fromEnvironment();
+    private static final String DEFAULT_PLACEHOLDER_IMAGE = "/frontend/images/products/no-image.svg";
 
     private static Path resolveExistingDirectory(Path... candidates) {
         IOException lastIOException = null;
@@ -1502,7 +1503,45 @@ public class Server {
                     } else {
                         json = defaultJson;
                     }
-                    sendJsonResponse(exchange, json, 200);
+                    JSONArray normalized = new JSONArray();
+                    boolean normalizedSuccessfully = true;
+                    try {
+                        JSONArray arr = new JSONArray(json);
+                        for (int i = 0; i < arr.length(); i++) {
+                            Object item = arr.get(i);
+                            if (!(item instanceof JSONObject)) {
+                                continue;
+                            }
+                            JSONObject slide = new JSONObject(((JSONObject) item).toString());
+                            String raw = slide.optString("imageUrl", null);
+                            String resolved = normalizeImageUrl(raw);
+                            if (raw == null) {
+                                slide.put("imageUrl", "");
+                            }
+                            if (resolved != null) {
+                                slide.put("imageUrlResolved", resolved);
+                                if (raw != null && !raw.isEmpty() && !raw.equals(resolved)) {
+                                    slide.put("imageUrlOriginal", raw);
+                                }
+                                slide.remove("imageMissing");
+                            } else {
+                                slide.put("imageUrlResolved", DEFAULT_PLACEHOLDER_IMAGE);
+                                if (raw != null && !raw.isEmpty()) {
+                                    slide.put("imageUrlOriginal", raw);
+                                }
+                                slide.put("imageMissing", true);
+                            }
+                            normalized.put(slide);
+                        }
+                    } catch (Exception parseEx) {
+                        normalizedSuccessfully = false;
+                        System.err.println("CarouselHandler: failed to normalize carousel data: " + parseEx.getMessage());
+                    }
+                    if (normalizedSuccessfully) {
+                        sendJsonResponse(exchange, normalized.toString(), 200);
+                    } else {
+                        sendJsonResponse(exchange, json, 200);
+                    }
                 } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
                     String body;
                     try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
@@ -1592,7 +1631,34 @@ public class Server {
             try {
                 if ("GET".equalsIgnoreCase(method)) {
                     String json = readFileOrDefault(CONFIG_FILE, DEFAULT_CONFIG);
-                    sendJsonResponse(exchange, json, 200);
+                    JSONObject payload;
+                    try {
+                        payload = new JSONObject(json);
+                    } catch (Exception ex) {
+                        System.err.println("SiteConfigHandler: invalid JSON, returning defaults: " + ex.getMessage());
+                        payload = new JSONObject(DEFAULT_CONFIG);
+                    }
+
+                    JSONObject hero = payload.optJSONObject("hero");
+                    if (hero != null) {
+                        String raw = hero.optString("imageUrl", null);
+                        String resolved = normalizeImageUrl(raw);
+                        if (resolved != null) {
+                            hero.put("imageUrlResolved", resolved);
+                            if (raw != null && !raw.isEmpty() && !raw.equals(resolved)) {
+                                hero.put("imageUrlOriginal", raw);
+                            }
+                            hero.remove("imageMissing");
+                        } else {
+                            hero.put("imageUrlResolved", DEFAULT_PLACEHOLDER_IMAGE);
+                            if (raw != null && !raw.isEmpty()) {
+                                hero.put("imageUrlOriginal", raw);
+                            }
+                            hero.put("imageMissing", true);
+                        }
+                    }
+
+                    sendJsonResponse(exchange, payload.toString(), 200);
                 } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
                     String body;
                     try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
@@ -1755,6 +1821,27 @@ public class Server {
                     if (!profile.has("phone")) profile.put("phone", JSONObject.NULL);
                     if (!profile.has("address")) profile.put("address", JSONObject.NULL);
                     if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
+                }
+
+                String rawAvatar = null;
+                Object avatarValue = profile.opt("avatarUrl");
+                if (avatarValue != null && avatarValue != JSONObject.NULL) {
+                    rawAvatar = profile.optString("avatarUrl", null);
+                }
+                String normalizedAvatar = normalizeImageUrl(rawAvatar);
+                if (rawAvatar != null && !rawAvatar.isEmpty() && (normalizedAvatar == null || !rawAvatar.equals(normalizedAvatar))) {
+                    profile.put("avatarUrlOriginal", rawAvatar);
+                }
+                if (normalizedAvatar != null) {
+                    profile.put("avatarUrl", normalizedAvatar);
+                    profile.remove("avatarMissing");
+                } else {
+                    profile.put("avatarUrl", JSONObject.NULL);
+                    if (rawAvatar != null && !rawAvatar.isEmpty()) {
+                        profile.put("avatarMissing", true);
+                    } else {
+                        profile.remove("avatarMissing");
+                    }
                 }
 
                 sendJsonResponse(exchange, profile.toString(), 200);

@@ -126,10 +126,14 @@
      */
     site.sanitizeData = function (raw) {
         const base = site.getDefault();
-        const hero = Object.assign({}, base.hero, (raw && raw.hero) || {});
-        Object.keys(hero).forEach((key) => {
-            hero[key] = String(hero[key] ?? '').trim();
+        const heroSource = Object.assign({}, base.hero, raw?.hero || {});
+        const hero = {};
+        ['title', 'subtitle', 'primaryText', 'primaryLink', 'secondaryText', 'secondaryLink', 'imageUrl'].forEach((key) => {
+            hero[key] = String(heroSource[key] ?? '').trim();
         });
+        if (heroSource.imageUrlResolved) hero.imageUrlResolved = String(heroSource.imageUrlResolved).trim();
+        if (heroSource.imageUrlOriginal) hero.imageUrlOriginal = String(heroSource.imageUrlOriginal).trim();
+        if (typeof heroSource.imageMissing !== 'undefined') hero.imageMissing = !!heroSource.imageMissing;
         const benefits = Array.isArray(raw?.benefits) ? raw.benefits : base.benefits;
         const cleanedBenefits = benefits.map((item) => ({
             icon: String(item?.icon ?? '').trim(),
@@ -327,7 +331,12 @@
                 site.ensureData();
                 const hero = state.siteConfig.data.hero || (state.siteConfig.data.hero = {});
                 hero[key] = event.target.value;
-                if (key === 'imageUrl') site.updateHeroPreview(hero.imageUrl);
+                if (key === 'imageUrl') {
+                    hero.imageUrlResolved = hero.imageUrl;
+                    delete hero.imageUrlOriginal;
+                    delete hero.imageMissing;
+                    site.updateHeroPreview(hero.imageUrlResolved);
+                }
                 site.setDirty('hero', true);
             });
         });
@@ -496,6 +505,9 @@
             if (!url) throw new Error('未取得圖片網址');
             site.ensureData();
             state.siteConfig.data.hero.imageUrl = url;
+            state.siteConfig.data.hero.imageUrlResolved = url;
+            delete state.siteConfig.data.hero.imageUrlOriginal;
+            delete state.siteConfig.data.hero.imageMissing;
             site.applyHeroInputs(state.siteConfig.data.hero);
             site.setDirty('hero', true);
         } catch (err) {
@@ -595,7 +607,7 @@
             const input = document.getElementById(id);
             if (input) input.value = hero?.[key] || '';
         });
-        site.updateHeroPreview(hero?.imageUrl || '');
+        site.updateHeroPreview(hero?.imageUrlResolved || hero?.imageUrl || '');
     };
 
     /**

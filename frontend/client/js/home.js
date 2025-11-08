@@ -131,7 +131,7 @@
             item.className = 'carousel-item' + (idx === 0 ? ' active' : '');
 
             const img = document.createElement('img');
-            const resolved = normalizeImageUrl(slide.imageUrl || '');
+            const resolved = normalizeImageUrl(slide.imageUrlResolved || slide.imageUrl || '');
             img.src = resolved || '';
             img.alt = slide.title || ('Slide ' + (idx + 1));
             img.className = 'd-block w-100';
@@ -265,7 +265,7 @@
             }
 
             if (heroImageEl) {
-                const src = hero.imageUrl || heroImageEl.getAttribute('data-default-src') || heroImageEl.src;
+                const src = hero.imageUrlResolved || hero.imageUrl || heroImageEl.getAttribute('data-default-src') || heroImageEl.src;
                 try {
                     heroImageEl.src = normalizeImageUrl(src);
                 } catch (e) {
