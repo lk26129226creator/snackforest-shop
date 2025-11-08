@@ -1795,15 +1795,34 @@ public class Server {
                 if (avatarData != null && !avatarData.isEmpty()) {
                     try {
                         byte[] bytes = java.util.Base64.getDecoder().decode(avatarData);
-                        Files.createDirectories(UPLOADS_DIR);
                         String ext = inferExtension(avatarFileName, avatarContentType);
                         String unique = "customer-" + id + "-" + System.currentTimeMillis() + ext;
-                        Path target = UPLOADS_DIR.resolve(unique).normalize();
-                        if (!target.startsWith(UPLOADS_DIR)) throw new IOException("Invalid upload path");
-                        Files.write(target, bytes);
-                        String avatarUrl = "/uploads/images/" + unique;
-                        existing.put("avatarUrl", avatarUrl);
-                        finalAvatarUrl = avatarUrl;
+                        String relativePath = "uploads/images/" + unique;
+                        String localUrl = "/" + relativePath;
+
+                        String effectiveContentType = (avatarContentType == null || avatarContentType.isEmpty()) ? "application/octet-stream" : avatarContentType;
+
+                        // 先嘗試上傳到 Cloudflare R2，成功則使用公開網址作為頭像位置。
+                        if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                            try {
+                                String objectKey = R2_CLIENT.buildObjectKey(unique);
+                                CloudflareR2Client.UploadResult uploadRes = R2_CLIENT.uploadObject(objectKey, bytes, effectiveContentType);
+                                finalAvatarUrl = uploadRes.publicUrl();
+                                existing.put("avatarUrl", finalAvatarUrl);
+                            } catch (Exception r2ex) {
+                                System.err.println("Failed to upload avatar to R2, falling back to local disk: " + r2ex.getMessage());
+                            }
+                        }
+
+                        // 若 R2 上傳未成功，改存成本機檔案，並回傳相對位址。
+                        if (finalAvatarUrl == null) {
+                            Files.createDirectories(UPLOADS_DIR);
+                            Path target = UPLOADS_DIR.resolve(unique).normalize();
+                            if (!target.startsWith(UPLOADS_DIR)) throw new IOException("Invalid upload path");
+                            Files.write(target, bytes);
+                            existing.put("avatarUrl", localUrl);
+                            finalAvatarUrl = localUrl;
+                        }
                     } catch (Exception e) {
                         System.err.println("Failed to save avatar: " + e.getMessage());
                         // 若儲存失敗，保留舊有頭像以免造成斷圖。

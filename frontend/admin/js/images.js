@@ -93,6 +93,7 @@
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 m-1';
             deleteBtn.innerHTML = '&times;';
+            deleteBtn.type = 'button';
             deleteBtn.addEventListener('click', () => {
                 images.deleteImageFromPreview(idx, !!isEditForm, container);
             });
