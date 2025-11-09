@@ -486,29 +486,11 @@ public class Server {
             if (publicBaseUrl != null && !publicBaseUrl.isEmpty()) {
                 String base = publicBaseUrl;
                 if (base.contains("{bucket}")) {
-                    return base.replace("{bucket}", bucket);
+                    base = base.replace("{bucket}", bucket);
                 }
-                try {
-                    URI uri = new URI(base);
-                    String path = uri.getPath();
-                    String normalizedPath = (path == null) ? "" : path;
-                    if ("/".equals(normalizedPath)) normalizedPath = "";
-                    if (normalizedPath.isEmpty()) {
-                        return base + "/" + bucket;
-                    }
-                    String trimmedPath = path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
-                    if (trimmedPath.isEmpty() || !trimmedPath.equals("/" + bucket)) {
-                        return base + (base.endsWith("/") ? "" : "/") + bucket;
-                    }
-                    return base;
-                } catch (URISyntaxException e) {
-                    if (!base.endsWith("/" + bucket)) {
-                        return base + "/" + bucket;
-                    }
-                    return base;
-                }
+                return base;
             }
-            return "https://" + host;
+            return "https://" + host + "/" + bucket;
         }
 
         private static String normalizeBaseUrl(String value) {
@@ -2041,6 +2023,7 @@ public class Server {
                                 String objectKey = R2_CLIENT.buildObjectKey(unique);
                                 CloudflareR2Client.UploadResult uploadRes = R2_CLIENT.uploadObject(objectKey, bytes, effectiveContentType);
                                 finalAvatarUrl = uploadRes.publicUrl();
+                                System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: uploaded avatar to R2 key=" + uploadRes.objectKey());
                             } catch (Exception r2ex) {
                                 System.err.println("Failed to upload avatar to R2, falling back to local disk: " + r2ex.getMessage());
                             }
