@@ -7,32 +7,6 @@
     const formatPrice = utils.formatPrice || ((v) => v);
     const fetchSiteConfig = window.fetchSiteConfig || (async () => ({}));
 
-    // 依分類名稱關鍵字推測最適合的 Font Awesome icon，用於分類卡片視覺呈現。
-    const CATEGORY_ICON_RULES = [
-        { pattern: /(餅|cookie|cracker|biscuit)/i, icon: 'fa-cookie-bite' },
-        { pattern: /(糖|candy|sweet|巧克|choco)/i, icon: 'fa-candy-cane' },
-        { pattern: /(肉|jerky|meat|牛肉|豬肉|雞)/i, icon: 'fa-drumstick-bite' },
-        { pattern: /(飲|drink|beverage|茶|coffee|酒|汁)/i, icon: 'fa-mug-hot' },
-        { pattern: /(組|禮盒|combo|pack|箱|合)/i, icon: 'fa-box-open' },
-        { pattern: /(果|fruit|莓|乾|nut|堅果)/i, icon: 'fa-apple-whole' }
-    ];
-
-    /**
-     * 依分類名稱關鍵字推測最適合的 Font Awesome icon。
-     * @param {string} name 分類名稱。
-     * @returns {string}
-     */
-    function resolveCategoryIcon(name) {
-        const value = (name || '').toString().trim();
-        if (!value) return 'fa-basket-shopping';
-        for (const rule of CATEGORY_ICON_RULES) {
-            if (rule.pattern.test(value)) {
-                return rule.icon;
-            }
-        }
-        return 'fa-basket-shopping';
-    }
-
     // bootstrap.Carousel 初始化設定，確保首頁輪播具備自動播放與觸控體驗。
     const HOME_CAROUSEL_CONFIG = {
         interval: 3000,
@@ -300,34 +274,56 @@
         }
     }
 
-    // 載入分類資料後以 8 張卡片快速導向對應的商品列表頁面。
+    // 載入最新商品供首頁快速瀏覽，取前幾筆商品並顯示價格與連結。
     /**
-     * 載入分類資料並渲染首頁分類卡片。
+     * 載入人氣商品，取前幾筆並渲染在首頁 spotlight 區域。
      * @returns {Promise<void>}
      */
-    async function loadCategories() {
-        const grid = document.getElementById('home-categories-grid');
+    async function loadHomeSpotlightProducts() {
+        const grid = document.getElementById('home-spotlight-grid');
         if (!grid) return;
+        grid.innerHTML = '<div class="text-muted">載入中...</div>';
         try {
-            const res = await fetch(API_BASE + '/categories');
+            const res = await fetch(API_BASE + '/products', { cache: 'no-store' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
+            const items = (Array.isArray(data) ? data : []).slice(0, 6);
+            if (!items.length) {
+                grid.innerHTML = '<div class="text-muted">目前沒有商品</div>';
+                return;
+            }
+
             grid.innerHTML = '';
-            (data || []).slice(0, 8).forEach((category) => {
-                const name = category.name || category.categoryname || '分類';
-                const iconClass = resolveCategoryIcon(name);
-                const card = document.createElement('div');
-                card.className = 'category-card';
-                card.innerHTML = `<div class="icon"><i class="fa-solid ${iconClass}" aria-hidden="true"></i></div><div class="name">${name}</div>`;
-                card.setAttribute('role', 'button');
-                card.setAttribute('aria-label', `${name}分類`);
-                card.addEventListener('click', () => {
-                    window.location.href = 'product.html?category=' + encodeURIComponent(name);
-                });
+            items.forEach((product, index) => {
+                const rawId = product.id ?? product.idProducts ?? product.idProduct;
+                const id = rawId !== undefined && rawId !== null ? rawId : '';
+                const name = product.name || product.ProductName || '商品';
+                const price = product.price !== undefined ? product.price : (product.Price || 0);
+                let image = null;
+                if (Array.isArray(product.imageUrls) && product.imageUrls.length) {
+                    image = product.imageUrls[0];
+                } else if (product.imageUrl) {
+                    image = product.imageUrl;
+                }
+                const fallbackImage = `https://picsum.photos/480/320?random=${index + 21}`;
+                const imageUrl = normalizeImageUrl(image) || fallbackImage;
+                const card = document.createElement('article');
+                card.className = 'home-spotlight-card';
+                card.innerHTML = `
+                    <div class="home-spotlight-media">
+                        <img src="${imageUrl}" alt="${name}">
+                    </div>
+                    <div class="home-spotlight-body">
+                        <div class="home-spotlight-title text-truncate" title="${name}">${name}</div>
+                        <div class="home-spotlight-actions">
+                            <span class="home-spotlight-price">${formatPrice(price)}</span>
+                            <a class="btn btn-sm btn-success" href="product.html?id=${encodeURIComponent(id)}">查看商品</a>
+                        </div>
+                    </div>`;
                 grid.appendChild(card);
             });
         } catch (e) {
-            grid.innerHTML = '<div class="text-muted">無法載入分類</div>';
+            grid.innerHTML = '<div class="text-muted">無法載入商品</div>';
         }
     }
 
@@ -426,7 +422,7 @@
     function initHomePage() {
         setupHomeCarousel();
         applySiteConfig();
-        loadCategories();
+        loadHomeSpotlightProducts();
         loadFeaturedProducts();
     }
 

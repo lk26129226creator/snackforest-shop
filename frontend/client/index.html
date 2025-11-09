@@ -66,6 +66,10 @@
                 </form>
             </div>
             <div class="client-topbar-right">
+                <button type="button" class="btn btn-outline-light btn-sm client-logout-btn d-inline-flex align-items-center" onclick="logout()" aria-label="登出" data-client-mobile-logout>
+                    <i class="fa-solid fa-right-from-bracket me-2" aria-hidden="true"></i>
+                    <span>登出</span>
+                </button>
                 <div class="client-support" id="client-support">
                     <button type="button" class="btn btn-outline-light btn-sm client-support-btn d-inline-flex align-items-center" id="client-support-button" aria-expanded="false" aria-controls="client-support-panel">
                         <i class="fa-solid fa-headset me-2" aria-hidden="true"></i>
@@ -222,12 +226,15 @@
         </section>
 
         <!-- 依分類逛逛 -->
-        <section class="mb-5">
+        <section class="home-spotlight mb-5">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="h4 m-0">依分類逛逛</h2>
+                <div>
+                    <p class="text-uppercase text-muted small mb-1">本週嚴選</p>
+                    <h2 class="h4 m-0">人氣零食推薦</h2>
+                </div>
                 <a class="btn btn-sm btn-outline-secondary" href="product.html">全部商品</a>
             </div>
-            <div id="home-categories-grid" class="category-grid"></div>
+            <div class="home-spotlight-grid" id="home-spotlight-grid"></div>
         </section>
 
         <!-- 精選商品 -->
