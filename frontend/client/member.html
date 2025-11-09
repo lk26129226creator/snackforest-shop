@@ -710,6 +710,10 @@
 				break;
 			}
 		}
+		data.avatarUrlResolved = avatarUrl || '';
+		if (!data.avatarUrl) {
+			data.avatarUrl = avatarUrl || '';
+		}
 		if (avatar && avatarImg) {
 			if (avatarUrl) {
 				avatar.classList.add('has-image');
@@ -740,6 +744,7 @@
 		} else if (!displayName) {
 			localStorage.removeItem('customerName');
 		}
+		const sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
 		try {
 			if (displayName) {
 				localStorage.setItem('sf-client-name', displayName);
@@ -751,11 +756,12 @@
 			} else {
 				localStorage.removeItem('sf-client-id');
 			}
-			const sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
 			if (sanitizedAvatar) {
 				localStorage.setItem('sf-client-avatar', sanitizedAvatar);
+				localStorage.setItem('sf-client-avatar-resolved', avatarUrl);
 			} else {
 				localStorage.removeItem('sf-client-avatar');
+				localStorage.removeItem('sf-client-avatar-resolved');
 			}
 			if (data.updatedAt) {
 				localStorage.setItem('sf-client-profile-version', String(data.updatedAt));
@@ -768,13 +774,14 @@
 			// ignore storage failures
 		}
 		try {
-			window.dispatchEvent(new CustomEvent('sf:profile-updated', {
-				detail: {
-					name: displayName || '',
-					avatarUrl: sanitizedAvatar || '',
-					customerId: cid || ''
-				}
-			}));
+			const detail = {
+				name: displayName || '',
+				avatarUrl: sanitizedAvatar || '',
+				avatarUrlResolved: avatarUrl || '',
+				customerId: cid || ''
+			};
+			window.dispatchEvent(new CustomEvent('sf:profile-updated', { detail }));
+			window.dispatchEvent(new CustomEvent('avatar-updated', { detail }));
 		} catch (_) {
 			// ignore event dispatch errors
 		}

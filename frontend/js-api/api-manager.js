@@ -59,17 +59,33 @@ class SnackForestAPI {
             const url = /^(https?:)?\/\//i.test(endpoint)
                 ? endpoint
                 : this.joinRelativeEndpoint(endpoint);
-            const config = {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                },
-                ...options
+
+            const upperMethod = (method || 'GET').toUpperCase();
+            const defaultHeaders = {
+                'Content-Type': 'application/json',
+                ...(options.headers || {})
             };
+
+            const config = {
+                method: upperMethod,
+                ...options,
+                headers: defaultHeaders
+            };
+
+            if (!('cache' in config)) {
+                config.cache = upperMethod === 'GET' ? 'no-store' : 'no-cache';
+            }
+            if (!config.headers['Cache-Control']) {
+                config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+            }
+            if (!config.headers['Pragma']) {
+                config.headers['Pragma'] = 'no-cache';
+            }
 
             if (data) {
                 config.body = JSON.stringify(data);
+            } else if (upperMethod === 'GET') {
+                delete config.body;
             }
 
             const response = await fetch(url, config);

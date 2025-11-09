@@ -250,6 +250,7 @@
     const MEMBER_ID_KEYS = ['sf-client-id', 'customerId'];
     /** localStorage key：會員大頭貼圖片位置。 */
     const MEMBER_AVATAR_KEY = 'sf-client-avatar';
+    const MEMBER_AVATAR_RESOLVED_KEY = 'sf-client-avatar-resolved';
     /** Profile 更新事件名稱：用於跨頁同步會員資訊。 */
     const PROFILE_UPDATE_EVENT = 'sf:profile-updated';
     const PROFILE_SYNC_TIMESTAMP_KEY = 'sf-client-profile-sync';
@@ -409,9 +410,11 @@
                 if (candidate) meta.id = candidate;
             }
 
+            const resolvedCandidate = safeTrim(store.getItem(MEMBER_AVATAR_RESOLVED_KEY));
             const avatarCandidate = safeTrim(store.getItem(MEMBER_AVATAR_KEY));
-            if (avatarCandidate) {
-                const sanitized = sanitizeUploadUrl(avatarCandidate);
+            const preferred = resolvedCandidate || avatarCandidate;
+            if (preferred) {
+                const sanitized = sanitizeUploadUrl(preferred);
                 if (sanitized && sanitized !== avatarCandidate) {
                     try {
                         store.setItem(MEMBER_AVATAR_KEY, sanitized);
@@ -419,7 +422,7 @@
                         // ignore storage rewrite errors
                     }
                 }
-                meta.avatar = sanitized || avatarCandidate;
+                meta.avatar = resolvedCandidate || sanitized || avatarCandidate;
             }
         } catch (_) {
             // 忽略存取錯誤（例如隱私模式）
@@ -561,8 +564,13 @@
             const sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
             if (sanitizedAvatar) {
                 window.localStorage.setItem(MEMBER_AVATAR_KEY, sanitizedAvatar);
+                window.localStorage.setItem(
+                    MEMBER_AVATAR_RESOLVED_KEY,
+                    avatarUrl || sanitizedAvatar
+                );
             } else {
                 window.localStorage.removeItem(MEMBER_AVATAR_KEY);
+                window.localStorage.removeItem(MEMBER_AVATAR_RESOLVED_KEY);
             }
             writeProfileSyncTimestamp(Date.now());
             writeStoredProfileVersion(updatedAt);
@@ -571,12 +579,30 @@
         }
 
         if (typeof updateSidebarProfileProxy === 'function') {
-            updateSidebarProfileProxy({ name: displayName, avatarUrl, customerId });
+            updateSidebarProfileProxy({
+                name: displayName,
+                avatarUrlResolved: avatarUrl,
+                avatarUrl: sanitizedAvatar,
+                customerId
+            });
         }
 
         try {
             window.dispatchEvent(new CustomEvent(PROFILE_UPDATE_EVENT, {
-                detail: { name: displayName, avatarUrl, customerId }
+                detail: {
+                    name: displayName,
+                    avatarUrl: sanitizedAvatar,
+                    avatarUrlResolved: avatarUrl,
+                    customerId
+                }
+            }));
+            window.dispatchEvent(new CustomEvent('avatar-updated', {
+                detail: {
+                    name: displayName,
+                    avatarUrl: sanitizedAvatar,
+                    avatarUrlResolved: avatarUrl,
+                    customerId
+                }
             }));
         } catch (_) {
             // ignore event dispatch failures
@@ -2024,10 +2050,18 @@
                 if (Object.prototype.hasOwnProperty.call(override, 'name')) {
                     next.name = safeTrim(override.name);
                 }
-                if (Object.prototype.hasOwnProperty.call(override, 'avatarUrl')) {
-                    next.avatar = safeTrim(override.avatarUrl);
-                } else if (Object.prototype.hasOwnProperty.call(override, 'avatar')) {
-                    next.avatar = safeTrim(override.avatar);
+                let overrideAvatar = '';
+                if (Object.prototype.hasOwnProperty.call(override, 'avatarUrlResolved')) {
+                    overrideAvatar = safeTrim(override.avatarUrlResolved);
+                }
+                if (!overrideAvatar && Object.prototype.hasOwnProperty.call(override, 'avatarUrl')) {
+                    overrideAvatar = sanitizeUploadUrl(override.avatarUrl);
+                }
+                if (!overrideAvatar && Object.prototype.hasOwnProperty.call(override, 'avatar')) {
+                    overrideAvatar = sanitizeUploadUrl(override.avatar);
+                }
+                if (overrideAvatar) {
+                    next.avatar = overrideAvatar;
                 }
                 if (Object.prototype.hasOwnProperty.call(override, 'customerId')) {
                     next.id = safeTrim(override.customerId);
@@ -2055,6 +2089,7 @@
                 || MEMBER_NAME_KEYS.includes(key)
                 || MEMBER_ID_KEYS.includes(key)
                 || key === MEMBER_AVATAR_KEY
+                || key === MEMBER_AVATAR_RESOLVED_KEY
             ) {
                 updateSidebarProfile();
             }
