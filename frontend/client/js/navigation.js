@@ -213,6 +213,7 @@
     const PROFILE_SYNC_TIMESTAMP_KEY = 'sf-client-profile-sync';
     const PROFILE_VERSION_KEY = 'sf-client-profile-version';
     const PROFILE_SYNC_TTL_MS = 2 * 60 * 1000;
+    let updateSidebarProfileProxy = null;
 
     /** 行動版搜尋覆蓋層觸發函式（於 initNavSearch 內初始化）。 */
     let openSearchOverlayFn = null;
@@ -487,7 +488,9 @@
             // ignore storage failures
         }
 
-        updateSidebarProfile({ name: displayName, avatarUrl, customerId });
+        if (typeof updateSidebarProfileProxy === 'function') {
+            updateSidebarProfileProxy({ name: displayName, avatarUrl, customerId });
+        }
 
         try {
             window.dispatchEvent(new CustomEvent(PROFILE_UPDATE_EVENT, {
@@ -1953,6 +1956,8 @@
 
             applySidebarProfileState(next);
         }
+
+        updateSidebarProfileProxy = updateSidebarProfile;
 
     /**
      * 監聽 localStorage 與自訂事件變更，保持側欄會員資訊最新。
