@@ -32,7 +32,8 @@
         siteConfig: `${config.API_BASE_URL}/site-config`
     };
     config.IMAGE_PLACEHOLDER_DATAURI = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100%" height="100%" fill="#f0f0f0"/><text x="50%" y="50%" alignment-baseline="middle" text-anchor="middle" fill="#bbb" font-size="14">無圖</text></svg>');
-    config.CAROUSEL_KEY = 'sf_carousel_slides';
+    config.CAROUSEL_KEY = 'sf_carousel_slides_v2';
+    config.CAROUSEL_LEGACY_KEYS = ['sf_carousel_slides'];
     config.DEFAULT_SECTION = 'dashboard-section';
     config.SECTION_NAV_MAP = {
         'dashboard-section': 'nav-dashboard',

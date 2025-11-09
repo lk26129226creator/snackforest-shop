@@ -125,7 +125,7 @@
             if (!raw) return '';
             if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) {
                 if (/\/api\/uploads\//i.test(raw)) {
-                    const adjusted = raw.replace(/\/api\/(?=uploads\/)/i, '/');
+                    const adjusted = raw.replace(/\/api(?=\/uploads\/)/gi, '');
                     return adjustToCurrentOrigin(adjusted);
                 }
                 return adjustToCurrentOrigin(raw);
@@ -373,6 +373,16 @@
         return String(value).trim();
     }
 
+    function sanitizeUploadUrl(value) {
+        const trimmed = safeTrim(value);
+        if (!trimmed) return '';
+        let sanitized = trimmed.replace(/\/api(?=\/uploads\/)/gi, '');
+        sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
+        sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
+        sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
+        return sanitized;
+    }
+
     /**
      * 從 localStorage 蒐集目前登入會員的名稱、編號與頭像。
      * @returns {{name:string,id:string,avatar:string}}
@@ -400,7 +410,17 @@
             }
 
             const avatarCandidate = safeTrim(store.getItem(MEMBER_AVATAR_KEY));
-            if (avatarCandidate) meta.avatar = avatarCandidate;
+            if (avatarCandidate) {
+                const sanitized = sanitizeUploadUrl(avatarCandidate);
+                if (sanitized && sanitized !== avatarCandidate) {
+                    try {
+                        store.setItem(MEMBER_AVATAR_KEY, sanitized);
+                    } catch (_) {
+                        // ignore storage rewrite errors
+                    }
+                }
+                meta.avatar = sanitized || avatarCandidate;
+            }
         } catch (_) {
             // 忽略存取錯誤（例如隱私模式）
         }
@@ -455,7 +475,7 @@
     function resolveProfileAvatarCandidate(list) {
         if (!Array.isArray(list)) return '';
         for (const candidate of list) {
-            const trimmed = safeTrim(candidate);
+            const trimmed = sanitizeUploadUrl(candidate);
             if (!trimmed) continue;
             const lowered = trimmed.toLowerCase();
             if (lowered === 'null' || lowered === 'undefined') continue;
@@ -524,7 +544,7 @@
             profile.avatarPath,
             stored.avatar
         ]);
-    const customerId = safeTrim(profile.customerId || memberId);
+        const customerId = safeTrim(profile.customerId || memberId);
         const updatedAt = safeTrim(profile.updatedAt || readStoredProfileVersion());
 
         try {
@@ -538,8 +558,9 @@
             } else {
                 window.localStorage.removeItem('sf-client-id');
             }
-            if (avatarUrl) {
-                window.localStorage.setItem(MEMBER_AVATAR_KEY, avatarUrl);
+            const sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
+            if (sanitizedAvatar) {
+                window.localStorage.setItem(MEMBER_AVATAR_KEY, sanitizedAvatar);
             } else {
                 window.localStorage.removeItem(MEMBER_AVATAR_KEY);
             }

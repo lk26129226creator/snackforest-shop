@@ -628,13 +628,25 @@
 		return;
 	}
 
+		function sanitizeUploadUrl(value) {
+			if (value == null) return '';
+			const trimmed = String(value).trim();
+			if (!trimmed) return '';
+			let sanitized = trimmed.replace(/\/api(?=\/uploads\/)/gi, '');
+			sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
+			sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
+			sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
+			return sanitized;
+		}
+
 	function resolveAssetUrl(path) {
 		if (!path) return '';
-		if (/^data:/i.test(path)) return String(path);
-		if (/^https?:\/\//i.test(path)) return path;
-		const clean = String(path).replace(/^\/+/, '');
+			const sanitized = sanitizeUploadUrl(path);
+			if (/^data:/i.test(sanitized)) return String(sanitized);
+			if (/^https?:\/\//i.test(sanitized)) return sanitized;
+			const clean = String(sanitized).replace(/^\/+/, '');
 		const isUploadLike = /^uploads\//i.test(clean);
-		const prefixed = path.startsWith('/') || isUploadLike ? `/${clean}` : clean;
+			const prefixed = sanitized.startsWith('/') || isUploadLike ? `/${clean}` : clean;
 		const normalizedPrefixed = prefixed.replace(/^\/+(?=uploads\/)/i, '/');
 		const lowerPrefixed = normalizedPrefixed.toLowerCase();
 		const isUpload = lowerPrefixed.startsWith('/uploads/');
@@ -646,12 +658,13 @@
 		const joined = normalizedPrefixed.startsWith('/')
 			? `${normalizedBase}${normalizedPrefixed}`
 			: `${normalizedBase}/${normalizedPrefixed}`;
-		return joined.replace(/\/api\/(?=uploads\/)/i, '/');
+			return joined.replace(/\/api(?=\/uploads\/)/gi, '');
 	}
 
 	function getStoredAvatarUrl() {
 		try {
-			return localStorage.getItem('sf-client-avatar') || '';
+				const stored = localStorage.getItem('sf-client-avatar') || '';
+				return sanitizeUploadUrl(stored);
 		} catch (_) {
 			return '';
 		}
@@ -738,8 +751,9 @@
 			} else {
 				localStorage.removeItem('sf-client-id');
 			}
-			if (avatarUrl) {
-				localStorage.setItem('sf-client-avatar', avatarUrl);
+			const sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
+			if (sanitizedAvatar) {
+				localStorage.setItem('sf-client-avatar', sanitizedAvatar);
 			} else {
 				localStorage.removeItem('sf-client-avatar');
 			}
@@ -757,7 +771,7 @@
 			window.dispatchEvent(new CustomEvent('sf:profile-updated', {
 				detail: {
 					name: displayName || '',
-					avatarUrl: avatarUrl || '',
+					avatarUrl: sanitizedAvatar || '',
 					customerId: cid || ''
 				}
 			}));

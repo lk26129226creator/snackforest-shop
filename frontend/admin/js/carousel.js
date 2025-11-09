@@ -6,10 +6,22 @@
     const { config, state, images } = Admin;
     const { escapeAttr, deepClone } = Admin.utils;
     const carousel = Admin.carousel || {};
+    const LEGACY_KEYS = Array.isArray(config.CAROUSEL_LEGACY_KEYS) ? config.CAROUSEL_LEGACY_KEYS : [];
 
     // 透過 deepClone 避免直接操作 state.carousel.slides。
     function cloneSlides(slides) {
         return deepClone(Array.isArray(slides) ? slides : [], []);
+    }
+
+    function sanitizeUploadUrl(value) {
+        if (value == null) return '';
+        const trimmed = String(value).trim();
+        if (!trimmed) return '';
+        let sanitized = trimmed.replace(/\/api(?=\/uploads\/)/gi, '');
+        sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
+        sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
+        sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
+        return sanitized;
     }
 
     // 將輪播資料正規化，必要時過濾沒有圖片的項目。
@@ -19,7 +31,7 @@
         const cleaned = [];
         source.forEach((slide) => {
             const normalized = {
-                imageUrl: String(slide?.imageUrl ?? '').trim(),
+                imageUrl: sanitizeUploadUrl(slide?.imageUrl ?? ''),
                 title: String(slide?.title ?? '').trim(),
                 text: String(slide?.text ?? '').trim(),
                 link: String(slide?.link ?? '').trim()
@@ -30,11 +42,43 @@
         return cleaned;
     }
 
+    function readLocalSlides() {
+        const keys = [config.CAROUSEL_KEY].concat(LEGACY_KEYS); 
+        for (const key of keys) {
+            if (!key) continue;
+            let parsed = [];
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) continue;
+                parsed = Admin.utils.tryParseJson(raw, []);
+            } catch (_) {
+                parsed = [];
+            }
+            if (Array.isArray(parsed) && parsed.length) {
+                if (key !== config.CAROUSEL_KEY) {
+                    try {
+                        localStorage.setItem(config.CAROUSEL_KEY, JSON.stringify(parsed));
+                        localStorage.removeItem(key);
+                    } catch (_) {
+                        // ignore migration errors
+                    }
+                }
+                return sanitizeSlides(parsed, { dropEmptyImage: false });
+            }
+        }
+        return [];
+    }
+
     // 將編輯內容暫存到 localStorage，避免網路不穩導致資料流失。
     function persistLocal(slides) {
         try {
             const payload = sanitizeSlides(slides, { dropEmptyImage: false });
             localStorage.setItem(config.CAROUSEL_KEY, JSON.stringify(payload));
+            LEGACY_KEYS.forEach((legacyKey) => {
+                if (legacyKey && legacyKey !== config.CAROUSEL_KEY) {
+                    localStorage.removeItem(legacyKey);
+                }
+            });
         } catch (_) {
             // ignore storage errors
         }
@@ -113,7 +157,7 @@
             if (Admin.core && typeof Admin.core.handleError === 'function') {
                 Admin.core.handleError(err, '載入輪播資料失敗，已載入暫存內容');
             }
-            slides = Admin.utils.tryParseJson(localStorage.getItem(config.CAROUSEL_KEY) || '[]', []);
+            slides = readLocalSlides();
         } finally {
             state.carousel.loading = false;
         }

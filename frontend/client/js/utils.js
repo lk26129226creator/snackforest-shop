@@ -33,8 +33,11 @@
                 if (lowered.includes('placeholder.com') || lowered.includes('dummyimage.com')) return FALLBACK_IMAGE;
                 // 若是本機的絕對網址（例如 http://127.0.0.1:5501/... 或 http://localhost:5501/...），
                 // 將其改寫為 API_ORIGIN + 路徑，避免跑去 Live Server 取檔導致 404。
-                if (/\/api\/uploads\//i.test(s)) {
-                    s = s.replace(/\/api\/(?=uploads\/)/i, '/');
+                if (/\/api\/uploads\//i.test(s) || /^api\/uploads\//i.test(s) || /^\.\/api\/uploads\//i.test(s)) {
+                    s = s.replace(/\/api(?=\/uploads\/)/gi, '');
+                    s = s.replace(/^api(?=\/uploads\/)/i, '');
+                    s = s.replace(/^\.\/(?=uploads\/)/i, '/');
+                    s = s.replace(/^\/{2,}(?=uploads\/)/i, '/');
                 }
                 try {
                     const url = new URL(s);
@@ -51,6 +54,16 @@
             if (s.startsWith('//')) {
                 const absolute = (window.location && window.location.protocol ? window.location.protocol : 'https:') + s;
                 return absolute.toLowerCase().includes('placeholder.com') || absolute.toLowerCase().includes('dummyimage.com') ? FALLBACK_IMAGE : absolute;
+            }
+
+            if (/^api\/uploads\//i.test(s)) {
+                s = s.replace(/^api(?=\/uploads\/)/i, '');
+            }
+            if (/^\.\/uploads\//i.test(s)) {
+                s = s.replace(/^\.\/(?=uploads\/)/i, '/');
+            }
+            if (/^\/{2,}uploads\//i.test(s)) {
+                s = s.replace(/^\/{2,}(?=uploads\/)/i, '/');
             }
 
             if (s.startsWith('/uploads/') || /^uploads\//i.test(s)) {

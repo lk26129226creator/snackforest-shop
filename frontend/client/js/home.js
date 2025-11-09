@@ -29,6 +29,8 @@
             return '/frontend/images/products/no-image.svg';
         }
     })();
+    const CAROUSEL_CACHE_KEY = 'sf_carousel_slides_v2';
+    const LEGACY_CAROUSEL_CACHE_KEY = 'sf_carousel_slides';
     const CAROUSEL_DEFAULT_LINK = 'product.html';
     const categorySectionMeta = (() => {
         const gridEl = document.getElementById('home-categories-grid');
@@ -72,6 +74,17 @@
             }
         }
         return 'fa-basket-shopping';
+    }
+
+    function sanitizeUploadUrl(value) {
+        if (value == null) return '';
+        const trimmed = String(value).trim();
+        if (!trimmed) return '';
+        let sanitized = trimmed.replace(/\/api(?=\/uploads\/)/gi, '');
+        sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
+        sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
+        sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
+        return sanitized;
     }
 
     function shouldUseMobileProductLayout() {
@@ -122,7 +135,10 @@
         const slides = await loadCarouselSlides();
         renderCarousel(root, slides);
         bootHomeCarousel(root);
-        try { localStorage.setItem('sf_carousel_slides', JSON.stringify(slides)); } catch (e) {}
+        try {
+            localStorage.setItem(CAROUSEL_CACHE_KEY, JSON.stringify(slides));
+            localStorage.removeItem(LEGACY_CAROUSEL_CACHE_KEY);
+        } catch (e) {}
     }
 
     function resolveCarouselLink(value) {
@@ -140,7 +156,7 @@
             entry?.imageUrlOriginal
         ];
         for (const candidate of candidates) {
-            const trimmed = (candidate || '').toString().trim();
+            const trimmed = sanitizeUploadUrl(candidate);
             if (!trimmed) continue;
             try {
                 const resolved = normalizeImageUrl(trimmed);
@@ -166,14 +182,16 @@
             const allowDuplicate = imageResolved === CAROUSEL_FALLBACK_IMAGE;
             if (!allowDuplicate && seen.has(dedupeKey)) return;
             if (!allowDuplicate) seen.add(dedupeKey);
+            const sanitizedImage = sanitizeUploadUrl(raw.imageUrl || raw.imageUrlResolved || raw.imageUrlOriginal || '');
+            const sanitizedOriginal = sanitizeUploadUrl(raw.imageUrlOriginal || raw.imageUrl || '');
             normalized.push({
                 ...raw,
                 title,
                 text,
                 link,
                 imageUrlResolved: imageResolved,
-                imageUrl: raw.imageUrl || raw.imageUrlResolved || raw.imageUrlOriginal || '',
-                imageUrlOriginal: raw.imageUrlOriginal || raw.imageUrl || '',
+                imageUrl: sanitizedImage || imageResolved,
+                imageUrlOriginal: sanitizedOriginal || sanitizedImage || imageResolved,
                 imageMissing: imageResolved === CAROUSEL_FALLBACK_IMAGE
             });
         });
@@ -186,11 +204,24 @@
      * @returns {Promise<Array>}
      */
     async function loadCarouselSlides() {
-        const cacheKey = 'sf_carousel_slides';
+        try {
+            const legacy = localStorage.getItem(LEGACY_CAROUSEL_CACHE_KEY);
+            if (legacy) {
+                const parsedLegacy = JSON.parse(legacy);
+                const sanitizedLegacy = sanitizeCarouselSlides(parsedLegacy);
+                if (sanitizedLegacy.length) {
+                    localStorage.setItem(CAROUSEL_CACHE_KEY, JSON.stringify(sanitizedLegacy));
+                }
+                localStorage.removeItem(LEGACY_CAROUSEL_CACHE_KEY);
+            }
+        } catch (e) {
+            // ignore cache migration errors
+        }
+
         let slides = sanitizeCarouselSlides(await fetchCarouselFromBackend());
         if (!slides.length) {
             try {
-                const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                const cached = JSON.parse(localStorage.getItem(CAROUSEL_CACHE_KEY) || '[]');
                 slides = sanitizeCarouselSlides(cached);
             } catch (e) {
                 slides = [];
