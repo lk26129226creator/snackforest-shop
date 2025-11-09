@@ -416,6 +416,16 @@ public class Server {
             return buildPublicBaseUrl() + "/" + key;
         }
 
+        String toRelativePath(String pathOrUrl) {
+            if (pathOrUrl == null || pathOrUrl.trim().isEmpty()) return null;
+            String key = extractObjectKey(pathOrUrl);
+            if (key == null || key.isEmpty()) return null;
+            String normalized = key.replace('\\', '/');
+            if (normalized.startsWith("/")) normalized = normalized.substring(1);
+            if (normalized.isEmpty()) return null;
+            return "/" + normalized;
+        }
+
         private boolean deleteObject(String objectKey) throws Exception {
             String normalizedKey = objectKey.replace('\\', '/');
             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
@@ -1807,6 +1817,12 @@ public class Server {
                 if (isNullOrEmpty(value)) return null;
                 String trimmed = value.trim().replace('\\', '/');
                 if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                    if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                        String r2Relative = R2_CLIENT.toRelativePath(trimmed);
+                        if (!isNullOrEmpty(r2Relative)) {
+                            return sanitizeRelativeAvatarPath(r2Relative);
+                        }
+                    }
                     try {
                         URI uri = new URI(trimmed);
                         String host = uri.getHost();
@@ -2054,6 +2070,7 @@ public class Server {
                             existing.remove("avatarUrlOriginal");
                         }
                         finalAvatarUrl = canonicalAvatar;
+                        System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: stored avatar for customer " + id + " -> " + canonicalAvatar + " (original=" + originalFinalAvatar + ")");
                     } else {
                         existing.remove("avatarUrl");
                         existing.remove("avatarUrlOriginal");
@@ -2073,6 +2090,7 @@ public class Server {
                                 existing.remove("avatarUrlOriginal");
                             }
                             finalAvatarUrl = canonicalExisting;
+                            System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: normalized existing avatar for customer " + id + " -> " + canonicalExisting);
                         } else {
                             existing.remove("avatarUrl");
                             existing.remove("avatarUrlOriginal");
