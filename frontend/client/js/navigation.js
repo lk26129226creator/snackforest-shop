@@ -550,6 +550,7 @@
         const customerId = safeTrim(profile.customerId || memberId);
         const updatedAt = safeTrim(profile.updatedAt || readStoredProfileVersion());
 
+        let sanitizedAvatar = '';
         try {
             if (displayName) {
                 window.localStorage.setItem('sf-client-name', displayName);
@@ -561,7 +562,7 @@
             } else {
                 window.localStorage.removeItem('sf-client-id');
             }
-            const sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
+            sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
             if (sanitizedAvatar) {
                 window.localStorage.setItem(MEMBER_AVATAR_KEY, sanitizedAvatar);
                 window.localStorage.setItem(
