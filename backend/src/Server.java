@@ -484,7 +484,31 @@ public class Server {
         }
 
         private String buildPublicBaseUrl() {
-            if (publicBaseUrl != null && !publicBaseUrl.isEmpty()) return publicBaseUrl;
+            if (publicBaseUrl != null && !publicBaseUrl.isEmpty()) {
+                String base = publicBaseUrl;
+                if (base.contains("{bucket}")) {
+                    return base.replace("{bucket}", bucket);
+                }
+                try {
+                    URI uri = new URI(base);
+                    String path = uri.getPath();
+                    String normalizedPath = (path == null) ? "" : path;
+                    if ("/".equals(normalizedPath)) normalizedPath = "";
+                    if (normalizedPath.isEmpty()) {
+                        return base + "/" + bucket;
+                    }
+                    String trimmedPath = normalizedPath.endsWith("/") ? normalizedPath.substring(0, normalizedPath.length() - 1) : normalizedPath;
+                    if (!trimmedPath.equals("/" + bucket) && !trimmedPath.startsWith("/" + bucket + "/") && !trimmedPath.contains("/" + bucket + "/") && !trimmedPath.endsWith("/" + bucket)) {
+                        return base + "/" + bucket;
+                    }
+                    return base;
+                } catch (URISyntaxException ignored) {
+                    if (!base.contains("/" + bucket)) {
+                        return base + "/" + bucket;
+                    }
+                    return base;
+                }
+            }
             return "https://" + host + "/" + bucket;
         }
 
