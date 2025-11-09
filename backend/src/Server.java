@@ -9,6 +9,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -1760,7 +1762,116 @@ public class Server {
             return ext;
         }
 
-    // 資料庫欄位補強已由外層 Server.ensureCustomerColumns 處理，這裡不再重複。
+        // 資料庫欄位補強已由外層 Server.ensureCustomerColumns 處理，這裡不再重複。
+
+            private static boolean isNullOrEmpty(String value) {
+                return value == null || value.trim().isEmpty() || "null".equalsIgnoreCase(value.trim());
+            }
+
+            private static boolean isLocalHost(String host) {
+                if (host == null) return false;
+                String lowered = host.toLowerCase(Locale.ROOT);
+                return "localhost".equals(lowered) || "127.0.0.1".equals(lowered) || "::1".equals(lowered);
+            }
+
+            private static String sanitizeRelativeAvatarPath(String value) {
+                if (value == null) return null;
+                String trimmed = value.trim().replace('\\', '/');
+                if (trimmed.isEmpty()) return null;
+                int queryIndex = trimmed.indexOf('?');
+                if (queryIndex >= 0) {
+                    trimmed = trimmed.substring(0, queryIndex);
+                }
+                int fragmentIndex = trimmed.indexOf('#');
+                if (fragmentIndex >= 0) {
+                    trimmed = trimmed.substring(0, fragmentIndex);
+                }
+                if (trimmed.startsWith("/api/uploads/")) trimmed = trimmed.substring(4);
+                else if (trimmed.startsWith("api/uploads/")) trimmed = trimmed.substring(3);
+                if (trimmed.startsWith("./uploads/")) trimmed = trimmed.substring(1);
+                while (trimmed.startsWith("//")) {
+                    trimmed = trimmed.substring(1);
+                }
+                if (!trimmed.startsWith("/")) {
+                    trimmed = "/" + trimmed;
+                }
+                return trimmed;
+            }
+
+            private static String canonicalizeAvatarForStorage(String value, HttpExchange exchange) {
+                if (isNullOrEmpty(value)) return null;
+                String trimmed = value.trim().replace('\\', '/');
+                if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                    try {
+                        URI uri = new URI(trimmed);
+                        String host = uri.getHost();
+                        if (host != null) {
+                            String hostLower = host.toLowerCase(Locale.ROOT);
+                            String hostHeader = exchange.getRequestHeaders().getFirst("Host");
+                            String requestHost = hostHeader != null ? hostHeader.split(":")[0].toLowerCase(Locale.ROOT) : "";
+                            if (isLocalHost(hostLower) || (!requestHost.isEmpty() && hostLower.equals(requestHost))) {
+                                String path = uri.getPath();
+                                if (path == null || path.isEmpty()) {
+                                    path = "/";
+                                }
+                                return sanitizeRelativeAvatarPath(path);
+                            }
+                        }
+                        return trimmed;
+                    } catch (URISyntaxException ignored) {
+                        return trimmed;
+                    }
+                }
+                return sanitizeRelativeAvatarPath(trimmed);
+            }
+
+            private static String buildAbsoluteUrl(String path, HttpExchange exchange) {
+                if (isNullOrEmpty(path)) return null;
+                String normalized = path.trim();
+                if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+                    return normalized;
+                }
+                if (!normalized.startsWith("/")) {
+                    normalized = "/" + normalized.replaceFirst("^/+", "");
+                }
+
+                String scheme = "http";
+                String forwardedProto = exchange.getRequestHeaders().getFirst("X-Forwarded-Proto");
+                if (!isNullOrEmpty(forwardedProto)) {
+                    scheme = forwardedProto.split(",")[0].trim();
+                } else if (exchange.getLocalAddress().getPort() == 443) {
+                    scheme = "https";
+                }
+
+                String host = exchange.getRequestHeaders().getFirst("X-Forwarded-Host");
+                if (isNullOrEmpty(host)) {
+                    host = exchange.getRequestHeaders().getFirst("Host");
+                }
+                if (isNullOrEmpty(host)) {
+                    InetSocketAddress addr = exchange.getLocalAddress();
+                    StringBuilder sb = new StringBuilder(addr.getHostString());
+                    int port = addr.getPort();
+                    if (port != 80 && port != 443) {
+                        sb.append(':').append(port);
+                    }
+                    host = sb.toString();
+                }
+                host = host.trim();
+                while (host.endsWith("/")) {
+                    host = host.substring(0, host.length() - 1);
+                }
+
+                return scheme + "://" + host + normalized;
+            }
+
+            private static String resolveAvatarReference(String storedValue, HttpExchange exchange) {
+                if (isNullOrEmpty(storedValue)) return null;
+                String normalized = normalizeImageUrl(storedValue);
+                if (isNullOrEmpty(normalized)) {
+                    normalized = storedValue;
+                }
+                return buildAbsoluteUrl(normalized, exchange);
+            }
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -1802,7 +1913,11 @@ public class Server {
                                 if (email != null) profile.put("email", email); else if (!profile.has("email")) profile.put("email", JSONObject.NULL);
                                 if (phone != null) profile.put("phone", phone); else if (!profile.has("phone")) profile.put("phone", JSONObject.NULL);
                                 if (address != null) profile.put("address", address); else if (!profile.has("address")) profile.put("address", JSONObject.NULL);
-                                if (avatar != null) profile.put("avatarUrl", avatar); else if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
+                                if (avatar != null && !avatar.trim().isEmpty() && !"null".equalsIgnoreCase(avatar.trim())) {
+                                    profile.put("avatarUrl", avatar);
+                                } else if (!profile.has("avatarUrl")) {
+                                    profile.put("avatarUrl", JSONObject.NULL);
+                                }
                                 if (updated != null) profile.put("updatedAt", updated.toInstant().toString());
                             } else {
                                     // 若資料庫沒有該筆紀錄，盡量帶入先前保存的名稱作為備援。
@@ -1823,21 +1938,29 @@ public class Server {
                     if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
                 }
 
-                String rawAvatar = null;
-                Object avatarValue = profile.opt("avatarUrl");
-                if (avatarValue != null && avatarValue != JSONObject.NULL) {
-                    rawAvatar = profile.optString("avatarUrl", null);
-                }
-                String normalizedAvatar = normalizeImageUrl(rawAvatar);
-                if (rawAvatar != null && !rawAvatar.isEmpty() && (normalizedAvatar == null || !rawAvatar.equals(normalizedAvatar))) {
-                    profile.put("avatarUrlOriginal", rawAvatar);
-                }
-                if (normalizedAvatar != null) {
-                    profile.put("avatarUrl", normalizedAvatar);
-                    profile.remove("avatarMissing");
+                String storedAvatarRaw = profile.has("avatarUrl") && !profile.isNull("avatarUrl")
+                        ? profile.optString("avatarUrl", null)
+                        : null;
+                String canonicalAvatar = canonicalizeAvatarForStorage(storedAvatarRaw, exchange);
+                if (canonicalAvatar != null) {
+                    profile.put("avatarUrl", canonicalAvatar);
                 } else {
                     profile.put("avatarUrl", JSONObject.NULL);
-                    if (rawAvatar != null && !rawAvatar.isEmpty()) {
+                }
+
+                if (!isNullOrEmpty(storedAvatarRaw) && canonicalAvatar != null && !storedAvatarRaw.equals(canonicalAvatar)) {
+                    profile.put("avatarUrlOriginal", storedAvatarRaw);
+                } else {
+                    profile.remove("avatarUrlOriginal");
+                }
+
+                String resolvedAvatar = resolveAvatarReference(canonicalAvatar != null ? canonicalAvatar : storedAvatarRaw, exchange);
+                if (!isNullOrEmpty(resolvedAvatar)) {
+                    profile.put("avatarUrlResolved", resolvedAvatar);
+                    profile.remove("avatarMissing");
+                } else {
+                    profile.put("avatarUrlResolved", JSONObject.NULL);
+                    if (!isNullOrEmpty(storedAvatarRaw)) {
                         profile.put("avatarMissing", true);
                     } else {
                         profile.remove("avatarMissing");
@@ -1895,7 +2018,6 @@ public class Server {
                                 String objectKey = R2_CLIENT.buildObjectKey(unique);
                                 CloudflareR2Client.UploadResult uploadRes = R2_CLIENT.uploadObject(objectKey, bytes, effectiveContentType);
                                 finalAvatarUrl = uploadRes.publicUrl();
-                                existing.put("avatarUrl", finalAvatarUrl);
                             } catch (Exception r2ex) {
                                 System.err.println("Failed to upload avatar to R2, falling back to local disk: " + r2ex.getMessage());
                             }
@@ -1907,13 +2029,68 @@ public class Server {
                             Path target = UPLOADS_DIR.resolve(unique).normalize();
                             if (!target.startsWith(UPLOADS_DIR)) throw new IOException("Invalid upload path");
                             Files.write(target, bytes);
-                            existing.put("avatarUrl", localUrl);
                             finalAvatarUrl = localUrl;
                         }
                     } catch (Exception e) {
                         System.err.println("Failed to save avatar: " + e.getMessage());
                         // 若儲存失敗，保留舊有頭像以免造成斷圖。
                     }
+                }
+
+                if (!isNullOrEmpty(finalAvatarUrl)) {
+                    String originalFinalAvatar = finalAvatarUrl;
+                    String canonicalAvatar = canonicalizeAvatarForStorage(originalFinalAvatar, exchange);
+                    if (!isNullOrEmpty(canonicalAvatar)) {
+                        existing.put("avatarUrl", canonicalAvatar);
+                        if (!canonicalAvatar.equals(originalFinalAvatar)) {
+                            existing.put("avatarUrlOriginal", originalFinalAvatar);
+                        } else {
+                            existing.remove("avatarUrlOriginal");
+                        }
+                        finalAvatarUrl = canonicalAvatar;
+                    } else {
+                        existing.remove("avatarUrl");
+                        existing.remove("avatarUrlOriginal");
+                        finalAvatarUrl = null;
+                    }
+                } else {
+                    String existingAvatarRaw = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
+                            ? existing.optString("avatarUrl", null)
+                            : null;
+                    if (!isNullOrEmpty(existingAvatarRaw)) {
+                        String canonicalExisting = canonicalizeAvatarForStorage(existingAvatarRaw, exchange);
+                        if (!isNullOrEmpty(canonicalExisting)) {
+                            existing.put("avatarUrl", canonicalExisting);
+                            if (!canonicalExisting.equals(existingAvatarRaw)) {
+                                existing.put("avatarUrlOriginal", existingAvatarRaw);
+                            } else {
+                                existing.remove("avatarUrlOriginal");
+                            }
+                            finalAvatarUrl = canonicalExisting;
+                        } else {
+                            existing.remove("avatarUrl");
+                            existing.remove("avatarUrlOriginal");
+                            finalAvatarUrl = null;
+                        }
+                    } else {
+                        existing.remove("avatarUrl");
+                        existing.remove("avatarUrlOriginal");
+                        finalAvatarUrl = null;
+                    }
+                }
+
+                String storedAvatarReference = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
+                        ? existing.optString("avatarUrl", null)
+                        : null;
+                if (!isNullOrEmpty(storedAvatarReference)) {
+                    String resolvedAvatar = resolveAvatarReference(storedAvatarReference, exchange);
+                    if (!isNullOrEmpty(resolvedAvatar)) {
+                        existing.put("avatarUrlResolved", resolvedAvatar);
+                    } else {
+                        existing.remove("avatarUrlResolved");
+                    }
+                } else {
+                    existing.remove("avatarUrlResolved");
                 }
 
                 existing.put("customerId", String.valueOf(id));
@@ -1931,9 +2108,16 @@ public class Server {
                         ps.setString(2, email);
                         ps.setString(3, phone);
                         ps.setString(4, address);
-                        String avatarForDb = finalAvatarUrl != null ? finalAvatarUrl : existing.optString("avatarUrl", null);
-                        if (avatarForDb != null && avatarForDb.isEmpty()) avatarForDb = null;
-                        ps.setString(5, avatarForDb);
+                        String avatarForDb = !isNullOrEmpty(finalAvatarUrl)
+                                ? finalAvatarUrl
+                                : (existing.has("avatarUrl") && !existing.isNull("avatarUrl")
+                                    ? existing.optString("avatarUrl", null)
+                                    : null);
+                        if (isNullOrEmpty(avatarForDb)) {
+                            ps.setNull(5, Types.VARCHAR);
+                        } else {
+                            ps.setString(5, avatarForDb);
+                        }
                         ps.setInt(6, id);
                         ps.executeUpdate();
                     }

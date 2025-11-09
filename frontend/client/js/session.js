@@ -15,6 +15,7 @@
                 localStorage.removeItem('sf-client-role');
                 localStorage.removeItem('sf-client-session');
                 localStorage.removeItem('sf-client-avatar');
+                localStorage.removeItem('sf-client-avatar-resolved');
                 localStorage.removeItem('sf-client-profile-sync');
                 localStorage.removeItem('sf-client-profile-version');
                 localStorage.removeItem('userRole');
