@@ -211,6 +211,11 @@
     /** Profile 更新事件名稱：用於跨頁同步會員資訊。 */
     const PROFILE_UPDATE_EVENT = 'sf:profile-updated';
 
+    /** 行動版搜尋覆蓋層觸發函式（於 initNavSearch 內初始化）。 */
+    let openSearchOverlayFn = null;
+    /** 行動版搜尋覆蓋層關閉函式，供其他模組必要時呼叫。 */
+    let closeSearchOverlayFn = null;
+
     /**
      * 嘗試從 localStorage 讀取品牌設定，若解析失敗則回傳 null。
      * @returns {?Object}
@@ -570,19 +575,123 @@
         }
         form.dataset.bound = '1';
 
+        const bodyEl = document.body;
+        const overlay = ensureSearchOverlay();
+        const overlayForm = overlay ? overlay.querySelector('[data-mobile-search-form]') : null;
+        const overlayInput = overlay ? overlay.querySelector('[data-mobile-search-input]') : null;
+        const overlayResultsWrap = overlay ? overlay.querySelector('[data-mobile-search-results]') : null;
+        const overlayEmpty = overlay ? overlay.querySelector('[data-mobile-search-empty]') : null;
+        const overlayDismissNodes = overlay ? overlay.querySelectorAll('[data-mobile-search-dismiss]') : [];
+        let overlayOpen = false;
+
         const MIN_QUERY = 2;
         let productsPromise = null;
         let queryToken = 0;
+        let lastResults = [];
 
-    /**
-     * 將後端回傳的商品資料整理成統一結構，方便後續渲染搜尋結果。
-     */
-    /**
-     * 將 API 回傳的商品資料正規化為搜尋結果所需格式。
-     * @param {Object} product 原始商品資料。
-     * @returns {{id:string,name:string,price:number,imageUrl:string,url:string}}
-     */
-    function normalizeProduct(product) {
+        function ensureSearchOverlay() {
+            let existing = document.getElementById('client-search-overlay');
+            if (existing) return existing;
+
+            const overlayEl = document.createElement('div');
+            overlayEl.id = 'client-search-overlay';
+            overlayEl.className = 'client-search-overlay';
+            overlayEl.setAttribute('hidden', 'hidden');
+            overlayEl.innerHTML = `
+                <div class="client-search-overlay-backdrop" data-mobile-search-dismiss aria-hidden="true"></div>
+                <div class="client-search-overlay-panel" role="dialog" aria-modal="true" aria-label="搜尋商品">
+                    <div class="client-search-overlay-header">
+                        <button type="button" class="client-search-overlay-close" data-mobile-search-dismiss aria-label="關閉搜尋">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                        <form class="client-search-overlay-form" data-mobile-search-form role="search">
+                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                            <label class="visually-hidden" for="client-search-overlay-input">搜尋商品</label>
+                            <input type="search" id="client-search-overlay-input" data-mobile-search-input placeholder="搜尋商品或輸入熱門關鍵字" autocomplete="off" inputmode="search" enterkeyhint="search">
+                            <button type="submit" aria-label="開始搜尋">
+                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="client-search-overlay-body">
+                        <div class="client-search-overlay-empty" data-mobile-search-empty>輸入關鍵字即可尋找商品</div>
+                        <div class="client-search-overlay-results" data-mobile-search-results role="listbox"></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlayEl);
+            return overlayEl;
+        }
+
+        function syncQueryValue(source, value) {
+            if (input && source !== input && input.value !== value) {
+                input.value = value;
+            }
+            if (overlayInput && source !== overlayInput && overlayInput.value !== value) {
+                overlayInput.value = value;
+            }
+        }
+
+        function handleOverlayKeydown(event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeOverlay({ restoreFocus: true });
+            }
+        }
+
+        function openOverlay(options = {}) {
+            if (!overlay) return;
+            hideResults();
+            if (!overlayOpen) {
+                overlay.hidden = false;
+                overlay.setAttribute('aria-hidden', 'false');
+                bodyEl.classList.add('client-search-open');
+                overlayOpen = true;
+                document.addEventListener('keydown', handleOverlayKeydown, true);
+            }
+            const query = typeof options.query === 'string' ? options.query : (input ? input.value : '');
+            syncQueryValue(null, query);
+            renderOverlayResults(lastResults);
+            if (overlayEmpty) {
+                if (!lastResults.length) {
+                    overlayEmpty.hidden = false;
+                    overlayEmpty.textContent = query && query.length >= MIN_QUERY
+                        ? '找不到符合的商品'
+                        : '輸入關鍵字即可尋找商品';
+                } else {
+                    overlayEmpty.hidden = true;
+                }
+            }
+            if (options.focus !== false && overlayInput) {
+                setTimeout(() => {
+                    try {
+                        overlayInput.focus({ preventScroll: true });
+                    } catch (_) {
+                        overlayInput.focus();
+                    }
+                }, 20);
+            }
+        }
+
+        function closeOverlay({ restoreFocus } = {}) {
+            if (!overlay || !overlayOpen) return;
+            overlay.hidden = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            bodyEl.classList.remove('client-search-open');
+            overlayOpen = false;
+            document.removeEventListener('keydown', handleOverlayKeydown, true);
+            if (restoreFocus && input) {
+                setTimeout(() => {
+                    try {
+                        input.focus({ preventScroll: true });
+                    } catch (_) {
+                        input.focus();
+                    }
+                }, 20);
+            }
+        }
+
+        function normalizeProduct(product) {
             const rawId = product.id ?? product.idProducts ?? product.idProduct ?? product.id_products ?? product.idproducts;
             const id = rawId != null ? String(rawId) : '';
             const name = String(product.name || product.ProductName || product.productName || '').trim();
@@ -605,14 +714,7 @@
             };
         }
 
-    /**
-     * 載入商品清單並快取 Promise，避免每次輸入都重新發送請求。
-     */
-    /**
-     * 取得商品清單，用於搜尋快取。
-     * @returns {Promise<Array>}
-     */
-    function fetchProducts() {
+        function fetchProducts() {
             if (!productsPromise) {
                 productsPromise = fetch(API_BASE + '/products', { cache: 'no-store' })
                     .then((res) => {
@@ -628,47 +730,32 @@
             return productsPromise;
         }
 
-    /** 隱藏搜尋結果面板並解除外部點擊監聽。 */
-    /**
-     * 隱藏搜尋結果面板並解除相關事件。
-     */
-    function hideResults() {
+        function hideResults() {
             resultsPanel.hidden = true;
             document.removeEventListener('click', handleOutsideClick, true);
         }
 
-    /** 顯示搜尋結果面板並監聽外部點擊以便關閉。 */
-    /**
-     * 顯示搜尋結果面板並註冊外部點擊監聽。
-     */
-    function showResults() {
+        function showResults() {
+            if (overlayOpen) return;
             resultsPanel.hidden = false;
             document.addEventListener('click', handleOutsideClick, true);
         }
 
-    /** 搜尋結果開啟時，若點擊在表單外則關閉面板。 */
-    /**
-     * 搜尋結果外部點擊的收合處理。
-     * @param {MouseEvent} event 點擊事件。
-     */
-    function handleOutsideClick(event) {
+        function handleOutsideClick(event) {
             const target = event.target instanceof Node ? event.target : null;
             if (!target) return;
             if (form.contains(target)) return;
+            if (overlay && overlay.contains(target)) return;
             hideResults();
         }
 
-    /**
-     * 依搜尋結果渲染按鈕清單，提供快速導向商品頁面。
-     */
-    /**
-     * 將搜尋結果陣列渲染到面板中。
-     * @param {Array} items 正規化後的商品陣列。
-     */
-    function renderResults(items) {
+        function renderResults(items) {
             resultsWrap.innerHTML = '';
             if (!items.length) {
-                if (emptyEl) emptyEl.hidden = false;
+                if (emptyEl) {
+                    emptyEl.hidden = false;
+                    emptyEl.textContent = '找不到符合的商品';
+                }
                 showResults();
                 return;
             }
@@ -681,6 +768,15 @@
                 button.className = 'client-nav-search-item';
                 button.setAttribute('data-product-id', item.id);
                 button.setAttribute('role', 'option');
+
+                if (item.imageUrl) {
+                    const thumb = document.createElement('img');
+                    thumb.src = item.imageUrl;
+                    thumb.alt = '';
+                    thumb.loading = 'lazy';
+                    thumb.className = 'client-nav-search-thumb';
+                    button.appendChild(thumb);
+                }
 
                 const content = document.createElement('div');
                 content.className = 'flex-grow-1';
@@ -705,6 +801,7 @@
                 button.appendChild(icon);
 
                 button.addEventListener('click', () => {
+                    closeOverlay();
                     if (item.id) {
                         window.location.href = 'product.html?id=' + encodeURIComponent(item.id);
                     } else {
@@ -718,20 +815,95 @@
             showResults();
         }
 
-    /**
-     * 監聽輸入變化：若達最小字數則執行 client-side 搜尋並更新列表。
-     */
-    /**
-     * 監聽搜尋輸入，根據關鍵字篩選商品並更新面板。
-     * @returns {Promise<void>}
-     */
-    async function handleQueryChange() {
-            const query = input.value.trim();
+        function renderOverlayResults(items) {
+            if (!overlayResultsWrap) return;
+            overlayResultsWrap.innerHTML = '';
+            if (!items.length) {
+                if (overlayEmpty) {
+                    const query = overlayInput ? overlayInput.value.trim() : (input ? input.value.trim() : '');
+                    overlayEmpty.hidden = false;
+                    overlayEmpty.textContent = query.length >= MIN_QUERY
+                        ? '找不到符合的商品'
+                        : '輸入關鍵字即可尋找商品';
+                }
+                return;
+            }
+
+            if (overlayEmpty) overlayEmpty.hidden = true;
+
+            items.forEach((item) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'client-search-overlay-item';
+                button.setAttribute('data-product-id', item.id);
+                button.setAttribute('role', 'option');
+
+                const thumb = document.createElement('div');
+                thumb.className = 'client-search-overlay-thumb';
+                if (item.imageUrl) {
+                    const img = document.createElement('img');
+                    img.src = item.imageUrl;
+                    img.alt = item.name || '商品';
+                    img.loading = 'lazy';
+                    thumb.appendChild(img);
+                } else {
+                    thumb.classList.add('is-placeholder');
+                    const icon = document.createElement('i');
+                    icon.className = 'fa-solid fa-box-open';
+                    icon.setAttribute('aria-hidden', 'true');
+                    thumb.appendChild(icon);
+                }
+                button.appendChild(thumb);
+
+                const info = document.createElement('div');
+                info.className = 'client-search-overlay-info';
+
+                const title = document.createElement('div');
+                title.className = 'title';
+                title.textContent = item.name;
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                const categoryMeta = item.categoryName ? `${item.categoryName} · ` : '';
+                meta.textContent = categoryMeta + formatPrice(item.price);
+
+                info.appendChild(title);
+                info.appendChild(meta);
+                button.appendChild(info);
+
+                const chevron = document.createElement('i');
+                chevron.className = 'fa-solid fa-chevron-right';
+                chevron.setAttribute('aria-hidden', 'true');
+                button.appendChild(chevron);
+
+                button.addEventListener('click', () => {
+                    closeOverlay();
+                    if (item.id) {
+                        window.location.href = 'product.html?id=' + encodeURIComponent(item.id);
+                    } else {
+                        window.location.href = 'product.html';
+                    }
+                });
+
+                overlayResultsWrap.appendChild(button);
+            });
+        }
+
+        async function handleQueryChange(sourceInput) {
+            const source = sourceInput && typeof sourceInput.value === 'string' ? sourceInput : input;
+            const query = source ? source.value.trim() : '';
+            syncQueryValue(source, query);
             const token = ++queryToken;
 
             if (query.length < MIN_QUERY) {
+                lastResults = [];
                 hideResults();
                 if (emptyEl) emptyEl.hidden = true;
+                renderOverlayResults([]);
+                if (overlayEmpty) {
+                    overlayEmpty.hidden = false;
+                    overlayEmpty.textContent = query ? '請再輸入至少 2 個字' : '輸入關鍵字即可尋找商品';
+                }
                 return;
             }
 
@@ -746,16 +918,22 @@
                     if (item.categoryName && item.categoryName.toLowerCase().includes(lowered)) return true;
                     return false;
                 })
-                .slice(0, 6);
+                .slice(0, 8);
 
+            lastResults = matches;
             renderResults(matches);
+            renderOverlayResults(matches);
         }
 
         input.addEventListener('input', () => {
-            handleQueryChange();
+            handleQueryChange(input);
         });
 
         input.addEventListener('focus', () => {
+            if (window.innerWidth < BREAKPOINT) {
+                openOverlay({ query: input.value, focus: true });
+                return;
+            }
             if (input.value.trim().length >= MIN_QUERY && resultsWrap.children.length > 0) {
                 showResults();
             }
@@ -768,11 +946,25 @@
             }
         });
 
+        if (overlayInput) {
+            overlayInput.addEventListener('input', () => {
+                handleQueryChange(overlayInput);
+            });
+            overlayInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeOverlay({ restoreFocus: true });
+                }
+            });
+        }
+
         resultsPanel.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
                 hideResults();
-                input.focus();
+                if (input) {
+                    input.focus();
+                }
             }
         });
 
@@ -785,7 +977,44 @@
             }
             window.location.href = 'product.html?search=' + encodeURIComponent(query);
             hideResults();
+            closeOverlay();
         });
+
+        if (overlayForm && !overlayForm.dataset.bound) {
+            overlayForm.dataset.bound = '1';
+            overlayForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const query = overlayInput ? overlayInput.value.trim() : '';
+                if (!query) {
+                    if (overlayEmpty) {
+                        overlayEmpty.hidden = false;
+                        overlayEmpty.textContent = '輸入關鍵字即可尋找商品';
+                    }
+                    return;
+                }
+                window.location.href = 'product.html?search=' + encodeURIComponent(query);
+                closeOverlay();
+            });
+        }
+
+        if (overlay && !overlay.dataset.dismissBound) {
+            overlay.dataset.dismissBound = '1';
+            overlayDismissNodes.forEach((node) => {
+                node.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    closeOverlay({ restoreFocus: true });
+                });
+            });
+        }
+
+        window.addEventListener('resize', () => {
+            if (overlayOpen && window.innerWidth >= BREAKPOINT) {
+                closeOverlay();
+            }
+        });
+
+        openSearchOverlayFn = (options) => openOverlay(options || {});
+        closeSearchOverlayFn = (options) => closeOverlay(options || {});
     }
 
     /**
@@ -1247,9 +1476,9 @@
                     <i class="fa-solid fa-house" aria-hidden="true"></i>
                     <span>首頁</span>
                 </a>
-                <a href="product.html" class="client-tabbar-item" data-tab-key="categories" aria-label="瀏覽全部商品分類">
-                    <i class="fa-solid fa-compass" aria-hidden="true"></i>
-                    <span>分類</span>
+                <a href="product.html" class="client-tabbar-item" data-tab-key="products" aria-label="瀏覽全部商品">
+                    <i class="fa-solid fa-store" aria-hidden="true"></i>
+                    <span>商品</span>
                 </a>
                 <button type="button" class="client-tabbar-item client-tabbar-item-featured" data-tab-action="search" data-tab-key="search" aria-label="快速搜尋商品">
                     <span class="client-tabbar-fab" aria-hidden="true">
@@ -1291,7 +1520,7 @@
             } else if (path.includes('member')) {
                 key = 'profile';
             } else if (path.includes('product')) {
-                key = 'categories';
+                key = 'products';
             }
 
             const active = tabbar.querySelector(`[data-tab-key="${key}"]`);
@@ -1314,12 +1543,21 @@
             if (searchBtn) {
                 searchBtn.addEventListener('click', (event) => {
                     event.preventDefault();
-                    const searchInput = document.getElementById('client-nav-search-input');
-                    const shouldOpenSidebar = window.innerWidth < BREAKPOINT;
+                    const isMobile = window.innerWidth < BREAKPOINT;
+                    if (isMobile && typeof openSearchOverlayFn === 'function') {
+                        openSearchOverlayFn({ focus: true });
+                        return;
+                    }
 
-                    if (shouldOpenSidebar && !body.classList.contains('client-sidebar-expanded')) {
+                    const searchInput = document.getElementById('client-nav-search-input');
+                    const shouldOpenSidebar = isMobile && !body.classList.contains('client-sidebar-expanded');
+
+                    if (shouldOpenSidebar) {
                         openSidebar({ focusSidebar: true });
                     } else {
+                        if (typeof closeSearchOverlayFn === 'function') {
+                            closeSearchOverlayFn();
+                        }
                         const searchForm = document.getElementById('client-nav-search');
                         if (searchForm && typeof searchForm.scrollIntoView === 'function') {
                             searchForm.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -503,7 +503,7 @@
 (() => {
 	const API_ORIGIN = window.SF_API_BASE ? String(window.SF_API_BASE) : window.location.origin;
 	const STORAGE_ORIGIN = window.SF_STORAGE_BASE ? String(window.SF_STORAGE_BASE) : API_ORIGIN;
-	const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+	const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 	const storedCustomerId = localStorage.getItem('customerId');
 	const storedCustomerName = localStorage.getItem('customerName') || '';
@@ -539,6 +539,32 @@
 	let keywordValue = '';
 	let statusValue = '';
 	let rangeValue = '';
+
+	function clearAvatarPreview() {
+		if (avatar) {
+			avatar.classList.remove('has-image');
+		}
+		if (avatarImg) {
+			avatarImg.classList.add('d-none');
+			avatarImg.removeAttribute('src');
+		}
+		if (avatarInitial) {
+			avatarInitial.classList.remove('d-none');
+		}
+	}
+
+	if (avatarImg) {
+		avatarImg.loading = 'lazy';
+		avatarImg.decoding = 'async';
+		avatarImg.addEventListener('error', () => {
+			clearAvatarPreview();
+			try {
+				localStorage.removeItem('sf-client-avatar');
+			} catch (_) {
+				// ignore storage errors
+			}
+		});
+	}
 
 	function lockDownMemberUI(message, tone = 'warning', redirectUrl) {
 		if (feedbackPanel) {
@@ -584,10 +610,19 @@
 
 	function resolveAssetUrl(path) {
 		if (!path) return '';
+		if (/^data:/i.test(path)) return String(path);
 		if (/^https?:\/\//i.test(path)) return path;
 		const base = STORAGE_ORIGIN.replace(/\/+$/, '');
 		const clean = String(path).replace(/^\/+/, '');
 		return `${base}/${clean}`;
+	}
+
+	function getStoredAvatarUrl() {
+		try {
+			return localStorage.getItem('sf-client-avatar') || '';
+		} catch (_) {
+			return '';
+		}
 	}
 
 	function showFeedback(message, tone = 'info') {
@@ -613,16 +648,34 @@
 			const initial = (displayName || 'M').trim().charAt(0).toUpperCase() || 'M';
 			avatarInitial.textContent = initial;
 		}
-		const avatarUrl = resolveAssetUrl(data.avatarUrl);
+		const avatarCandidates = [
+			data.avatarUrl,
+			data.avatarUrlOriginal,
+			data.avatar,
+			data.avatarPath,
+			getStoredAvatarUrl()
+		];
+		let avatarUrl = '';
+		for (const candidate of avatarCandidates) {
+			if (!candidate || candidate === 'null' || candidate === 'undefined') continue;
+			const resolved = resolveAssetUrl(candidate);
+			if (resolved) {
+				avatarUrl = resolved;
+				break;
+			}
+		}
 		if (avatar && avatarImg) {
 			if (avatarUrl) {
 				avatar.classList.add('has-image');
-				avatarImg.src = avatarUrl;
+				if (avatarImg.getAttribute('src') !== avatarUrl) {
+					avatarImg.src = avatarUrl;
+				}
 				avatarImg.classList.remove('d-none');
+				if (avatarInitial) {
+					avatarInitial.classList.add('d-none');
+				}
 			} else {
-				avatar.classList.remove('has-image');
-				avatarImg.src = '';
-				avatarImg.classList.add('d-none');
+				clearAvatarPreview();
 			}
 		}
 		if (profileUpdatedEl) {
@@ -711,7 +764,7 @@
 	async function uploadAvatar(file) {
 		if (!file || !cid) return;
 		if (file.size > MAX_AVATAR_SIZE) {
-			showFeedback('頭像檔案過大，請選擇 2MB 以下的圖片。', 'warning');
+			showFeedback('頭像檔案過大，請選擇 5MB 以下的圖片。', 'warning');
 			return;
 		}
 		if (!window.api || typeof window.api.updateCustomerProfile !== 'function') {

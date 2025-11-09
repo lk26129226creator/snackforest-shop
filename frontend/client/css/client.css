@@ -661,13 +661,24 @@ h1, h2, h3, h4, h5, h6 {
     color: #fff;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 12px;
     padding: 10px 12px;
     border-radius: 14px;
     text-align: left;
     cursor: pointer;
     transition: background 0.18s ease;
+}
+
+.client-nav-search-thumb {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    object-fit: cover;
+    object-position: center;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .client-nav-search-item:hover,
@@ -678,6 +689,7 @@ h1, h2, h3, h4, h5, h6 {
 .client-nav-search-item i {
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.85rem;
+    margin-left: auto;
 }
 
 .client-nav-search-item:hover i,
