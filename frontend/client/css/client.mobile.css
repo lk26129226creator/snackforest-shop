@@ -30,6 +30,18 @@ body.client-sidebar-expanded {
     padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px);
 }
 
+.login-page-body {
+    padding: clamp(24px, 8vw, 40px) clamp(16px, 6vw, 28px) !important;
+}
+
+.login-wrapper {
+    width: min(92vw, 520px);
+}
+
+.login-card .card-body {
+    padding: clamp(2rem, 7vw, 2.6rem) clamp(1.4rem, 6vw, 2rem);
+}
+
 .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
     margin: calc(var(--client-navbar-height) + 14px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 60px);
