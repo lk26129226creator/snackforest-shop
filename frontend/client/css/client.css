@@ -429,7 +429,10 @@ body.order-success-active {
 }
 
 /* 登入表單外層：login.html 的 .login-wrapper。 */
-.login-wrapper { width: 100%; max-width: 440px; }
+.login-wrapper {
+    width: min(100%, 520px);
+    max-width: 520px;
+}
 /* 登入卡片本體：對應 .login-card。 */
 .login-card { border-radius: 1rem; backdrop-filter: blur(8px); box-shadow: 0 16px 40px rgba(0,0,0,0.12); }
 /* SF 圓形品牌圖示：login.html 中登入卡片頂部。 */
@@ -441,6 +444,15 @@ body.order-success-active {
 }
 /* 登入頁底部補充連結 (忘記密碼、註冊)。 */
 .login-footer { font-size: 0.9rem; }
+
+@media (max-width: 576px) {
+    .login-wrapper {
+        width: min(92vw, 520px);
+    }
+    .login-card .card-body {
+        padding: 2.5rem 1.75rem;
+    }
+}
 
 h1, h2, h3, h4, h5, h6 {
     /* 全站標題字色：同步套用到所有 client/*.html 章節標題。 */

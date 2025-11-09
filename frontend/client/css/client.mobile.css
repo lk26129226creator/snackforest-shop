@@ -32,16 +32,16 @@ body.client-sidebar-expanded {
 
 .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
-    margin: calc(var(--client-navbar-height) + 16px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 72px);
-    padding: clamp(20px, 5vw, 28px);
-    border-radius: 22px;
-    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+    margin: calc(var(--client-navbar-height) + 14px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 60px);
+    padding: clamp(18px, 5vw, 26px);
+    border-radius: 20px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
 }
 
 body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
-    margin: calc(var(--client-navbar-height) + 16px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 72px);
-    padding: clamp(20px, 5vw, 28px);
+    margin: calc(var(--client-navbar-height) + 14px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 60px);
+    padding: clamp(18px, 5vw, 26px);
 }
 
 .client-main > *:first-child {
@@ -72,8 +72,13 @@ body.client-sidebar-overlay .client-main {
 .client-topbar-left {
     flex: 1 1 100%;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    gap: 0.75rem;
+}
+
+.client-navbar-hamburger {
+    display: none;
 }
 
 .client-topbar-left .brand-signature {
@@ -432,7 +437,12 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 .summary-card.card {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
+}
+
+.client-main .row.g-5 {
+    --bs-gutter-x: 1.25rem;
+    --bs-gutter-y: 1.5rem;
 }
 
 /* --- 8. 表單與共用元件 --- */

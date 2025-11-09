@@ -211,7 +211,10 @@ body > main {
     text-decoration:underline;
 }
 
-.login-wrapper { width: 100%; max-width: 440px; }
+.login-wrapper {
+    width: min(100%, 520px);
+    max-width: 520px;
+}
 .login-card { border-radius: 1rem; backdrop-filter: blur(8px); box-shadow: 0 16px 40px rgba(0,0,0,0.12); }
 .login-brand {
     width: 56px; height: 56px; border-radius: 50%;
@@ -220,6 +223,15 @@ body > main {
     color: #fff; font-weight: 700; letter-spacing: 1px;
 }
 .login-footer { font-size: 0.9rem; }
+
+@media (max-width: 576px) {
+    .login-wrapper {
+        width: min(92vw, 520px);
+    }
+    .login-card .card-body {
+        padding: 2.5rem 1.75rem;
+    }
+}
 
 h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
