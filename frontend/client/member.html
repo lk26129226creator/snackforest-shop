@@ -501,8 +501,28 @@
 <script src="js/init.js"></script>
 <script>
 (() => {
-	const API_ORIGIN = window.SF_API_BASE ? String(window.SF_API_BASE) : window.location.origin;
-	const STORAGE_ORIGIN = window.SF_STORAGE_BASE ? String(window.SF_STORAGE_BASE) : API_ORIGIN;
+	const rawApiBase = window.SF_API_BASE ? String(window.SF_API_BASE) : '';
+	const hintedApiOrigin = window.SF_API_ORIGIN ? String(window.SF_API_ORIGIN) : '';
+	const envApiOrigin = window.SF_ENV && typeof window.SF_ENV.API_ORIGIN === 'string' ? window.SF_ENV.API_ORIGIN : '';
+	const API_ORIGIN = (() => {
+		const candidate = hintedApiOrigin || envApiOrigin || rawApiBase;
+		if (!candidate) return (window.location && window.location.origin) || '';
+		try {
+			return new URL(candidate, window.location && window.location.origin ? window.location.origin : undefined).origin;
+		} catch (_) {
+			return (window.location && window.location.origin) || '';
+		}
+	})();
+	const STORAGE_ORIGIN = (() => {
+		if (window.SF_STORAGE_BASE) {
+			try {
+				return new URL(String(window.SF_STORAGE_BASE), API_ORIGIN || (window.location && window.location.origin) || undefined).origin;
+			} catch (_) {
+				return String(window.SF_STORAGE_BASE);
+			}
+		}
+		return API_ORIGIN;
+	})();
 	const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 	const storedCustomerId = localStorage.getItem('customerId');
@@ -612,9 +632,21 @@
 		if (!path) return '';
 		if (/^data:/i.test(path)) return String(path);
 		if (/^https?:\/\//i.test(path)) return path;
-		const base = STORAGE_ORIGIN.replace(/\/+$/, '');
 		const clean = String(path).replace(/^\/+/, '');
-		return `${base}/${clean}`;
+		const isUploadLike = /^uploads\//i.test(clean);
+		const prefixed = path.startsWith('/') || isUploadLike ? `/${clean}` : clean;
+		const normalizedPrefixed = prefixed.replace(/^\/+(?=uploads\/)/i, '/');
+		const lowerPrefixed = normalizedPrefixed.toLowerCase();
+		const isUpload = lowerPrefixed.startsWith('/uploads/');
+		const isFrontendAsset = lowerPrefixed.startsWith('frontend/') || lowerPrefixed.startsWith('/frontend/');
+		const frontendOrigin = (window.location && window.location.origin) || API_ORIGIN;
+		const base = isUpload ? STORAGE_ORIGIN : (isFrontendAsset ? frontendOrigin : API_ORIGIN);
+		if (!base) return normalizedPrefixed;
+		const normalizedBase = base.replace(/\/+$/, '');
+		const joined = normalizedPrefixed.startsWith('/')
+			? `${normalizedBase}${normalizedPrefixed}`
+			: `${normalizedBase}/${normalizedPrefixed}`;
+		return joined.replace(/\/api\/(?=uploads\/)/i, '/');
 	}
 
 	function getStoredAvatarUrl() {
@@ -649,6 +681,7 @@
 			avatarInitial.textContent = initial;
 		}
 		const avatarCandidates = [
+			data.avatarUrlResolved,
 			data.avatarUrl,
 			data.avatarUrlOriginal,
 			data.avatar,

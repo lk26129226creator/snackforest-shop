@@ -25,12 +25,25 @@
         }
     }
 
+    function originFrom(value) {
+        if (!value) return '';
+        try {
+            const base = window.location && window.location.origin ? window.location.origin : undefined;
+            return new URL(String(value), base).origin;
+        } catch (_) {
+            return '';
+        }
+    }
+
     /**
      * 依序判斷環境變數與瀏覽器當前來源，推導出前端要呼叫的 API 來源位址。
      * 優先使用 env.API_ORIGIN，若偵測到本機與部署主機混搭則會自動修正。
      */
     const apiOrigin = (() => {
-        const envOrigin = getOriginSafe(env.API_ORIGIN);
+        const runtimeBase = typeof window !== 'undefined' && window.SF_API_BASE ? window.SF_API_BASE : '';
+        const runtimeOrigin = typeof window !== 'undefined' && window.SF_API_ORIGIN ? window.SF_API_ORIGIN : '';
+        const preferred = env.API_ORIGIN || runtimeOrigin || runtimeBase;
+        const envOrigin = getOriginSafe(preferred);
         const locationOrigin = getOriginSafe(window.location && window.location.origin);
 
         if (envOrigin && locationOrigin) {
@@ -47,6 +60,15 @@
         }
 
         return envOrigin || locationOrigin || '';
+    })();
+
+    const storageOrigin = (() => {
+        const envStorage = getOriginSafe(env.STORAGE_ORIGIN);
+        const runtimeStorage = typeof window !== 'undefined' ? getOriginSafe(window.SF_STORAGE_BASE) : '';
+        if (envStorage) return envStorage;
+        if (runtimeStorage) return runtimeStorage;
+        const fallback = originFrom(env.API_BASE) || apiOrigin;
+        return fallback;
     })();
 
     /**
@@ -102,6 +124,10 @@
             const raw = String(value).trim();
             if (!raw) return '';
             if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) {
+                if (/\/api\/uploads\//i.test(raw)) {
+                    const adjusted = raw.replace(/\/api\/(?=uploads\/)/i, '/');
+                    return adjustToCurrentOrigin(adjusted);
+                }
                 return adjustToCurrentOrigin(raw);
             }
 
@@ -110,12 +136,28 @@
                 path = raw;
             } else if (raw.startsWith('./')) {
                 path = raw.replace(/^\.\/+/,'/');
+            } else if (/^uploads\//i.test(raw)) {
+                path = `/${raw}`;
             } else if (raw.startsWith('frontend/')) {
                 path = `/${raw}`;
             } else if (raw.startsWith('images/')) {
                 path = `/frontend/${raw}`;
             } else {
                 path = `/frontend/images/products/${raw}`;
+            }
+
+            if (path.startsWith('/uploads/')) {
+                const base = storageOrigin || apiOrigin || getOriginSafe(window.location && window.location.origin);
+                if (base) {
+                    return adjustToCurrentOrigin(base.replace(/\/$/, '') + path);
+                }
+            }
+
+            if (path.startsWith('/frontend/')) {
+                const siteOrigin = getOriginSafe(window.location && window.location.origin) || apiOrigin;
+                if (siteOrigin) {
+                    return adjustToCurrentOrigin(siteOrigin.replace(/\/$/, '') + path);
+                }
             }
 
             if (apiOrigin) {
@@ -415,6 +457,8 @@
         for (const candidate of list) {
             const trimmed = safeTrim(candidate);
             if (!trimmed) continue;
+            const lowered = trimmed.toLowerCase();
+            if (lowered === 'null' || lowered === 'undefined') continue;
             let resolved = trimmed;
             try {
                 resolved = normalizeImageUrl(trimmed);
@@ -431,7 +475,7 @@
         const endpointBase = API_BASE.replace(/\/$/, '');
         const endpoint = `${endpointBase}/customer-profile/${encodeURIComponent(customerId)}`;
         try {
-            const res = await fetch(endpoint, { cache: 'no-store', credentials: 'same-origin' });
+            const res = await fetch(endpoint, { cache: 'no-store', credentials: 'include' });
             if (!res.ok) return null;
             return await res.json();
         } catch (err) {
@@ -451,7 +495,21 @@
             return;
         }
 
-        const profile = await fetchProfileById(memberId);
+        let profile = await fetchProfileById(memberId);
+        if (!profile && window.api && typeof window.api.getCustomerProfile === 'function') {
+            try {
+                const fallbackRes = await window.api.getCustomerProfile(memberId);
+                if (fallbackRes && fallbackRes.success) {
+                    profile = fallbackRes.data || null;
+                }
+            } catch (_) {
+                // ignore fallback errors
+            }
+        }
+        if (profile && typeof profile === 'object' && !profile.customerId) {
+            profile.customerId = memberId;
+        }
+
         if (!profile || typeof profile !== 'object') {
             if (force) writeProfileSyncTimestamp(0);
             return;
@@ -463,9 +521,10 @@
             profile.avatarUrl,
             profile.avatarUrlOriginal,
             profile.avatar,
-            profile.avatarPath
+            profile.avatarPath,
+            stored.avatar
         ]);
-        const customerId = safeTrim(profile.customerId || memberId);
+    const customerId = safeTrim(profile.customerId || memberId);
         const updatedAt = safeTrim(profile.updatedAt || readStoredProfileVersion());
 
         try {
@@ -476,6 +535,8 @@
             }
             if (customerId) {
                 window.localStorage.setItem('sf-client-id', customerId);
+            } else {
+                window.localStorage.removeItem('sf-client-id');
             }
             if (avatarUrl) {
                 window.localStorage.setItem(MEMBER_AVATAR_KEY, avatarUrl);

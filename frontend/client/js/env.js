@@ -6,7 +6,32 @@
     //    - 提供 fetchSiteConfig() 與快取失效控制。
     //
     const FALLBACK_BACKEND = 'http://localhost:8000';
-    const API_ORIGIN = (() => {
+
+    function toOrigin(input, fallback) {
+        if (!input) return fallback;
+        try {
+            return new URL(String(input), fallback || FALLBACK_BACKEND).origin;
+        } catch (_) {
+            return fallback || FALLBACK_BACKEND;
+        }
+    }
+
+    function normalizeBase(input, originFallback) {
+        if (!input) return '';
+        try {
+            const url = new URL(String(input), originFallback || FALLBACK_BACKEND);
+            const trimmed = url.origin.replace(/\/?$/, '') + (url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname);
+            return trimmed.replace(/\/$/, '');
+        } catch (_) {
+            return '';
+        }
+    }
+
+    const runtimeApiBase = typeof window !== 'undefined' ? window.SF_API_BASE : '';
+    const runtimeStorageBase = typeof window !== 'undefined' ? window.SF_STORAGE_BASE : '';
+    const candidateOrigin = runtimeApiBase ? toOrigin(runtimeApiBase) : null;
+    const FALLBACK_ORIGIN = toOrigin(null, FALLBACK_BACKEND);
+    const API_ORIGIN = candidateOrigin || (() => {
         try {
             if (typeof window !== 'undefined' && window.location && window.location.origin) {
                 const origin = window.location.origin;
@@ -15,10 +40,17 @@
                 }
             }
         } catch (_) {}
-        return new URL(FALLBACK_BACKEND).origin;
+        return FALLBACK_ORIGIN;
     })();
-    const API_BASE = API_ORIGIN + '/api';
-    const SITE_CONFIG_ENDPOINT = API_BASE + '/site-config';
+    const API_BASE = (() => {
+        if (runtimeApiBase) {
+            const normalized = normalizeBase(runtimeApiBase, API_ORIGIN);
+            if (normalized) return normalized;
+        }
+        return API_ORIGIN.replace(/\/$/, '') + '/api';
+    })();
+    const STORAGE_ORIGIN = runtimeStorageBase ? toOrigin(runtimeStorageBase, API_ORIGIN) : API_ORIGIN;
+    const SITE_CONFIG_ENDPOINT = API_BASE.replace(/\/$/, '') + '/site-config';
 
     // SITE_CONFIG_CACHE_TTL 以毫秒為單位，預設 0 代表每次都重新向後端抓資料。
     const SITE_CONFIG_CACHE_TTL = 0; // milliseconds; 0 disables reuse after each fetch
@@ -92,6 +124,7 @@
     const env = {
         API_ORIGIN,
         API_BASE,
+        STORAGE_ORIGIN,
         SITE_CONFIG_ENDPOINT,
         fetchSiteConfig,
         invalidateSiteConfigCache,
@@ -106,8 +139,9 @@
     window.API_ORIGIN = API_ORIGIN;
     window.API_BASE = API_BASE;
     window.SITE_CONFIG_ENDPOINT = SITE_CONFIG_ENDPOINT;
+    window.SF_API_ORIGIN = API_ORIGIN;
     window.SF_API_BASE = API_BASE;
-    window.SF_STORAGE_BASE = API_ORIGIN;
+    window.SF_STORAGE_BASE = STORAGE_ORIGIN;
     if (window.api && typeof window.api.setBaseURL === 'function') {
         window.api.setBaseURL(API_BASE);
     }

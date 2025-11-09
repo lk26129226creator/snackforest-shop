@@ -4,7 +4,9 @@
     /** 由 env.js 注入的環境設定（可能含 API_ORIGIN 與 API_BASE）。 */
     const env = window.SF_ENV || {};
     /** API 伺服器的 Origin，若未設定則退回到瀏覽器目前來源。 */
-    const API_ORIGIN = env.API_ORIGIN || (window.location && window.location.origin) || '';
+    const API_ORIGIN = env.API_ORIGIN || window.SF_API_ORIGIN || (window.location && window.location.origin) || '';
+    /** 上傳檔案可供瀏覽的 Origin，可獨立於 API 主機。 */
+    const STORAGE_ORIGIN = env.STORAGE_ORIGIN || window.SF_STORAGE_BASE || API_ORIGIN;
     /** 預設商品佔位圖路徑（相對於專案根目錄）。 */
     const FALLBACK_PATH = '/frontend/images/products/no-image.svg';
     /** 依照環境自動套上來源的預設商品圖片絕對網址。 */
@@ -31,6 +33,9 @@
                 if (lowered.includes('placeholder.com') || lowered.includes('dummyimage.com')) return FALLBACK_IMAGE;
                 // 若是本機的絕對網址（例如 http://127.0.0.1:5501/... 或 http://localhost:5501/...），
                 // 將其改寫為 API_ORIGIN + 路徑，避免跑去 Live Server 取檔導致 404。
+                if (/\/api\/uploads\//i.test(s)) {
+                    s = s.replace(/\/api\/(?=uploads\/)/i, '/');
+                }
                 try {
                     const url = new URL(s);
                     const host = (url.hostname || '').toLowerCase();
@@ -48,16 +53,23 @@
                 return absolute.toLowerCase().includes('placeholder.com') || absolute.toLowerCase().includes('dummyimage.com') ? FALLBACK_IMAGE : absolute;
             }
 
+            if (s.startsWith('/uploads/') || /^uploads\//i.test(s)) {
+                const normalized = s.startsWith('/uploads/') ? s : `/${s.replace(/^uploads\//i, 'uploads/')}`;
+                return STORAGE_ORIGIN ? (STORAGE_ORIGIN.replace(/\/$/, '') + normalized) : normalized;
+            }
+
             if (s.startsWith('/')) {
-                return API_ORIGIN ? (API_ORIGIN + s) : s;
+                return API_ORIGIN ? (API_ORIGIN.replace(/\/$/, '') + s) : s;
             }
 
             if (s.toLowerCase().startsWith('frontend/')) {
                 const normalized = '/' + s.replace(/^\/+/, '');
-                return API_ORIGIN ? (API_ORIGIN + normalized) : normalized;
+                return API_ORIGIN ? (API_ORIGIN.replace(/\/$/, '') + normalized) : normalized;
             }
 
-            return API_ORIGIN ? (API_ORIGIN + '/frontend/images/products/' + s) : ('/frontend/images/products/' + s);
+            return API_ORIGIN
+                ? (API_ORIGIN.replace(/\/$/, '') + '/frontend/images/products/' + s)
+                : ('/frontend/images/products/' + s);
         } catch (e) {
             return FALLBACK_IMAGE;
         }
