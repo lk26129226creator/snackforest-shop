@@ -17,7 +17,6 @@ import java.nio.file.Paths;
 import java.io.ByteArrayOutputStream;
 import java.sql.*;
 import java.util.*;
-import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -497,19 +496,19 @@ public class Server {
                     if (normalizedPath.isEmpty()) {
                         return base + "/" + bucket;
                     }
-                    String trimmedPath = normalizedPath.endsWith("/") ? normalizedPath.substring(0, normalizedPath.length() - 1) : normalizedPath;
-                    if (!trimmedPath.equals("/" + bucket) && !trimmedPath.startsWith("/" + bucket + "/") && !trimmedPath.contains("/" + bucket + "/") && !trimmedPath.endsWith("/" + bucket)) {
-                        return base + "/" + bucket;
+                    String trimmedPath = path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+                    if (trimmedPath.isEmpty() || !trimmedPath.equals("/" + bucket)) {
+                        return base + (base.endsWith("/") ? "" : "/") + bucket;
                     }
                     return base;
-                } catch (URISyntaxException ignored) {
-                    if (!base.contains("/" + bucket)) {
+                } catch (URISyntaxException e) {
+                    if (!base.endsWith("/" + bucket)) {
                         return base + "/" + bucket;
                     }
                     return base;
                 }
             }
-            return "https://" + host + "/" + bucket;
+            return "https://" + host;
         }
 
         private static String normalizeBaseUrl(String value) {
