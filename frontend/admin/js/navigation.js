@@ -7,6 +7,21 @@
     const navigation = Admin.navigation || {};
     let currentMode = null;
 
+    // Derive login path relative to the deployed base to avoid hard-coded prefixes.
+    function resolveLoginPath() {
+        if (typeof window === 'undefined' || !window.location) return '/frontend/login.html';
+        try {
+            const pathname = window.location.pathname || '';
+            const match = pathname.match(/^(.*?)(?=\/frontend\/admin(?:\/|$))/);
+            const basePath = match ? match[0] : '';
+            const raw = `${basePath}/frontend/login.html`;
+            const normalized = raw.replace(/\/{2,}/g, '/');
+            return normalized.startsWith('/') ? normalized : `/${normalized}`;
+        } catch (_) {
+            return '/frontend/login.html';
+        }
+    }
+
     /**
      * 快取側邊欄與遮罩的關鍵節點，減少重複查詢 DOM。
      * @returns {{sidebar: HTMLElement|null, backdrop: HTMLElement|null, trigger: HTMLElement|null}}
@@ -361,7 +376,7 @@
         } catch (_) {
             // ignore storage errors
         }
-        window.location.href = '/snackforest-shop/frontend/login.html';
+        window.location.href = resolveLoginPath();
     };
 
     Admin.navigation = navigation;
