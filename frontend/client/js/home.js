@@ -6,6 +6,92 @@
     const normalizeImageUrl = utils.normalizeImageUrl || ((u) => u || '');
     const formatPrice = utils.formatPrice || ((v) => v);
     const fetchSiteConfig = window.fetchSiteConfig || (async () => ({}));
+    const MOBILE_PRODUCT_BREAKPOINT = 768;
+    const mobileProductMediaQuery = typeof window.matchMedia === 'function'
+        ? window.matchMedia(`(max-width: ${MOBILE_PRODUCT_BREAKPOINT}px)`)
+        : null;
+    const FALLBACK_PRODUCT_IMAGE = (() => {
+        const candidate = typeof utils.fallbackProductImage === 'string' && utils.fallbackProductImage.trim()
+            ? utils.fallbackProductImage.trim()
+            : (typeof window.SF_FALLBACK_PRODUCT_IMAGE === 'string' && window.SF_FALLBACK_PRODUCT_IMAGE.trim()
+                ? window.SF_FALLBACK_PRODUCT_IMAGE.trim()
+                : 'https://picsum.photos/320/320?snack');
+        try {
+            return normalizeImageUrl(candidate);
+        } catch (_) {
+            return candidate;
+        }
+    })();
+    const categorySectionMeta = (() => {
+        const gridEl = document.getElementById('home-categories-grid');
+        if (!gridEl) return null;
+        const sectionEl = gridEl.closest('section');
+        if (!sectionEl) return null;
+        const titleEl = sectionEl.querySelector('h2');
+        const ctaEl = sectionEl.querySelector('a.btn');
+        return {
+            gridEl,
+            sectionEl,
+            titleEl,
+            ctaEl,
+            defaultTitle: titleEl ? titleEl.textContent.trim() : '',
+            defaultCtaText: ctaEl ? ctaEl.textContent.trim() : '',
+            defaultCtaHref: ctaEl ? ctaEl.getAttribute('href') : ''
+        };
+    })();
+
+    // 依分類名稱關鍵字推測最適合的 Font Awesome icon，用於分類卡片視覺呈現。
+    const CATEGORY_ICON_RULES = [
+        { pattern: /(餅|cookie|cracker|biscuit)/i, icon: 'fa-cookie-bite' },
+        { pattern: /(糖|candy|sweet|巧克|choco)/i, icon: 'fa-candy-cane' },
+        { pattern: /(肉|jerky|meat|牛肉|豬肉|雞)/i, icon: 'fa-drumstick-bite' },
+        { pattern: /(飲|drink|beverage|茶|coffee|酒|汁)/i, icon: 'fa-mug-hot' },
+        { pattern: /(組|禮盒|combo|pack|箱|合)/i, icon: 'fa-box-open' },
+        { pattern: /(果|fruit|莓|乾|nut|堅果)/i, icon: 'fa-apple-whole' }
+    ];
+
+    /**
+     * 依分類名稱關鍵字推測最適合的 Font Awesome icon。
+     * @param {string} name 分類名稱。
+     * @returns {string}
+     */
+    function resolveCategoryIcon(name) {
+        const value = (name || '').toString().trim();
+        if (!value) return 'fa-basket-shopping';
+        for (const rule of CATEGORY_ICON_RULES) {
+            if (rule.pattern.test(value)) {
+                return rule.icon;
+            }
+        }
+        return 'fa-basket-shopping';
+    }
+
+    function shouldUseMobileProductLayout() {
+        if (mobileProductMediaQuery) {
+            return mobileProductMediaQuery.matches;
+        }
+        return window.innerWidth <= MOBILE_PRODUCT_BREAKPOINT;
+    }
+
+    function updateCategorySectionHeading(mode) {
+        if (!categorySectionMeta) return;
+        const { titleEl, ctaEl, defaultTitle, defaultCtaText, defaultCtaHref } = categorySectionMeta;
+        if (mode === 'mobile-products') {
+            if (titleEl) titleEl.textContent = '行動精選商品';
+            if (ctaEl) {
+                ctaEl.textContent = '更多商品';
+                ctaEl.setAttribute('href', 'product.html');
+            }
+        } else {
+            if (titleEl) titleEl.textContent = defaultTitle || '依分類逛逛';
+            if (ctaEl) {
+                ctaEl.textContent = defaultCtaText || '全部商品';
+                if (defaultCtaHref) {
+                    ctaEl.setAttribute('href', defaultCtaHref);
+                }
+            }
+        }
+    }
 
     // bootstrap.Carousel 初始化設定，確保首頁輪播具備自動播放與觸控體驗。
     const HOME_CAROUSEL_CONFIG = {
@@ -274,57 +360,171 @@
         }
     }
 
-    // 載入最新商品供首頁快速瀏覽，取前幾筆商品並顯示價格與連結。
+    // 載入分類資料後以 8 張卡片快速導向對應的商品列表頁面。
     /**
-     * 載入人氣商品，取前幾筆並渲染在首頁 spotlight 區域。
+     * 載入分類資料並渲染首頁分類卡片。
      * @returns {Promise<void>}
      */
-    async function loadHomeSpotlightProducts() {
-        const grid = document.getElementById('home-spotlight-grid');
-        if (!grid) return;
+    function normalizeMobileProductBrief(product) {
+        if (!product || typeof product !== 'object') {
+            return {
+                id: '',
+                name: '商品',
+                price: 0,
+                imageUrl: FALLBACK_PRODUCT_IMAGE,
+                categoryName: '',
+                href: ''
+            };
+        }
+
+        const id = product.id ?? product.idProducts ?? product.idProduct ?? product.id_products ?? '';
+        const name = product.name || product.ProductName || product.productName || product.title || '商品';
+        const rawPrice = product.price !== undefined ? product.price
+            : (product.Price !== undefined ? product.Price
+                : (product.priceProducts !== undefined ? product.priceProducts
+                    : (product.priceProduct !== undefined ? product.priceProduct : 0)));
+        let imageCandidate = null;
+        if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) imageCandidate = product.imageUrls[0];
+        else if (Array.isArray(product.ImageUrls) && product.ImageUrls.length > 0) imageCandidate = product.ImageUrls[0];
+        else if (product.imageUrl) imageCandidate = product.imageUrl;
+        else if (product.image) imageCandidate = product.image;
+        else if (product.ImageUrl) imageCandidate = product.ImageUrl;
+
+        let imageUrl = imageCandidate || FALLBACK_PRODUCT_IMAGE;
+        try {
+            imageUrl = normalizeImageUrl(imageUrl);
+        } catch (_) {
+            imageUrl = imageCandidate || FALLBACK_PRODUCT_IMAGE;
+        }
+        if (!imageUrl) {
+            imageUrl = FALLBACK_PRODUCT_IMAGE;
+        }
+
+        const categoryName = product.categoryName || product.categoryname || product.CategoryName || '';
+        const priceNumber = Number(rawPrice);
+
+        return {
+            id,
+            name,
+            price: Number.isFinite(priceNumber) ? priceNumber : 0,
+            imageUrl,
+            categoryName,
+            href: id ? `product.html?id=${encodeURIComponent(id)}` : ''
+        };
+    }
+
+    async function renderCategoryCards(grid) {
+        updateCategorySectionHeading('categories');
+        grid.classList.add('category-grid');
+        grid.classList.remove('mobile-product-grid');
+        grid.dataset.layout = 'categories';
+        grid.innerHTML = '<div class="text-muted">載入中...</div>';
+        try {
+            const res = await fetch(API_BASE + '/categories');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            grid.innerHTML = '';
+            (data || []).slice(0, 8).forEach((category) => {
+                const name = category.name || category.categoryname || '分類';
+                const iconClass = resolveCategoryIcon(name);
+                const card = document.createElement('div');
+                card.className = 'category-card';
+                card.innerHTML = `<div class="icon"><i class="fa-solid ${iconClass}" aria-hidden="true"></i></div><div class="name">${name}</div>`;
+                card.setAttribute('role', 'button');
+                card.setAttribute('aria-label', `${name}分類`);
+                card.addEventListener('click', () => {
+                    window.location.href = 'product.html?category=' + encodeURIComponent(name);
+                });
+                grid.appendChild(card);
+            });
+
+            if (!grid.children.length) {
+                grid.innerHTML = '<div class="text-muted">目前沒有分類資料</div>';
+            }
+        } catch (e) {
+            grid.innerHTML = '<div class="text-muted">無法載入分類</div>';
+        }
+    }
+
+    async function renderMobileProductShelf(grid) {
+        updateCategorySectionHeading('mobile-products');
+        grid.classList.add('mobile-product-grid');
+        grid.classList.remove('category-grid');
+        grid.dataset.layout = 'mobile-products';
         grid.innerHTML = '<div class="text-muted">載入中...</div>';
         try {
             const res = await fetch(API_BASE + '/products', { cache: 'no-store' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
-            const items = (Array.isArray(data) ? data : []).slice(0, 6);
+            const items = Array.isArray(data) ? data.filter(Boolean).slice(0, 6) : [];
+            grid.innerHTML = '';
             if (!items.length) {
-                grid.innerHTML = '<div class="text-muted">目前沒有商品</div>';
+                grid.innerHTML = '<div class="text-muted">暫時沒有商品</div>';
                 return;
             }
 
-            grid.innerHTML = '';
-            items.forEach((product, index) => {
-                const rawId = product.id ?? product.idProducts ?? product.idProduct;
-                const id = rawId !== undefined && rawId !== null ? rawId : '';
-                const name = product.name || product.ProductName || '商品';
-                const price = product.price !== undefined ? product.price : (product.Price || 0);
-                let image = null;
-                if (Array.isArray(product.imageUrls) && product.imageUrls.length) {
-                    image = product.imageUrls[0];
-                } else if (product.imageUrl) {
-                    image = product.imageUrl;
+            items.forEach((product) => {
+                const meta = normalizeMobileProductBrief(product);
+                const card = document.createElement(meta.href ? 'a' : 'div');
+                card.className = 'mobile-product-card';
+                if (meta.href) {
+                    card.href = meta.href;
                 }
-                const fallbackImage = `https://picsum.photos/480/320?random=${index + 21}`;
-                const imageUrl = normalizeImageUrl(image) || fallbackImage;
-                const card = document.createElement('article');
-                card.className = 'home-spotlight-card';
-                card.innerHTML = `
-                    <div class="home-spotlight-media">
-                        <img src="${imageUrl}" alt="${name}">
-                    </div>
-                    <div class="home-spotlight-body">
-                        <div class="home-spotlight-title text-truncate" title="${name}">${name}</div>
-                        <div class="home-spotlight-actions">
-                            <span class="home-spotlight-price">${formatPrice(price)}</span>
-                            <a class="btn btn-sm btn-success" href="product.html?id=${encodeURIComponent(id)}">查看商品</a>
-                        </div>
-                    </div>`;
+
+                const thumb = document.createElement('div');
+                thumb.className = 'mobile-product-card__thumb';
+                const img = document.createElement('img');
+                img.src = meta.imageUrl;
+                img.alt = meta.name;
+                thumb.appendChild(img);
+
+                const body = document.createElement('div');
+                body.className = 'mobile-product-card__body';
+                const nameEl = document.createElement('div');
+                nameEl.className = 'mobile-product-card__name';
+                nameEl.textContent = meta.name;
+                nameEl.title = meta.name;
+
+                const metaRow = document.createElement('div');
+                metaRow.className = 'mobile-product-card__meta';
+                const priceEl = document.createElement('span');
+                priceEl.className = 'mobile-product-card__price';
+                priceEl.textContent = formatPrice(meta.price);
+                metaRow.appendChild(priceEl);
+
+                if (meta.categoryName) {
+                    const categoryEl = document.createElement('span');
+                    categoryEl.className = 'mobile-product-card__category';
+                    categoryEl.textContent = meta.categoryName;
+                    metaRow.appendChild(categoryEl);
+                }
+
+                body.appendChild(nameEl);
+                body.appendChild(metaRow);
+                card.appendChild(thumb);
+                card.appendChild(body);
                 grid.appendChild(card);
             });
         } catch (e) {
-            grid.innerHTML = '<div class="text-muted">無法載入商品</div>';
+            grid.innerHTML = '<div class="text-muted">暫時無法載入商品</div>';
         }
+    }
+
+    async function loadCategories(layoutOverride) {
+        const grid = document.getElementById('home-categories-grid');
+        if (!grid) return;
+        const nextMode = layoutOverride || (shouldUseMobileProductLayout() ? 'mobile-products' : 'categories');
+
+        if (grid.dataset.layout === nextMode) {
+            return;
+        }
+
+        if (nextMode === 'mobile-products') {
+            await renderMobileProductShelf(grid);
+        } else {
+            await renderCategoryCards(grid);
+        }
+
     }
 
     // 精選商品區塊：依 Site Config 指定的 featured IDs 排序顯示，缺少設定則抓前 8 筆商品。
@@ -422,8 +622,27 @@
     function initHomePage() {
         setupHomeCarousel();
         applySiteConfig();
-        loadHomeSpotlightProducts();
+        loadCategories();
         loadFeaturedProducts();
+
+        const handleCategoryLayoutChange = (event) => {
+            const useMobile = event ? event.matches : shouldUseMobileProductLayout();
+            loadCategories(useMobile ? 'mobile-products' : 'categories');
+        };
+
+        if (mobileProductMediaQuery) {
+            handleCategoryLayoutChange();
+            if (typeof mobileProductMediaQuery.addEventListener === 'function') {
+                mobileProductMediaQuery.addEventListener('change', handleCategoryLayoutChange);
+            } else if (typeof mobileProductMediaQuery.addListener === 'function') {
+                mobileProductMediaQuery.addListener(handleCategoryLayoutChange);
+            }
+        } else {
+            handleCategoryLayoutChange();
+            window.addEventListener('resize', () => {
+                handleCategoryLayoutChange();
+            });
+        }
     }
 
     window.initHomePage = initHomePage;

@@ -1184,6 +1184,50 @@
 
         let actionsContainer = null;
         let navRelocatedForMobile = false;
+        let mobileLogoutWrapper = null;
+        let mobileLogoutButton = null;
+
+        function ensureMobileLogoutControl() {
+            if (!topbarContainer) return null;
+            if (mobileLogoutButton && mobileLogoutButton.isConnected) {
+                return mobileLogoutButton;
+            }
+
+            const existingButton = topbarContainer.querySelector('[data-mobile-logout]');
+            if (existingButton) {
+                mobileLogoutButton = existingButton;
+                mobileLogoutWrapper = existingButton.closest('.client-topbar-mobile-logout');
+                return mobileLogoutButton;
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'client-topbar-mobile-logout';
+            wrapper.hidden = true;
+            wrapper.setAttribute('aria-hidden', 'true');
+
+            const buttonEl = document.createElement('button');
+            buttonEl.type = 'button';
+            buttonEl.className = 'btn btn-outline-light btn-sm client-mobile-logout-btn';
+            buttonEl.setAttribute('data-mobile-logout', '1');
+            buttonEl.innerHTML = '<i class="fa-solid fa-right-from-bracket me-1" aria-hidden="true"></i><span>登出</span>';
+
+            buttonEl.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (typeof window.logout === 'function') {
+                    window.logout();
+                } else {
+                    window.location.href = 'login.html';
+                }
+            });
+
+            wrapper.appendChild(buttonEl);
+            topbarContainer.appendChild(wrapper);
+            mobileLogoutWrapper = wrapper;
+            mobileLogoutButton = buttonEl;
+            return mobileLogoutButton;
+        }
+
+        mobileLogoutButton = ensureMobileLogoutControl();
 
     /**
      * 建立或取用行動版底部導覽列，確保只生成一次。
@@ -1434,6 +1478,14 @@
             lastSidebarProfile = { name: nextName, id: nextId, avatar: nextAvatarRaw };
 
             const hasName = Boolean(nextName);
+
+            if (mobileLogoutWrapper) {
+                mobileLogoutWrapper.hidden = !hasName;
+                mobileLogoutWrapper.setAttribute('aria-hidden', String(!hasName));
+            }
+            if (mobileLogoutButton) {
+                mobileLogoutButton.disabled = !hasName;
+            }
             const hasAvatar = Boolean(nextAvatarRaw);
 
             if (profileContainer) {
