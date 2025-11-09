@@ -14,6 +14,9 @@
                 localStorage.removeItem('sf-client-id');
                 localStorage.removeItem('sf-client-role');
                 localStorage.removeItem('sf-client-session');
+                localStorage.removeItem('sf-client-avatar');
+                localStorage.removeItem('sf-client-profile-sync');
+                localStorage.removeItem('sf-client-profile-version');
                 localStorage.removeItem('userRole');
                 localStorage.removeItem('userName');
             } catch (e) {

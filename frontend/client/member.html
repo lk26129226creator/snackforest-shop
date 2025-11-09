@@ -710,6 +710,13 @@
 			} else {
 				localStorage.removeItem('sf-client-avatar');
 			}
+			if (data.updatedAt) {
+				localStorage.setItem('sf-client-profile-version', String(data.updatedAt));
+				localStorage.setItem('sf-client-profile-sync', String(Date.now()));
+			} else {
+				localStorage.removeItem('sf-client-profile-version');
+				localStorage.removeItem('sf-client-profile-sync');
+			}
 		} catch (_) {
 			// ignore storage failures
 		}

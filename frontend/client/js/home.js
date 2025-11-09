@@ -22,6 +22,14 @@
             return candidate;
         }
     })();
+    const CAROUSEL_FALLBACK_IMAGE = (() => {
+        try {
+            return normalizeImageUrl('/frontend/images/products/no-image.svg');
+        } catch (_) {
+            return '/frontend/images/products/no-image.svg';
+        }
+    })();
+    const CAROUSEL_DEFAULT_LINK = 'product.html';
     const categorySectionMeta = (() => {
         const gridEl = document.getElementById('home-categories-grid');
         if (!gridEl) return null;
@@ -117,6 +125,61 @@
         try { localStorage.setItem('sf_carousel_slides', JSON.stringify(slides)); } catch (e) {}
     }
 
+    function resolveCarouselLink(value) {
+        const raw = (value || '').toString().trim();
+        if (!raw) return CAROUSEL_DEFAULT_LINK;
+        if (/^(https?:)?\/\//i.test(raw)) return raw;
+        if (raw.startsWith('/') || raw.startsWith('#')) return raw;
+        return raw;
+    }
+
+    function resolveCarouselImage(entry) {
+        const candidates = [
+            entry?.imageUrlResolved,
+            entry?.imageUrl,
+            entry?.imageUrlOriginal
+        ];
+        for (const candidate of candidates) {
+            const trimmed = (candidate || '').toString().trim();
+            if (!trimmed) continue;
+            try {
+                const resolved = normalizeImageUrl(trimmed);
+                if (resolved) return resolved;
+            } catch (_) {
+                if (trimmed) return trimmed;
+            }
+        }
+        return CAROUSEL_FALLBACK_IMAGE;
+    }
+
+    function sanitizeCarouselSlides(list) {
+        if (!Array.isArray(list)) return [];
+        const normalized = [];
+        const seen = new Set();
+        list.forEach((raw) => {
+            if (!raw || typeof raw !== 'object') return;
+            const title = (raw.title || '').toString().trim();
+            const text = (raw.text || '').toString().trim();
+            const link = resolveCarouselLink(raw.link);
+            const imageResolved = resolveCarouselImage(raw);
+            const dedupeKey = `${imageResolved}::${title}::${text}::${link}`;
+            const allowDuplicate = imageResolved === CAROUSEL_FALLBACK_IMAGE;
+            if (!allowDuplicate && seen.has(dedupeKey)) return;
+            if (!allowDuplicate) seen.add(dedupeKey);
+            normalized.push({
+                ...raw,
+                title,
+                text,
+                link,
+                imageUrlResolved: imageResolved,
+                imageUrl: raw.imageUrl || raw.imageUrlResolved || raw.imageUrlOriginal || '',
+                imageUrlOriginal: raw.imageUrlOriginal || raw.imageUrl || '',
+                imageMissing: imageResolved === CAROUSEL_FALLBACK_IMAGE
+            });
+        });
+        return normalized;
+    }
+
     // 優先走後端資料，若缺少則回落至本機快取或預設示意圖片。
     /**
      * 優先抓取後端輪播資料，失敗時回落至快取或預設。
@@ -124,20 +187,21 @@
      */
     async function loadCarouselSlides() {
         const cacheKey = 'sf_carousel_slides';
-        let slides = await fetchCarouselFromBackend();
-        if (!Array.isArray(slides) || slides.length === 0) {
+        let slides = sanitizeCarouselSlides(await fetchCarouselFromBackend());
+        if (!slides.length) {
             try {
-                slides = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                slides = sanitizeCarouselSlides(cached);
             } catch (e) {
                 slides = [];
             }
         }
-        if (!Array.isArray(slides) || slides.length === 0) {
-            slides = [
+        if (!slides.length) {
+            slides = sanitizeCarouselSlides([
                 { imageUrl: 'https://picsum.photos/1200/380?random=11', title: '精選零食推薦', text: '發掘這週最新上架' },
                 { imageUrl: 'https://picsum.photos/1200/380?random=12', title: '甜鹹一次滿足', text: '逛逛更多人氣組合' },
                 { imageUrl: 'https://picsum.photos/1200/380?random=13', title: '限時優惠', text: '折扣商品不要錯過' }
-            ];
+            ]);
         }
         return slides;
     }

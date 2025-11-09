@@ -210,6 +210,9 @@
     const MEMBER_AVATAR_KEY = 'sf-client-avatar';
     /** Profile 更新事件名稱：用於跨頁同步會員資訊。 */
     const PROFILE_UPDATE_EVENT = 'sf:profile-updated';
+    const PROFILE_SYNC_TIMESTAMP_KEY = 'sf-client-profile-sync';
+    const PROFILE_VERSION_KEY = 'sf-client-profile-version';
+    const PROFILE_SYNC_TTL_MS = 2 * 60 * 1000;
 
     /** 行動版搜尋覆蓋層觸發函式（於 initNavSearch 內初始化）。 */
     let openSearchOverlayFn = null;
@@ -360,6 +363,139 @@
         }
 
         return meta;
+    }
+
+    function readProfileSyncTimestamp() {
+        try {
+            const raw = window.localStorage.getItem(PROFILE_SYNC_TIMESTAMP_KEY);
+            if (!raw) return 0;
+            const value = Number(raw);
+            return Number.isFinite(value) ? value : 0;
+        } catch (_) {
+            return 0;
+        }
+    }
+
+    function writeProfileSyncTimestamp(value) {
+        try {
+            if (!value) {
+                window.localStorage.removeItem(PROFILE_SYNC_TIMESTAMP_KEY);
+            } else {
+                window.localStorage.setItem(PROFILE_SYNC_TIMESTAMP_KEY, String(value));
+            }
+        } catch (_) {
+            // ignore storage errors
+        }
+    }
+
+    function readStoredProfileVersion() {
+        try {
+            return safeTrim(window.localStorage.getItem(PROFILE_VERSION_KEY));
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function writeStoredProfileVersion(value) {
+        try {
+            const trimmed = safeTrim(value);
+            if (trimmed) {
+                window.localStorage.setItem(PROFILE_VERSION_KEY, trimmed);
+            } else {
+                window.localStorage.removeItem(PROFILE_VERSION_KEY);
+            }
+        } catch (_) {
+            // ignore storage errors
+        }
+    }
+
+    function resolveProfileAvatarCandidate(list) {
+        if (!Array.isArray(list)) return '';
+        for (const candidate of list) {
+            const trimmed = safeTrim(candidate);
+            if (!trimmed) continue;
+            let resolved = trimmed;
+            try {
+                resolved = normalizeImageUrl(trimmed);
+            } catch (_) {
+                resolved = adjustToCurrentOrigin(trimmed);
+            }
+            if (resolved) return resolved;
+        }
+        return '';
+    }
+
+    async function fetchProfileById(customerId) {
+        if (!customerId) return null;
+        const endpointBase = API_BASE.replace(/\/$/, '');
+        const endpoint = `${endpointBase}/customer-profile/${encodeURIComponent(customerId)}`;
+        try {
+            const res = await fetch(endpoint, { cache: 'no-store', credentials: 'same-origin' });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (err) {
+            console.warn('Nav profile fetch failed', err);
+            return null;
+        }
+    }
+
+    async function refreshMemberProfile(options = {}) {
+        const force = options && options.force === true;
+        const stored = readStoredMemberMeta();
+        const memberId = stored.id;
+        if (!memberId) return;
+
+        const lastSync = readProfileSyncTimestamp();
+        if (!force && lastSync && (Date.now() - lastSync) < PROFILE_SYNC_TTL_MS) {
+            return;
+        }
+
+        const profile = await fetchProfileById(memberId);
+        if (!profile || typeof profile !== 'object') {
+            if (force) writeProfileSyncTimestamp(0);
+            return;
+        }
+
+        const displayName = safeTrim(profile.displayName || profile.name || stored.name);
+        const avatarUrl = resolveProfileAvatarCandidate([
+            profile.avatarUrlResolved,
+            profile.avatarUrl,
+            profile.avatarUrlOriginal,
+            profile.avatar,
+            profile.avatarPath
+        ]);
+        const customerId = safeTrim(profile.customerId || memberId);
+        const updatedAt = safeTrim(profile.updatedAt || readStoredProfileVersion());
+
+        try {
+            if (displayName) {
+                window.localStorage.setItem('sf-client-name', displayName);
+            } else {
+                window.localStorage.removeItem('sf-client-name');
+            }
+            if (customerId) {
+                window.localStorage.setItem('sf-client-id', customerId);
+            }
+            if (avatarUrl) {
+                window.localStorage.setItem(MEMBER_AVATAR_KEY, avatarUrl);
+            } else {
+                window.localStorage.removeItem(MEMBER_AVATAR_KEY);
+            }
+            writeProfileSyncTimestamp(Date.now());
+            writeStoredProfileVersion(updatedAt);
+        } catch (_) {
+            // ignore storage failures
+        }
+
+        updateSidebarProfile({ name: displayName, avatarUrl, customerId });
+
+        try {
+            window.dispatchEvent(new CustomEvent(PROFILE_UPDATE_EVENT, {
+                detail: { name: displayName, avatarUrl, customerId }
+            }));
+        } catch (_) {
+            // ignore event dispatch failures
+        }
     }
 
     /**
@@ -1851,6 +1987,19 @@
             window.addEventListener('storage', handleProfileStorage);
             window.addEventListener(PROFILE_UPDATE_EVENT, handleProfileEvent);
         }
+
+        refreshMemberProfile({ force: true });
+
+        const handleWindowFocus = () => {
+            refreshMemberProfile();
+        };
+
+        window.addEventListener('focus', handleWindowFocus);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                refreshMemberProfile();
+            }
+        });
 
     /**
      * 依據 site-config 或快取資料套用品牌名稱、標語與 Logo。
