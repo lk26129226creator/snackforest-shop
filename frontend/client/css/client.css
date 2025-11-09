@@ -347,7 +347,7 @@ body.order-success-active {
         radial-gradient(1200px 600px at 10% -10%, rgba(74,124,89,0.25), transparent 60%),
         radial-gradient(800px 500px at 110% 10%, rgba(163,177,138,0.25), transparent 60%),
         linear-gradient(135deg, #f3f7f4, #e9f2ec);
-    padding: 32px 16px;
+    padding: clamp(24px, 6vh, 48px) clamp(16px, 7vw, 32px);
 }
 
 /* 首頁優勢列：icon 放左側置中、文字置於中偏右區域 */
@@ -430,11 +430,16 @@ body.order-success-active {
 
 /* 登入表單外層：login.html 的 .login-wrapper。 */
 .login-wrapper {
-    width: min(100%, 520px);
-    max-width: 520px;
+    width: min(96vw, 720px);
+    max-width: 720px;
 }
 /* 登入卡片本體：對應 .login-card。 */
-.login-card { border-radius: 1rem; backdrop-filter: blur(8px); box-shadow: 0 16px 40px rgba(0,0,0,0.12); }
+.login-card {
+    width: 100%;
+    border-radius: 1.05rem;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.12);
+}
 /* SF 圓形品牌圖示：login.html 中登入卡片頂部。 */
 .login-brand {
     width: 56px; height: 56px; border-radius: 50%;
@@ -445,12 +450,12 @@ body.order-success-active {
 /* 登入頁底部補充連結 (忘記密碼、註冊)。 */
 .login-footer { font-size: 0.9rem; }
 
-@media (max-width: 576px) {
+@media (max-width: 768px) {
     .login-wrapper {
-        width: min(92vw, 520px);
+        width: min(97vw, 720px);
     }
     .login-card .card-body {
-        padding: 2.5rem 1.75rem;
+        padding: clamp(2.25rem, 6vw, 2.75rem) clamp(1.5rem, 6vw, 2.25rem);
     }
 }
 
