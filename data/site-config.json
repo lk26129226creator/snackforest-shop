@@ -2,12 +2,11 @@
 	"hero": {
 		"title": "探索世界零食的靈感地圖",
 		"subtitle": "精挑細選、快速到貨、安心付款。從人氣熱銷到限時新品，一鍵帶你吃遍全球風味。",
-		"imageUrl": "/frontend/images/products/3af632be-ab9b-484f-a304-ca164697ba95.png",
+		"imageUrl": "/uploads/images/2b7d2935-45e0-4836-b555-749bdaf24ab4.png",
 		"primaryText": "開始購物",
 		"primaryLink": "product.html",
 		"secondaryText": "逛逛全部",
-		"secondaryLink": "product.html?category=all",
-		"imageResolved": "http://127.0.0.1:8000/frontend/images/products/3af632be-ab9b-484f-a304-ca164697ba95.png"
+		"secondaryLink": "product.html?category=all"
 	},
 	"benefits": [
 		{ "icon": "truck-fast", "title": "快速到貨", "desc": "下單 24 小時內出貨" },
