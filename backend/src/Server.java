@@ -1934,7 +1934,19 @@ public class Server {
                     }
                 }
 
-                return trimmed;
+                Path legacyCandidate = UPLOADS_DIR.resolve(filename).normalize();
+                if (legacyCandidate.startsWith(UPLOADS_DIR) && Files.exists(legacyCandidate) && Files.isRegularFile(legacyCandidate)) {
+                    return trimmed;
+                }
+
+                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                    String legacyRemote = R2_CLIENT.toPublicUrl(trimmed);
+                    if (legacyRemote != null && CloudflareR2Client.headExists(legacyRemote)) {
+                        return trimmed;
+                    }
+                }
+
+                return null;
             }
 
             private static String canonicalizeAvatarForStorage(String value, HttpExchange exchange) {

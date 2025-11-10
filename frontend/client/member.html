@@ -723,14 +723,14 @@
 			avatarInitial.textContent = initial;
 		}
 		const previousStoredAvatar = getStoredAvatarUrl();
-		const avatarCandidates = [
-			data.avatarUrlResolved,
-			data.avatarUrl,
-			data.avatarUrlOriginal,
-			data.avatar,
-			data.avatarPath,
-			getStoredAvatarUrl()
-		];
+		const avatarKeys = ['avatarUrlResolved', 'avatarUrl', 'avatarUrlOriginal', 'avatar', 'avatarPath'];
+		const hasAvatarKey = avatarKeys.some((key) => Object.prototype.hasOwnProperty.call(data, key));
+		const avatarCandidates = avatarKeys.map((key) => (
+			Object.prototype.hasOwnProperty.call(data, key) ? data[key] : undefined
+		));
+		if (!hasAvatarKey && previousStoredAvatar) {
+			avatarCandidates.push(previousStoredAvatar);
+		}
 		let avatarUrl = '';
 		for (const candidate of avatarCandidates) {
 			if (!candidate || candidate === 'null' || candidate === 'undefined') continue;
@@ -753,8 +753,10 @@
 		}
 		const finalAvatarUrl = avatarUrl ? appendCacheBuster(avatarUrl, avatarVersion) : '';
 		data.avatarUrlResolved = finalAvatarUrl || '';
-		if (!data.avatarUrl) {
-			data.avatarUrl = sanitizedAvatar || '';
+		if (sanitizedAvatar) {
+			data.avatarUrl = sanitizedAvatar;
+		} else if (hasAvatarKey) {
+			data.avatarUrl = '';
 		}
 		data.avatarVersion = avatarVersion || '';
 		if (avatar && avatarImg) {

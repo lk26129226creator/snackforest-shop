@@ -569,14 +569,13 @@
         }
 
         const displayName = safeTrim(profile.displayName || profile.name || stored.name);
-        const avatarUrl = resolveProfileAvatarCandidate([
-            profile.avatarUrlResolved,
-            profile.avatarUrl,
-            profile.avatarUrlOriginal,
-            profile.avatar,
-            profile.avatarPath,
-            stored.avatar
-        ]);
+        const avatarKeys = ['avatarUrlResolved', 'avatarUrl', 'avatarUrlOriginal', 'avatar', 'avatarPath'];
+        const avatarKeyProvided = avatarKeys.some((key) => Object.prototype.hasOwnProperty.call(profile, key));
+        const avatarSources = avatarKeys.map((key) => profile[key]);
+        if (!avatarKeyProvided && stored.avatar) {
+            avatarSources.push(stored.avatar);
+        }
+        const avatarUrl = resolveProfileAvatarCandidate(avatarSources);
         const customerId = safeTrim(profile.customerId || memberId);
         const updatedAt = safeTrim(profile.updatedAt || readStoredProfileVersion());
 
@@ -2091,17 +2090,31 @@
                     next.name = safeTrim(override.name);
                 }
                 let overrideAvatar = '';
+                let overrideAvatarProvided = false;
                 if (Object.prototype.hasOwnProperty.call(override, 'avatarUrlResolved')) {
+                    overrideAvatarProvided = true;
                     overrideAvatar = sanitizeUploadUrl(override.avatarUrlResolved);
                 }
                 if (!overrideAvatar && Object.prototype.hasOwnProperty.call(override, 'avatarUrl')) {
+                    overrideAvatarProvided = true;
                     overrideAvatar = sanitizeUploadUrl(override.avatarUrl);
                 }
                 if (!overrideAvatar && Object.prototype.hasOwnProperty.call(override, 'avatar')) {
+                    overrideAvatarProvided = true;
                     overrideAvatar = sanitizeUploadUrl(override.avatar);
+                }
+                if (!overrideAvatar && Object.prototype.hasOwnProperty.call(override, 'avatarUrlOriginal')) {
+                    overrideAvatarProvided = true;
+                    overrideAvatar = sanitizeUploadUrl(override.avatarUrlOriginal);
+                }
+                if (!overrideAvatar && Object.prototype.hasOwnProperty.call(override, 'avatarPath')) {
+                    overrideAvatarProvided = true;
+                    overrideAvatar = sanitizeUploadUrl(override.avatarPath);
                 }
                 if (overrideAvatar) {
                     next.avatar = overrideAvatar;
+                } else if (overrideAvatarProvided) {
+                    next.avatar = '';
                 }
                 if (Object.prototype.hasOwnProperty.call(override, 'customerId')) {
                     next.id = safeTrim(override.customerId);
