@@ -2024,17 +2024,51 @@
 
             if (avatarImg) {
                 if (hasAvatar) {
-                    let resolvedAvatar = nextAvatarRaw;
+                    // 嘗試載入多個候選來源，若第一個失敗會自動嘗試下一個。
+                    const candidates = [];
                     try {
-                        resolvedAvatar = normalizeImageUrl(nextAvatarRaw);
+                        const normalized = normalizeImageUrl(nextAvatarRaw);
+                        if (normalized) candidates.push(normalized);
                     } catch (_) {
-                        resolvedAvatar = nextAvatarRaw;
+                        if (nextAvatarRaw) candidates.push(nextAvatarRaw);
                     }
-                    const finalAvatar = appendCacheBuster(resolvedAvatar, nextVersion);
-                    if (avatarImg.src !== finalAvatar) {
-                        avatarImg.src = finalAvatar;
-                    }
-                    avatarImg.alt = `${nextName || '會員'}頭像`;
+                    // 若 localStorage 有 resolved 值也一併嘗試（可能為絕對 URL）
+                    try {
+                        const storedResolved = safeTrim(window.localStorage.getItem(MEMBER_AVATAR_RESOLVED_KEY));
+                        if (storedResolved && !candidates.includes(storedResolved)) candidates.push(storedResolved);
+                    } catch (_) {}
+                    // 若候選為相對 uploads 路徑，嘗試以 apiOrigin 或 storageOrigin 補上來源
+                    try {
+                        const sanitized = sanitizeUploadUrl(nextAvatarRaw);
+                        if (sanitized && /^uploads\//i.test(sanitized) || /^\/uploads\//i.test(sanitized)) {
+                            const clean = sanitized.replace(/^\/*/, '');
+                            if (storageOrigin) candidates.push(storageOrigin.replace(/\/$/, '') + '/' + clean);
+                            if (apiOrigin) candidates.push(apiOrigin.replace(/\/$/, '') + '/' + clean);
+                        }
+                    } catch (_) {}
+
+                    // 依序嘗試載入候選圖片，並在成功時設定 alt 與顯示；失敗時移除 src
+                    (function tryLoad(idx) {
+                        if (idx >= candidates.length) {
+                            avatarImg.removeAttribute('src');
+                            avatarImg.alt = '';
+                            return;
+                        }
+                        const url = appendCacheBuster(candidates[idx], nextVersion || Date.now());
+                        // 若已經是同一個 src，還是更新 alt
+                        avatarImg.alt = `${nextName || '會員'}頭像`;
+                        if (avatarImg.src === url) return; // already set
+                        avatarImg.onerror = () => {
+                            // 嘗試下一個候選
+                            avatarImg.onerror = null;
+                            tryLoad(idx + 1);
+                        };
+                        avatarImg.onload = () => {
+                            avatarImg.onerror = null;
+                            avatarImg.onload = null;
+                        };
+                        avatarImg.src = url;
+                    })(0);
                 } else {
                     avatarImg.removeAttribute('src');
                     avatarImg.alt = '';
