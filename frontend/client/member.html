@@ -758,6 +758,17 @@
 		} else if (hasAvatarKey) {
 			data.avatarUrl = '';
 		}
+
+		// 如果從後端收到的資料明確沒有頭像，則主動清除本地快取
+		if (!finalAvatarUrl) {
+			try {
+				localStorage.removeItem('sf-client-avatar');
+				localStorage.removeItem('sf-client-avatar-resolved');
+			} catch (_) {
+				// ignore storage failures
+			}
+		}
+
 		data.avatarVersion = avatarVersion || '';
 		if (avatar && avatarImg) {
 			if (finalAvatarUrl) {
