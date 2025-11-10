@@ -638,6 +638,10 @@ public class Server {
     private static String normalizeImageUrl(String rawUrl) {
         if (rawUrl == null) return null;
         String trimmed = rawUrl.trim().replace('\\', '/');
+        String lowered = trimmed.toLowerCase(java.util.Locale.ROOT);
+        if (!trimmed.startsWith("/") && (lowered.startsWith("uploads/") || lowered.startsWith("frontend/"))) {
+            trimmed = "/" + trimmed;
+        }
         if (trimmed.isEmpty()) return null;
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
         final String productsPrefix = "/frontend/images/products/";
@@ -678,10 +682,10 @@ public class Server {
                 Path p = IMAGES_DIR.resolve(base).normalize();
                 if (p.startsWith(IMAGES_DIR) && Files.exists(p) && Files.isRegularFile(p)) return productsPrefix + base;
                 if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    String remote = R2_CLIENT.toPublicUrl(uploadsPrefix + base);
-                    if (remote != null) return remote;
-                    remote = R2_CLIENT.toPublicUrl(avatarPrefix + base);
-                    if (remote != null) return remote;
+                    String avatarRemote = R2_CLIENT.toPublicUrl(avatarPrefix + base);
+                    if (avatarRemote != null && CloudflareR2Client.headExists(avatarRemote)) return avatarRemote;
+                    String imageRemote = R2_CLIENT.toPublicUrl(uploadsPrefix + base);
+                    if (imageRemote != null && CloudflareR2Client.headExists(imageRemote)) return imageRemote;
                 }
             }
         }
@@ -711,10 +715,10 @@ public class Server {
                 }
             }
             if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                String remote = R2_CLIENT.toPublicUrl(uploadsPrefix + baseName);
-                if (remote != null) return remote;
-                remote = R2_CLIENT.toPublicUrl(avatarPrefix + baseName);
-                if (remote != null) return remote;
+                String avatarRemote = R2_CLIENT.toPublicUrl(avatarPrefix + baseName);
+                if (avatarRemote != null && CloudflareR2Client.headExists(avatarRemote)) return avatarRemote;
+                String imageRemote = R2_CLIENT.toPublicUrl(uploadsPrefix + baseName);
+                if (imageRemote != null && CloudflareR2Client.headExists(imageRemote)) return imageRemote;
             }
         } catch (Exception e) {
             System.err.println(java.time.LocalDateTime.now() + " - Error in normalizeImageUrl: " + e.getMessage());
