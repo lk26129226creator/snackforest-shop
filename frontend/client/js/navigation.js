@@ -381,9 +381,6 @@
         sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
         sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
         sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
-        if (/uploads\/images\/customer-\d+-\d+\.[a-z0-9]+$/i.test(sanitized)) {
-            sanitized = sanitized.replace(/uploads\/images\//i, 'uploads/avatar/');
-        }
         if (!/^https?:\/\//i.test(sanitized)) {
             const cutQuery = sanitized.indexOf('?');
             const cutHash = sanitized.indexOf('#');
