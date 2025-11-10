@@ -2268,15 +2268,10 @@ public class Server {
                         ps.setString(2, email);
                         ps.setString(3, phone);
                         ps.setString(4, address);
-                        String avatarForDb = !isNullOrEmpty(finalAvatarUrl)
-                                ? finalAvatarUrl
-                                : (existing.has("avatarUrl") && !existing.isNull("avatarUrl")
-                                    ? existing.optString("avatarUrl", null)
-                                    : null);
-                        if (isNullOrEmpty(avatarForDb)) {
+                        if (isNullOrEmpty(finalAvatarUrl)) {
                             ps.setNull(5, Types.VARCHAR);
                         } else {
-                            ps.setString(5, avatarForDb);
+                            ps.setString(5, finalAvatarUrl);
                         }
                         ps.setInt(6, id);
                         ps.executeUpdate();
