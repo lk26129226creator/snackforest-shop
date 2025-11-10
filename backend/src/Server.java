@@ -657,9 +657,15 @@ public class Server {
             String filename = trimmed.substring(uploadsPrefix.length());
             Path candidate = UPLOADS_DIR.resolve(filename).normalize();
             if (candidate.startsWith(UPLOADS_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
+            Path avatarCandidate = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
+            if (avatarCandidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarCandidate) && Files.isRegularFile(avatarCandidate)) {
+                return avatarPrefix + filename;
+            }
             if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                String avatarRemote = R2_CLIENT.toPublicUrl(avatarPrefix + filename);
+                if (avatarRemote != null && CloudflareR2Client.headExists(avatarRemote)) return avatarRemote;
                 String remote = R2_CLIENT.toPublicUrl(trimmed);
-                if (remote != null) return remote;
+                if (remote != null && CloudflareR2Client.headExists(remote)) return remote;
             }
         }
         if (trimmed.startsWith(avatarPrefix)) {
@@ -1907,6 +1913,30 @@ public class Server {
                 return trimmed;
             }
 
+            private static String relocateAvatarPathIfAvailable(String value) {
+                if (value == null) return null;
+                String trimmed = value.trim().replace('\\', '/');
+                final String legacyPrefix = "/uploads/images/";
+                final String avatarPrefix = "/uploads/avatar/";
+                if (!trimmed.startsWith(legacyPrefix)) return trimmed;
+                String filename = trimmed.substring(legacyPrefix.length());
+                if (filename.isEmpty()) return trimmed;
+
+                Path avatarCandidate = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
+                if (avatarCandidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarCandidate) && Files.isRegularFile(avatarCandidate)) {
+                    return avatarPrefix + filename;
+                }
+
+                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                    String remote = R2_CLIENT.toPublicUrl(avatarPrefix + filename);
+                    if (remote != null && CloudflareR2Client.headExists(remote)) {
+                        return avatarPrefix + filename;
+                    }
+                }
+
+                return trimmed;
+            }
+
             private static String canonicalizeAvatarForStorage(String value, HttpExchange exchange) {
                 if (isNullOrEmpty(value)) return null;
                 String trimmed = value.trim().replace('\\', '/');
@@ -1914,7 +1944,7 @@ public class Server {
                     if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
                         String r2Relative = R2_CLIENT.toRelativePath(trimmed);
                         if (!isNullOrEmpty(r2Relative)) {
-                            return sanitizeRelativeAvatarPath(r2Relative);
+                            return relocateAvatarPathIfAvailable(sanitizeRelativeAvatarPath(r2Relative));
                         }
                     }
                     try {
@@ -1929,7 +1959,7 @@ public class Server {
                                 if (path == null || path.isEmpty()) {
                                     path = "/";
                                 }
-                                return sanitizeRelativeAvatarPath(path);
+                                return relocateAvatarPathIfAvailable(sanitizeRelativeAvatarPath(path));
                             }
                         }
                         return trimmed;
@@ -1937,7 +1967,7 @@ public class Server {
                         return trimmed;
                     }
                 }
-                return sanitizeRelativeAvatarPath(trimmed);
+                return relocateAvatarPathIfAvailable(sanitizeRelativeAvatarPath(trimmed));
             }
 
             private static String buildAbsoluteUrl(String path, HttpExchange exchange) {
