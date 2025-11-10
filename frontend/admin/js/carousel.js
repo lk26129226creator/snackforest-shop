@@ -16,20 +16,78 @@
         return deepClone(Array.isArray(slides) ? slides : [], []);
     }
 
+    function extractSlideList(payload) {
+        if (Array.isArray(payload)) return payload;
+        if (payload && typeof payload === 'object') {
+            if (Array.isArray(payload.slides)) return payload.slides;
+            if (Array.isArray(payload.data)) return payload.data;
+        }
+        return [];
+    }
+
+    function normalizeSlide(raw, options) {
+        if (!raw || typeof raw !== 'object') return null;
+        const dropEmptyImage = options && options.dropEmptyImage === true;
+        const minimal = options && options.minimal === true;
+        const title = String(raw?.title ?? '').trim();
+        const text = String(raw?.text ?? '').trim();
+        const link = String(raw?.link ?? '').trim();
+        const urlCandidates = [
+            raw?.imageUrl,
+            raw?.imageUrlResolved,
+            raw?.imageUrlOriginal,
+            raw?.url,
+            raw?.image,
+            raw?.src,
+            raw?.path
+        ];
+        let primary = '';
+        let resolved = '';
+        for (const candidate of urlCandidates) {
+            if (typeof candidate !== 'string') continue;
+            const trimmed = candidate.trim();
+            if (!trimmed) continue;
+            if (!primary) {
+                const sanitized = sanitizeUploadUrl(trimmed);
+                primary = sanitized || trimmed;
+            }
+            if (!resolved) {
+                resolved = trimmed;
+            }
+            if (primary && resolved) break;
+        }
+        const imageUrl = primary;
+        const imageUrlResolved = resolved || primary;
+        const slide = {
+            title,
+            text,
+            link,
+            imageUrl,
+            imageUrlResolved,
+            imageUrlOriginal: raw?.imageUrlOriginal && typeof raw.imageUrlOriginal === 'string'
+                ? raw.imageUrlOriginal.trim()
+                : (imageUrl || imageUrlResolved || ''),
+            imageMissing: !(imageUrl || imageUrlResolved)
+        };
+        if (dropEmptyImage && slide.imageMissing) return null;
+        if (minimal) {
+            return {
+                imageUrl: slide.imageUrl || slide.imageUrlResolved || '',
+                title: slide.title,
+                text: slide.text,
+                link: slide.link
+            };
+        }
+        return slide;
+    }
+
     // 將輪播資料正規化，必要時過濾沒有圖片的項目。
     function sanitizeSlides(slides, options) {
-        const dropEmptyImage = options && options.dropEmptyImage === true;
-        const source = Array.isArray(slides) ? slides : [];
+        const source = extractSlideList(slides);
         const cleaned = [];
         source.forEach((slide) => {
-            const normalized = {
-                imageUrl: sanitizeUploadUrl(slide?.imageUrl ?? ''),
-                title: String(slide?.title ?? '').trim(),
-                text: String(slide?.text ?? '').trim(),
-                link: String(slide?.link ?? '').trim()
-            };
-            if (dropEmptyImage && !normalized.imageUrl) return;
-            cleaned.push(normalized);
+            const normalized = normalizeSlide(slide, options);
+            if (normalized) cleaned.push(normalized);
         });
         return cleaned;
     }
@@ -47,15 +105,16 @@
                 parsed = [];
             }
             if (Array.isArray(parsed) && parsed.length) {
-                if (key !== config.CAROUSEL_KEY) {
-                    try {
-                        localStorage.setItem(config.CAROUSEL_KEY, JSON.stringify(parsed));
+                const sanitized = sanitizeSlides(parsed, { dropEmptyImage: false });
+                try {
+                    localStorage.setItem(config.CAROUSEL_KEY, JSON.stringify(sanitized));
+                    if (key !== config.CAROUSEL_KEY) {
                         localStorage.removeItem(key);
-                    } catch (_) {
-                        // ignore migration errors
                     }
+                } catch (_) {
+                    // ignore storage errors
                 }
-                return sanitizeSlides(parsed, { dropEmptyImage: false });
+                return sanitized;
             }
         }
         return [];
@@ -138,7 +197,8 @@
         try {
             const res = await fetch(config.endpoints.carousel, { cache: 'no-store' });
             if (res.ok) {
-                slides = await res.json();
+                const payload = await res.json();
+                slides = sanitizeSlides(payload, { dropEmptyImage: false });
             } else if (res.status === 404) {
                 slides = [];
             } else {
@@ -153,8 +213,8 @@
         } finally {
             state.carousel.loading = false;
         }
-        const normalized = sanitizeSlides(slides, { dropEmptyImage: false });
-        state.carousel.slides = cloneSlides(normalized);
+    const normalized = sanitizeSlides(slides, { dropEmptyImage: false });
+    state.carousel.slides = cloneSlides(normalized);
         carousel.setDirty(false);
         persistLocal(normalized);
         const cloned = carousel.getSlidesClone();
@@ -176,27 +236,28 @@
      * @returns {Promise<boolean>} 是否儲存成功。
      */
     carousel.saveSlides = async function (slides) {
-        const sanitized = sanitizeSlides(slides, { dropEmptyImage: true });
-        const original = cloneSlides(slides);
+        const normalized = sanitizeSlides(slides, { dropEmptyImage: false });
+        const payload = sanitizeSlides(normalized, { dropEmptyImage: true, minimal: true });
+        const persistedState = sanitizeSlides(payload, { dropEmptyImage: false });
         let success = false;
         carousel.setBusy(true);
         try {
             const res = await fetch(config.endpoints.carousel, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sanitized)
+                body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            persistLocal(sanitized);
-            state.carousel.slides = cloneSlides(sanitized);
+            persistLocal(persistedState);
+            state.carousel.slides = cloneSlides(persistedState);
             success = true;
             if (Admin.core && typeof Admin.core.emit === 'function') {
-                Admin.core.emit('carousel:updated', { slides: cloneSlides(sanitized) });
+                Admin.core.emit('carousel:updated', { slides: cloneSlides(persistedState) });
             }
         } catch (err) {
             console.error('Save carousel error:', err);
-            persistLocal(sanitized);
-            state.carousel.slides = original;
+            persistLocal(normalized);
+            state.carousel.slides = cloneSlides(normalized);
             if (Admin.core && typeof Admin.core.handleError === 'function') {
                 Admin.core.handleError(err, '儲存輪播設定失敗');
                 Admin.core.notifyInfo('已暫存於本機瀏覽器，待後端恢復後再點儲存即可同步。');
@@ -293,13 +354,14 @@
         const idx = Number(target.getAttribute('data-index'));
         if (!Number.isFinite(idx)) return;
         if (!state.carousel.slides[idx]) {
-            state.carousel.slides[idx] = { imageUrl: '', imageUrlResolved: '', title: '', text: '', link: '' };
+            state.carousel.slides[idx] = { imageUrl: '', imageUrlResolved: '', imageUrlOriginal: '', title: '', text: '', link: '' };
         }
         state.carousel.slides[idx][field] = target.value;
         if (field === 'imageUrl') {
-            state.carousel.slides[idx].imageUrlResolved = target.value;
-            delete state.carousel.slides[idx].imageUrlOriginal;
-            state.carousel.slides[idx].imageMissing = false;
+            const value = target.value;
+            state.carousel.slides[idx].imageUrlResolved = value;
+            state.carousel.slides[idx].imageUrlOriginal = value;
+            state.carousel.slides[idx].imageMissing = !value;
         }
         carousel.setDirty(true);
         if (field === 'imageUrl') {
@@ -361,10 +423,11 @@
             const url = await images.uploadImage(file);
             if (!url) throw new Error('未取得圖片網址');
             const slides = carousel.getSlidesClone();
-            if (!slides[idx]) slides[idx] = { imageUrl: '', imageUrlResolved: '', title: '', text: '', link: '' };
+            if (!slides[idx]) slides[idx] = { imageUrl: '', imageUrlResolved: '', imageUrlOriginal: '', title: '', text: '', link: '' };
+            if (!slides[idx].hasOwnProperty('imageUrlOriginal')) slides[idx].imageUrlOriginal = slides[idx].imageUrl;
             slides[idx].imageUrl = url;
             slides[idx].imageUrlResolved = url;
-            delete slides[idx].imageUrlOriginal;
+            slides[idx].imageUrlOriginal = url;
             delete slides[idx].imageMissing;
             state.carousel.slides = slides;
             carousel.setDirty(true);
@@ -389,7 +452,7 @@
      */
     carousel.addSlide = function () {
         const slides = carousel.getSlidesClone();
-        slides.push({ imageUrl: '', imageUrlResolved: '', title: '', text: '', link: '' });
+    slides.push({ imageUrl: '', imageUrlResolved: '', imageUrlOriginal: '', title: '', text: '', link: '' });
         state.carousel.slides = slides;
         carousel.setDirty(true);
         carousel.renderEditor(slides);

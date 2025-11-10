@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -2091,11 +2092,29 @@ public class Server {
                     normalized = storedValue;
                 }
                 String absoluteUrl = buildAbsoluteUrl(normalized, exchange);
-                if (absoluteUrl != null) {
-                    // 為了解決前端快取問題，增加時間戳強制瀏覽器重新整理
-                    return absoluteUrl + "?v=" + ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
+                if (absoluteUrl == null) return null;
+
+                String timestamp = ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
+                String fragment = "";
+                int hashIndex = absoluteUrl.indexOf('#');
+                if (hashIndex >= 0) {
+                    fragment = absoluteUrl.substring(hashIndex);
+                    absoluteUrl = absoluteUrl.substring(0, hashIndex);
                 }
-                return null;
+
+                String cleaned = absoluteUrl.replaceAll("(?i)([?&])v=[^&]*", "$1");
+                cleaned = cleaned.replaceAll("\\?&", "?");
+                cleaned = cleaned.replaceAll("&&", "&");
+                if (cleaned.endsWith("?")) {
+                    cleaned = cleaned.substring(0, cleaned.length() - 1);
+                }
+                if (cleaned.endsWith("&")) {
+                    cleaned = cleaned.substring(0, cleaned.length() - 1);
+                }
+
+                String separator = cleaned.contains("?") ? "&" : "?";
+                String cacheToken = URLEncoder.encode(timestamp, StandardCharsets.UTF_8);
+                return cleaned + separator + "v=" + cacheToken + fragment;
             }
 
             private static void deleteAvatarFile(String avatarUrl) {
