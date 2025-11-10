@@ -62,6 +62,7 @@ public class Server {
             HttpContext imagesCtx = server.createContext("/frontend/images/products/", new ImageFileHandler());
             // 圖片資源：提供管理端上傳的使用者自訂圖片。
             HttpContext uploadsCtx = server.createContext("/uploads/images/", new UploadsImageFileHandler());
+            HttpContext avatarUploadsCtx = server.createContext("/uploads/avatar/", new AvatarUploadsFileHandler());
             // 健康檢查：前端 env.js 或監控工具可呼叫 /ping 檢查伺服器是否存活。
             HttpContext pingCtx = server.createContext("/ping", exchange -> {
                 try {
@@ -98,7 +99,7 @@ public class Server {
             HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
 
             // 彙總所有 Context，統一加入 CORS Filter 以支援跨來源的前端 fetch。
-            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, customerProfileCtx};
+            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, customerProfileCtx};
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
@@ -252,8 +253,12 @@ public class Server {
     );
     // 使用者上傳檔案儲存位置，管理端商品/輪播上傳皆寫入此處。
     private static final Path UPLOADS_DIR = resolveExistingDirectory(
-            Paths.get("data", "uploads", "images"),
-            Paths.get("..", "data", "uploads", "images")
+        Paths.get("data", "uploads", "images"),
+        Paths.get("..", "data", "uploads", "images")
+    );
+    private static final Path AVATAR_UPLOADS_DIR = resolveExistingDirectory(
+        Paths.get("data", "uploads", "avatar"),
+        Paths.get("..", "data", "uploads", "avatar")
     );
     // data 目錄根路徑，供其他 handler 讀寫 JSON seed 資料。
     private static final Path DATA_DIR = resolveExistingDirectory(
@@ -336,9 +341,14 @@ public class Server {
         }
 
         String buildObjectKey(String filename) {
+            return buildObjectKey(filename, null);
+        }
+
+        String buildObjectKey(String filename, String overridePrefix) {
             String safeName = sanitizeFilename(filename);
-            if (pathPrefix.isEmpty()) return safeName;
-            return pathPrefix + "/" + safeName;
+            String prefix = overridePrefix != null ? normalizePathPrefix(overridePrefix) : pathPrefix;
+            if (prefix == null || prefix.isEmpty()) return safeName;
+            return prefix + "/" + safeName;
         }
 
         UploadResult uploadObject(String objectKey, byte[] data, String contentType) throws Exception {
@@ -485,11 +495,11 @@ public class Server {
             }
             String normalized = trimmed.replace('\\', '/');
             if (normalized.startsWith("/")) normalized = normalized.substring(1);
+            if (normalized.isEmpty()) return null;
             if (normalized.startsWith(pathPrefix)) return normalized;
-            int lastSlash = normalized.lastIndexOf('/');
-            String filename = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
-            if (pathPrefix.isEmpty()) return filename;
-            return pathPrefix + "/" + filename;
+            if (normalized.contains("/")) return normalized;
+            if (pathPrefix.isEmpty()) return normalized;
+            return pathPrefix + "/" + normalized;
         }
 
         private String buildPublicBaseUrl() {
@@ -631,7 +641,8 @@ public class Server {
         if (trimmed.isEmpty()) return null;
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
         final String productsPrefix = "/frontend/images/products/";
-        final String uploadsPrefix = "/uploads/images/";
+    final String uploadsPrefix = "/uploads/images/";
+    final String avatarPrefix = "/uploads/avatar/";
         // 若已是帶有既有前綴的絕對路徑且檔案存在，直接回傳原始值。
         if (trimmed.startsWith(productsPrefix)) {
             String filename = trimmed.substring(productsPrefix.length());
@@ -647,16 +658,29 @@ public class Server {
                 if (remote != null) return remote;
             }
         }
+        if (trimmed.startsWith(avatarPrefix)) {
+            String filename = trimmed.substring(avatarPrefix.length());
+            Path candidate = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
+            if (candidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
+            if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                String remote = R2_CLIENT.toPublicUrl(trimmed);
+                if (remote != null) return remote;
+            }
+        }
         // 若為其他絕對路徑，嘗試將檔名映射到 uploads 或預設產品圖目錄。
         if (trimmed.startsWith("/")) {
             String base = trimmed.substring(trimmed.lastIndexOf('/') + 1);
             if (!base.isEmpty()) {
                 Path u = UPLOADS_DIR.resolve(base).normalize();
                 if (u.startsWith(UPLOADS_DIR) && Files.exists(u) && Files.isRegularFile(u)) return uploadsPrefix + base;
+                Path a = AVATAR_UPLOADS_DIR.resolve(base).normalize();
+                if (a.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(a) && Files.isRegularFile(a)) return avatarPrefix + base;
                 Path p = IMAGES_DIR.resolve(base).normalize();
                 if (p.startsWith(IMAGES_DIR) && Files.exists(p) && Files.isRegularFile(p)) return productsPrefix + base;
                 if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
                     String remote = R2_CLIENT.toPublicUrl(uploadsPrefix + base);
+                    if (remote != null) return remote;
+                    remote = R2_CLIENT.toPublicUrl(avatarPrefix + base);
                     if (remote != null) return remote;
                 }
             }
@@ -674,6 +698,12 @@ public class Server {
                     if (found.isPresent()) return uploadsPrefix + found.get().getFileName().toString();
                 }
             }
+            if (Files.exists(AVATAR_UPLOADS_DIR) && Files.isDirectory(AVATAR_UPLOADS_DIR)) {
+                try (java.util.stream.Stream<Path> s = Files.list(AVATAR_UPLOADS_DIR)) {
+                    Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
+                    if (found.isPresent()) return avatarPrefix + found.get().getFileName().toString();
+                }
+            }
             if (Files.exists(IMAGES_DIR) && Files.isDirectory(IMAGES_DIR)) {
                 try (java.util.stream.Stream<Path> s = Files.list(IMAGES_DIR)) {
                     Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
@@ -682,6 +712,8 @@ public class Server {
             }
             if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
                 String remote = R2_CLIENT.toPublicUrl(uploadsPrefix + baseName);
+                if (remote != null) return remote;
+                remote = R2_CLIENT.toPublicUrl(avatarPrefix + baseName);
                 if (remote != null) return remote;
             }
         } catch (Exception e) {
@@ -1331,6 +1363,13 @@ public class Server {
                     }
                 }
                 if (!deleted) {
+                    Path avatarTarget = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
+                    if (avatarTarget.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarTarget)) {
+                        Files.delete(avatarTarget);
+                        deleted = true;
+                    }
+                }
+                if (!deleted) {
                     Path legacy = LEGACY_DIR.resolve(filename).normalize();
                     if (legacy.startsWith(LEGACY_DIR) && Files.exists(legacy)) {
                         Files.delete(legacy);
@@ -1424,6 +1463,42 @@ public class Server {
     }
 
     /**
+     * 服務使用者頭像目錄（data/uploads/avatar）的靜態檔案。
+     */
+    static class AvatarUploadsFileHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                String uriPath = exchange.getRequestURI().getPath();
+                String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
+                Path avatarPath = AVATAR_UPLOADS_DIR.resolve(fileName).normalize();
+                if (avatarPath.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarPath) && Files.isReadable(avatarPath)) {
+                    String contentType = Files.probeContentType(avatarPath);
+                    if (contentType == null) contentType = "application/octet-stream";
+                    exchange.getResponseHeaders().set("Content-Type", contentType);
+                    exchange.sendResponseHeaders(200, Files.size(avatarPath));
+                    try (OutputStream os = exchange.getResponseBody()) { Files.copy(avatarPath, os); }
+                    return;
+                }
+
+                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                    String remoteUrl = R2_CLIENT.toPublicUrl(uriPath);
+                    if (remoteUrl == null) remoteUrl = R2_CLIENT.toPublicUrl("/uploads/avatar/" + fileName);
+                    if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
+                        exchange.getResponseHeaders().set("Location", remoteUrl);
+                        exchange.sendResponseHeaders(302, -1);
+                        return;
+                    }
+                }
+
+                sendErrorResponse(exchange, 404, "Avatar not found: " + fileName, null);
+            } catch (Exception e) {
+                sendErrorResponse(exchange, 500, "Error serving avatar image", e);
+            }
+        }
+    }
+
+    /**
      * 一般靜態檔案處理器，支援根目錄與 /frontend 底下的 HTML/CSS/JS 讀取。
      */
     static class StaticHandler implements HttpHandler {
@@ -1477,9 +1552,24 @@ public class Server {
                         try (OutputStream os = exchange.getResponseBody()) { Files.copy(uploadCandidate, os); }
                         return;
                     }
+                        Path avatarCandidate = AVATAR_UPLOADS_DIR.resolve(fallbackName).normalize();
+                        if (avatarCandidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarCandidate) && Files.isReadable(avatarCandidate)) {
+                            String contentType = Files.probeContentType(avatarCandidate);
+                            if (contentType == null) contentType = "application/octet-stream";
+                            exchange.getResponseHeaders().set("Content-Type", contentType);
+                            exchange.sendResponseHeaders(200, Files.size(avatarCandidate));
+                            try (OutputStream os = exchange.getResponseBody()) { Files.copy(avatarCandidate, os); }
+                            return;
+                        }
                     if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
                         String remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fallbackName);
-                        if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
+                            if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
+                                exchange.getResponseHeaders().set("Location", remoteUrl);
+                                exchange.sendResponseHeaders(302, -1);
+                                return;
+                            }
+                            remoteUrl = R2_CLIENT.toPublicUrl("/uploads/avatar/" + fallbackName);
+                            if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
                             exchange.getResponseHeaders().set("Location", remoteUrl);
                             exchange.sendResponseHeaders(302, -1);
                             return;
@@ -2028,7 +2118,7 @@ public class Server {
                         byte[] bytes = java.util.Base64.getDecoder().decode(avatarData);
                         String ext = inferExtension(avatarFileName, avatarContentType);
                         String unique = "customer-" + id + "-" + System.currentTimeMillis() + ext;
-                        String relativePath = "uploads/images/" + unique;
+                        String relativePath = "uploads/avatar/" + unique;
                         String localUrl = "/" + relativePath;
 
                         String effectiveContentType = (avatarContentType == null || avatarContentType.isEmpty()) ? "application/octet-stream" : avatarContentType;
@@ -2036,7 +2126,7 @@ public class Server {
                         // 先嘗試上傳到 Cloudflare R2，成功則使用公開網址作為頭像位置。
                         if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
                             try {
-                                String objectKey = R2_CLIENT.buildObjectKey(unique);
+                                String objectKey = R2_CLIENT.buildObjectKey(unique, "uploads/avatar");
                                 CloudflareR2Client.UploadResult uploadRes = R2_CLIENT.uploadObject(objectKey, bytes, effectiveContentType);
                                 finalAvatarUrl = uploadRes.publicUrl();
                                 System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: uploaded avatar to R2 key=" + uploadRes.objectKey());
@@ -2047,9 +2137,9 @@ public class Server {
 
                         // 若 R2 上傳未成功，改存成本機檔案，並回傳相對位址。
                         if (finalAvatarUrl == null) {
-                            Files.createDirectories(UPLOADS_DIR);
-                            Path target = UPLOADS_DIR.resolve(unique).normalize();
-                            if (!target.startsWith(UPLOADS_DIR)) throw new IOException("Invalid upload path");
+                            Files.createDirectories(AVATAR_UPLOADS_DIR);
+                            Path target = AVATAR_UPLOADS_DIR.resolve(unique).normalize();
+                            if (!target.startsWith(AVATAR_UPLOADS_DIR)) throw new IOException("Invalid upload path");
                             Files.write(target, bytes);
                             finalAvatarUrl = localUrl;
                         }
