@@ -645,8 +645,8 @@ public class Server {
         if (trimmed.isEmpty()) return null;
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
         final String productsPrefix = "/frontend/images/products/";
-    final String uploadsPrefix = "/uploads/images/";
-    final String avatarPrefix = "/uploads/avatar/";
+        final String uploadsPrefix = "/uploads/images/";
+        final String avatarPrefix = "/uploads/avatar/";
         // 若已是帶有既有前綴的絕對路徑且檔案存在，直接回傳原始值。
         if (trimmed.startsWith(productsPrefix)) {
             String filename = trimmed.substring(productsPrefix.length());
@@ -730,6 +730,68 @@ public class Server {
             System.err.println(java.time.LocalDateTime.now() + " - Error in normalizeImageUrl: " + e.getMessage());
         }
         return null;
+    }
+
+    private static String extractSanitizedFilename(String reference) {
+        if (reference == null) return null;
+        String normalized = reference.trim().replace('\\', '/');
+        if (normalized.isEmpty()) return null;
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            normalized = normalized.substring(0, queryIndex);
+        }
+        int fragmentIndex = normalized.indexOf('#');
+        if (fragmentIndex >= 0) {
+            normalized = normalized.substring(0, fragmentIndex);
+        }
+        if (normalized.isEmpty()) return null;
+        int slashIndex = normalized.lastIndexOf('/');
+        String filename = (slashIndex >= 0) ? normalized.substring(slashIndex + 1) : normalized;
+        filename = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+        return filename.isEmpty() ? null : filename;
+    }
+
+    private static boolean deleteFromLocalDirectories(String filename, Path... directories) throws IOException {
+        if (filename == null || filename.isEmpty()) return false;
+        for (Path baseDir : directories) {
+            if (baseDir == null) continue;
+            Path target = baseDir.resolve(filename).normalize();
+            if (target.startsWith(baseDir) && Files.exists(target)) {
+                Files.delete(target);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean tryServeLocalFile(HttpExchange exchange, Path baseDir, String fileName) throws IOException {
+        if (fileName == null || fileName.isEmpty()) return false;
+        Path target = baseDir.resolve(fileName).normalize();
+        if (!target.startsWith(baseDir) || !Files.exists(target) || !Files.isReadable(target)) {
+            return false;
+        }
+        String contentType = Files.probeContentType(target);
+        if (contentType == null) contentType = "application/octet-stream";
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.sendResponseHeaders(200, Files.size(target));
+        try (OutputStream os = exchange.getResponseBody()) {
+            Files.copy(target, os);
+        }
+        return true;
+    }
+
+    private static boolean tryRedirectToR2(HttpExchange exchange, String... references) throws IOException {
+        if (R2_CLIENT == null || !R2_CLIENT.isConfigured()) return false;
+        for (String ref : references) {
+            if (ref == null || ref.trim().isEmpty()) continue;
+            String remoteUrl = R2_CLIENT.toPublicUrl(ref);
+            if (remoteUrl == null) continue;
+            if (!CloudflareR2Client.headExists(remoteUrl)) continue;
+            exchange.getResponseHeaders().set("Location", remoteUrl);
+            exchange.sendResponseHeaders(302, -1);
+            return true;
+        }
+        return false;
     }
 
     // --- 各 API 與靜態資源處理器 ---
@@ -1348,14 +1410,20 @@ public class Server {
                     sendErrorResponse(exchange, 400, "Missing imageUrl or filename", null);
                     return;
                 }
+
                 if (imageUrl != null) {
-                    // 從提供的 URL 解析出檔名，方便定位本機檔案。
-                    int idx = imageUrl.lastIndexOf('/');
-                    if (idx >= 0) filename = imageUrl.substring(idx + 1);
-                    else filename = imageUrl;
+                    String fromUrl = extractSanitizedFilename(imageUrl);
+                    if (fromUrl != null) {
+                        filename = fromUrl;
+                    }
                 }
-                // 再次清理檔名，排除非法字元。
-                filename = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+
+                String sanitizedFilename = extractSanitizedFilename(filename);
+                if (sanitizedFilename == null) {
+                    sendErrorResponse(exchange, 400, "Invalid filename", null);
+                    return;
+                }
+                filename = sanitizedFilename;
                 boolean deleted = false;
                 if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
                     try {
@@ -1366,25 +1434,7 @@ public class Server {
                     }
                 }
                 if (!deleted) {
-                    Path target = UPLOADS_DIR.resolve(filename).normalize();
-                    if (target.startsWith(UPLOADS_DIR) && Files.exists(target)) {
-                        Files.delete(target);
-                        deleted = true;
-                    }
-                }
-                if (!deleted) {
-                    Path avatarTarget = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
-                    if (avatarTarget.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarTarget)) {
-                        Files.delete(avatarTarget);
-                        deleted = true;
-                    }
-                }
-                if (!deleted) {
-                    Path legacy = LEGACY_DIR.resolve(filename).normalize();
-                    if (legacy.startsWith(LEGACY_DIR) && Files.exists(legacy)) {
-                        Files.delete(legacy);
-                        deleted = true;
-                    }
+                    deleted = deleteFromLocalDirectories(filename, UPLOADS_DIR, AVATAR_UPLOADS_DIR, LEGACY_DIR);
                 }
                 if (!deleted) {
                     sendErrorResponse(exchange, 404, "File not found: " + filename, null);
@@ -1442,29 +1492,8 @@ public class Server {
             try {
                 String uriPath = exchange.getRequestURI().getPath();
                 String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                Path imagePath = UPLOADS_DIR.resolve(fileName).normalize();
-                if (imagePath.startsWith(UPLOADS_DIR) && Files.exists(imagePath) && Files.isReadable(imagePath)) {
-                    String contentType = Files.probeContentType(imagePath);
-                    if (contentType == null) contentType = "application/octet-stream";
-                    exchange.getResponseHeaders().set("Content-Type", contentType);
-                    exchange.sendResponseHeaders(200, Files.size(imagePath));
-                    try (OutputStream os = exchange.getResponseBody()) { Files.copy(imagePath, os); }
-                    return;
-                }
-
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    String remoteUrl = R2_CLIENT.toPublicUrl(uriPath);
-                    if (remoteUrl == null) remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fileName);
-                    if (remoteUrl != null) {
-                        // 先對 R2 公開網址做 HEAD 檢查，確保物件存在再轉向，避免把使用者導到會 404 的外部 URL。
-                        if (CloudflareR2Client.headExists(remoteUrl)) {
-                            exchange.getResponseHeaders().set("Location", remoteUrl);
-                            exchange.sendResponseHeaders(302, -1);
-                            return;
-                        }
-                    }
-                }
-
+                if (tryServeLocalFile(exchange, UPLOADS_DIR, fileName)) return;
+                if (tryRedirectToR2(exchange, uriPath, "/uploads/images/" + fileName)) return;
                 sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
             } catch (Exception e) {
                 sendErrorResponse(exchange, 500, "Error serving upload image", e);
@@ -1481,26 +1510,8 @@ public class Server {
             try {
                 String uriPath = exchange.getRequestURI().getPath();
                 String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                Path avatarPath = AVATAR_UPLOADS_DIR.resolve(fileName).normalize();
-                if (avatarPath.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarPath) && Files.isReadable(avatarPath)) {
-                    String contentType = Files.probeContentType(avatarPath);
-                    if (contentType == null) contentType = "application/octet-stream";
-                    exchange.getResponseHeaders().set("Content-Type", contentType);
-                    exchange.sendResponseHeaders(200, Files.size(avatarPath));
-                    try (OutputStream os = exchange.getResponseBody()) { Files.copy(avatarPath, os); }
-                    return;
-                }
-
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    String remoteUrl = R2_CLIENT.toPublicUrl(uriPath);
-                    if (remoteUrl == null) remoteUrl = R2_CLIENT.toPublicUrl("/uploads/avatar/" + fileName);
-                    if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
-                        exchange.getResponseHeaders().set("Location", remoteUrl);
-                        exchange.sendResponseHeaders(302, -1);
-                        return;
-                    }
-                }
-
+                if (tryServeLocalFile(exchange, AVATAR_UPLOADS_DIR, fileName)) return;
+                if (tryRedirectToR2(exchange, uriPath, "/uploads/avatar/" + fileName)) return;
                 sendErrorResponse(exchange, 404, "Avatar not found: " + fileName, null);
             } catch (Exception e) {
                 sendErrorResponse(exchange, 500, "Error serving avatar image", e);
@@ -1553,37 +1564,12 @@ public class Server {
                 int idx = uriPath.lastIndexOf('/') + 1;
                 if (idx > 0 && idx < uriPath.length()) fallbackName = uriPath.substring(idx);
                 if (fallbackName != null && !fallbackName.isEmpty()) {
-                    Path uploadCandidate = UPLOADS_DIR.resolve(fallbackName).normalize();
-                    if (uploadCandidate.startsWith(UPLOADS_DIR) && Files.exists(uploadCandidate) && Files.isReadable(uploadCandidate)) {
-                        String contentType = Files.probeContentType(uploadCandidate);
-                        if (contentType == null) contentType = "application/octet-stream";
-                        exchange.getResponseHeaders().set("Content-Type", contentType);
-                        exchange.sendResponseHeaders(200, Files.size(uploadCandidate));
-                        try (OutputStream os = exchange.getResponseBody()) { Files.copy(uploadCandidate, os); }
+                    if (tryServeLocalFile(exchange, UPLOADS_DIR, fallbackName)) return;
+                    if (tryServeLocalFile(exchange, AVATAR_UPLOADS_DIR, fallbackName)) return;
+                    if (tryRedirectToR2(exchange,
+                            "/uploads/images/" + fallbackName,
+                            "/uploads/avatar/" + fallbackName)) {
                         return;
-                    }
-                        Path avatarCandidate = AVATAR_UPLOADS_DIR.resolve(fallbackName).normalize();
-                        if (avatarCandidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarCandidate) && Files.isReadable(avatarCandidate)) {
-                            String contentType = Files.probeContentType(avatarCandidate);
-                            if (contentType == null) contentType = "application/octet-stream";
-                            exchange.getResponseHeaders().set("Content-Type", contentType);
-                            exchange.sendResponseHeaders(200, Files.size(avatarCandidate));
-                            try (OutputStream os = exchange.getResponseBody()) { Files.copy(avatarCandidate, os); }
-                            return;
-                        }
-                    if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                        String remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fallbackName);
-                            if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
-                                exchange.getResponseHeaders().set("Location", remoteUrl);
-                                exchange.sendResponseHeaders(302, -1);
-                                return;
-                            }
-                            remoteUrl = R2_CLIENT.toPublicUrl("/uploads/avatar/" + fallbackName);
-                            if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
-                            exchange.getResponseHeaders().set("Location", remoteUrl);
-                            exchange.sendResponseHeaders(302, -1);
-                            return;
-                        }
                     }
                 }
                 sendErrorResponse(exchange, 404, "Static file not found", null);
@@ -2027,7 +2013,41 @@ public class Server {
                 if (isNullOrEmpty(normalized)) {
                     normalized = storedValue;
                 }
-                return buildAbsoluteUrl(normalized, exchange);
+                String absoluteUrl = buildAbsoluteUrl(normalized, exchange);
+                if (absoluteUrl != null) {
+                    // 為了解決前端快取問題，增加時間戳強制瀏覽器重新整理
+                    return absoluteUrl + "?v=" + ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
+                }
+                return null;
+            }
+
+            private static void deleteAvatarFile(String avatarUrl) {
+                if (isNullOrEmpty(avatarUrl)) {
+                    return;
+                }
+
+                boolean deleted = false;
+                try {
+                    if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                        deleted = R2_CLIENT.deleteByReference(avatarUrl);
+                    }
+
+                    if (!deleted) {
+                        String normalizedPath = sanitizeRelativeAvatarPath(avatarUrl);
+                        if (normalizedPath != null && (normalizedPath.startsWith("/uploads/") || normalizedPath.startsWith("uploads/"))) {
+                            String filename = extractSanitizedFilename(normalizedPath);
+                            if (filename != null) {
+                                deleted = deleteFromLocalDirectories(filename, AVATAR_UPLOADS_DIR, UPLOADS_DIR);
+                            }
+                        }
+                    }
+
+                    if (deleted) {
+                        System.err.println(java.time.LocalDateTime.now() + " - Deleted old avatar: " + avatarUrl);
+                    }
+                } catch (Exception e) {
+                    System.err.println(java.time.LocalDateTime.now() + " - Failed to delete old avatar file '" + avatarUrl + "': " + e.getMessage());
+                }
             }
 
         @Override
@@ -2143,6 +2163,29 @@ public class Server {
                 JSONObject existing = store.optJSONObject(String.valueOf(id));
                 if (existing == null) existing = new JSONObject();
 
+                String previousStoredAvatar = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
+                        ? existing.optString("avatarUrl", null)
+                        : null;
+                if (isNullOrEmpty(previousStoredAvatar)) {
+                    previousStoredAvatar = null;
+                }
+
+                boolean avatarRemoveRequested = false;
+                if (req.has("removeAvatar")) {
+                    avatarRemoveRequested = req.optBoolean("removeAvatar", false);
+                } else if (req.has("avatarRemove")) {
+                    avatarRemoveRequested = req.optBoolean("avatarRemove", false);
+                } else if (req.has("avatarUrl")) {
+                    if (req.isNull("avatarUrl")) {
+                        avatarRemoveRequested = true;
+                    } else {
+                        String avatarUrlValue = req.optString("avatarUrl", "");
+                        if (isNullOrEmpty(avatarUrlValue)) {
+                            avatarRemoveRequested = true;
+                        }
+                    }
+                }
+
                 // 合併可更新的欄位值，僅覆寫使用者透過表單提交的內容。
                 String displayName = req.optString("displayName", null);
                 String email = req.optString("email", null);
@@ -2159,6 +2202,8 @@ public class Server {
                 String avatarFileName = req.optString("avatarFileName", null);
                 String avatarContentType = req.optString("avatarContentType", null);
                 String finalAvatarUrl = null;
+                boolean avatarUploaded = false;
+                boolean avatarCleared = false;
                 if (avatarData != null && !avatarData.isEmpty()) {
                     try {
                         byte[] bytes = java.util.Base64.getDecoder().decode(avatarData);
@@ -2206,12 +2251,20 @@ public class Server {
                             existing.remove("avatarUrlOriginal");
                         }
                         finalAvatarUrl = canonicalAvatar;
+                        avatarUploaded = true;
                         System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: stored avatar for customer " + id + " -> " + canonicalAvatar + " (original=" + originalFinalAvatar + ")");
                     } else {
                         existing.remove("avatarUrl");
                         existing.remove("avatarUrlOriginal");
                         finalAvatarUrl = null;
                     }
+                } else if (avatarRemoveRequested) {
+                    existing.remove("avatarUrl");
+                    existing.remove("avatarUrlOriginal");
+                    existing.remove("avatarMissing");
+                    finalAvatarUrl = null;
+                    avatarCleared = true;
+                    System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: cleared avatar for customer " + id + " by request");
                 } else {
                     String existingAvatarRaw = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
                             ? existing.optString("avatarUrl", null)
@@ -2251,6 +2304,24 @@ public class Server {
                     }
                 } else {
                     existing.remove("avatarUrlResolved");
+                }
+
+                String currentStoredAvatar = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
+                        ? existing.optString("avatarUrl", null)
+                        : null;
+                if (isNullOrEmpty(currentStoredAvatar)) {
+                    currentStoredAvatar = null;
+                }
+
+                if (previousStoredAvatar != null) {
+                    boolean avatarPathChanged = currentStoredAvatar == null || !previousStoredAvatar.equals(currentStoredAvatar);
+                    if ((avatarUploaded || avatarCleared) && avatarPathChanged) {
+                        String candidate = canonicalizeAvatarForStorage(previousStoredAvatar, exchange);
+                        if (isNullOrEmpty(candidate)) {
+                            candidate = previousStoredAvatar;
+                        }
+                        deleteAvatarFile(candidate);
+                    }
                 }
 
                 existing.put("customerId", String.valueOf(id));

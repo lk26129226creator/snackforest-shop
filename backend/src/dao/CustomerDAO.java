@@ -198,7 +198,8 @@ public class CustomerDAO {
                 rs.getString("CustomerName"),
                 rs.getString("Account"),
                 hasColumn(rs, "PasswordHash") ? rs.getString("PasswordHash") : null,
-                hasColumn(rs, "Salt") ? rs.getString("Salt") : null);
+                hasColumn(rs, "Salt") ? rs.getString("Salt") : null
+        );
     }
 
     /**
