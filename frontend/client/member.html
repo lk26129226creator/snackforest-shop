@@ -636,7 +636,39 @@
 			sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
 			sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
 			sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
+			if (/uploads\/images\/customer-\d+-\d+\.[a-z0-9]+$/i.test(sanitized)) {
+				sanitized = sanitized.replace(/uploads\/images\//i, 'uploads/avatar/');
+			}
+			if (!/^https?:\/\//i.test(sanitized)) {
+				const cutQuery = sanitized.indexOf('?');
+				const cutHash = sanitized.indexOf('#');
+				let cutIndex = -1;
+				if (cutQuery >= 0 && cutHash >= 0) cutIndex = Math.min(cutQuery, cutHash);
+				else if (cutQuery >= 0) cutIndex = cutQuery;
+				else if (cutHash >= 0) cutIndex = cutHash;
+				if (cutIndex >= 0) {
+					sanitized = sanitized.slice(0, cutIndex);
+				}
+			}
 			return sanitized;
+		}
+
+		function appendCacheBuster(url, version) {
+			if (!url) return '';
+			const str = String(url);
+			const [base, hash] = str.split('#');
+			const queryIndex = base.indexOf('?');
+			let path = base;
+			let params = new URLSearchParams();
+			if (queryIndex >= 0) {
+				path = base.slice(0, queryIndex);
+				params = new URLSearchParams(base.slice(queryIndex + 1));
+			}
+			params.delete('v');
+			const token = (version && String(version).trim()) || String(Date.now());
+			params.set('v', token);
+			const finalBase = `${path}?${params.toString()}`;
+			return hash ? `${finalBase}#${hash}` : finalBase;
 		}
 
 	function resolveAssetUrl(path) {
@@ -693,6 +725,7 @@
 			const initial = (displayName || 'M').trim().charAt(0).toUpperCase() || 'M';
 			avatarInitial.textContent = initial;
 		}
+		const previousStoredAvatar = getStoredAvatarUrl();
 		const avatarCandidates = [
 			data.avatarUrlResolved,
 			data.avatarUrl,
@@ -710,15 +743,28 @@
 				break;
 			}
 		}
-		data.avatarUrlResolved = avatarUrl || '';
-		if (!data.avatarUrl) {
-			data.avatarUrl = avatarUrl || '';
+		const sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
+		let storedProfileVersion = '';
+		try {
+			storedProfileVersion = localStorage.getItem('sf-client-profile-version') || '';
+		} catch (_) {
+			storedProfileVersion = '';
 		}
+		let avatarVersion = data.updatedAt ? String(data.updatedAt) : storedProfileVersion;
+		if (!avatarVersion && sanitizedAvatar && sanitizedAvatar !== previousStoredAvatar) {
+			avatarVersion = String(Date.now());
+		}
+		const finalAvatarUrl = avatarUrl ? appendCacheBuster(avatarUrl, avatarVersion) : '';
+		data.avatarUrlResolved = finalAvatarUrl || '';
+		if (!data.avatarUrl) {
+			data.avatarUrl = sanitizedAvatar || '';
+		}
+		data.avatarVersion = avatarVersion || '';
 		if (avatar && avatarImg) {
-			if (avatarUrl) {
+			if (finalAvatarUrl) {
 				avatar.classList.add('has-image');
-				if (avatarImg.getAttribute('src') !== avatarUrl) {
-					avatarImg.src = avatarUrl;
+				if (avatarImg.src !== finalAvatarUrl) {
+					avatarImg.src = finalAvatarUrl;
 				}
 				avatarImg.classList.remove('d-none');
 				if (avatarInitial) {
@@ -744,7 +790,6 @@
 		} else if (!displayName) {
 			localStorage.removeItem('customerName');
 		}
-		const sanitizedAvatar = sanitizeUploadUrl(avatarUrl);
 		try {
 			if (displayName) {
 				localStorage.setItem('sf-client-name', displayName);
@@ -758,13 +803,13 @@
 			}
 			if (sanitizedAvatar) {
 				localStorage.setItem('sf-client-avatar', sanitizedAvatar);
-				localStorage.setItem('sf-client-avatar-resolved', avatarUrl);
+				localStorage.setItem('sf-client-avatar-resolved', finalAvatarUrl);
 			} else {
 				localStorage.removeItem('sf-client-avatar');
 				localStorage.removeItem('sf-client-avatar-resolved');
 			}
-			if (data.updatedAt) {
-				localStorage.setItem('sf-client-profile-version', String(data.updatedAt));
+			if (avatarVersion) {
+				localStorage.setItem('sf-client-profile-version', String(avatarVersion));
 				localStorage.setItem('sf-client-profile-sync', String(Date.now()));
 			} else {
 				localStorage.removeItem('sf-client-profile-version');
@@ -777,7 +822,9 @@
 			const detail = {
 				name: displayName || '',
 				avatarUrl: sanitizedAvatar || '',
-				avatarUrlResolved: avatarUrl || '',
+				avatarUrlResolved: finalAvatarUrl || '',
+				avatarVersion: avatarVersion || '',
+				updatedAt: data.updatedAt || '',
 				customerId: cid || ''
 			};
 			window.dispatchEvent(new CustomEvent('sf:profile-updated', { detail }));

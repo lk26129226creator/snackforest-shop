@@ -381,7 +381,39 @@
         sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
         sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
         sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
+        if (/uploads\/images\/customer-\d+-\d+\.[a-z0-9]+$/i.test(sanitized)) {
+            sanitized = sanitized.replace(/uploads\/images\//i, 'uploads/avatar/');
+        }
+        if (!/^https?:\/\//i.test(sanitized)) {
+            const cutQuery = sanitized.indexOf('?');
+            const cutHash = sanitized.indexOf('#');
+            let cutIndex = -1;
+            if (cutQuery >= 0 && cutHash >= 0) cutIndex = Math.min(cutQuery, cutHash);
+            else if (cutQuery >= 0) cutIndex = cutQuery;
+            else if (cutHash >= 0) cutIndex = cutHash;
+            if (cutIndex >= 0) {
+                sanitized = sanitized.slice(0, cutIndex);
+            }
+        }
         return sanitized;
+    }
+
+    function appendCacheBuster(url, version) {
+        if (!url) return '';
+        const str = String(url);
+        const [base, hash] = str.split('#');
+        const queryIndex = base.indexOf('?');
+        let path = base;
+        let params = new URLSearchParams();
+        if (queryIndex >= 0) {
+            path = base.slice(0, queryIndex);
+            params = new URLSearchParams(base.slice(queryIndex + 1));
+        }
+        params.delete('v');
+        const token = safeTrim(version) || String(Date.now());
+        params.set('v', token);
+        const finalBase = `${path}?${params.toString()}`;
+        return hash ? `${finalBase}#${hash}` : finalBase;
     }
 
     /**
@@ -389,7 +421,7 @@
      * @returns {{name:string,id:string,avatar:string}}
      */
     function readStoredMemberMeta() {
-        const meta = { name: '', id: '', avatar: '' };
+        const meta = { name: '', id: '', avatar: '', version: '' };
         try {
             if (!('localStorage' in window)) return meta;
         } catch (_) {
@@ -422,8 +454,9 @@
                         // ignore storage rewrite errors
                     }
                 }
-                meta.avatar = resolvedCandidate || sanitized || avatarCandidate;
+                meta.avatar = sanitized || resolvedCandidate || avatarCandidate;
             }
+            meta.version = safeTrim(store.getItem(PROFILE_VERSION_KEY));
         } catch (_) {
             // 忽略存取錯誤（例如隱私模式）
         }
@@ -584,7 +617,9 @@
                 name: displayName,
                 avatarUrlResolved: avatarUrl,
                 avatarUrl: sanitizedAvatar,
-                customerId
+                customerId,
+                avatarVersion: updatedAt,
+                updatedAt
             });
         }
 
@@ -594,6 +629,8 @@
                     name: displayName,
                     avatarUrl: sanitizedAvatar,
                     avatarUrlResolved: avatarUrl,
+                    avatarVersion: updatedAt,
+                    updatedAt,
                     customerId
                 }
             }));
@@ -602,6 +639,8 @@
                     name: displayName,
                     avatarUrl: sanitizedAvatar,
                     avatarUrlResolved: avatarUrl,
+                    avatarVersion: updatedAt,
+                    updatedAt,
                     customerId
                 }
             }));
@@ -1951,17 +1990,19 @@
             const nextName = safeTrim(state && state.name);
             const nextId = safeTrim(state && state.id);
             const nextAvatarRaw = safeTrim(state && state.avatar);
+            const nextVersion = safeTrim(state && state.version);
 
             if (
                 lastSidebarProfile
                 && lastSidebarProfile.name === nextName
                 && lastSidebarProfile.id === nextId
                 && lastSidebarProfile.avatar === nextAvatarRaw
+                && lastSidebarProfile.version === nextVersion
             ) {
                 return;
             }
 
-            lastSidebarProfile = { name: nextName, id: nextId, avatar: nextAvatarRaw };
+            lastSidebarProfile = { name: nextName, id: nextId, avatar: nextAvatarRaw, version: nextVersion };
 
             const hasName = Boolean(nextName);
 
@@ -2016,8 +2057,9 @@
                     } catch (_) {
                         resolvedAvatar = nextAvatarRaw;
                     }
-                    if (avatarImg.src !== resolvedAvatar) {
-                        avatarImg.src = resolvedAvatar;
+                    const finalAvatar = appendCacheBuster(resolvedAvatar, nextVersion);
+                    if (avatarImg.src !== finalAvatar) {
+                        avatarImg.src = finalAvatar;
                     }
                     avatarImg.alt = `${nextName || '會員'}頭像`;
                 } else {
@@ -2053,7 +2095,7 @@
                 }
                 let overrideAvatar = '';
                 if (Object.prototype.hasOwnProperty.call(override, 'avatarUrlResolved')) {
-                    overrideAvatar = safeTrim(override.avatarUrlResolved);
+                    overrideAvatar = sanitizeUploadUrl(override.avatarUrlResolved);
                 }
                 if (!overrideAvatar && Object.prototype.hasOwnProperty.call(override, 'avatarUrl')) {
                     overrideAvatar = sanitizeUploadUrl(override.avatarUrl);
@@ -2068,6 +2110,11 @@
                     next.id = safeTrim(override.customerId);
                 } else if (Object.prototype.hasOwnProperty.call(override, 'id')) {
                     next.id = safeTrim(override.id);
+                }
+                if (Object.prototype.hasOwnProperty.call(override, 'avatarVersion')) {
+                    next.version = safeTrim(override.avatarVersion);
+                } else if (Object.prototype.hasOwnProperty.call(override, 'updatedAt')) {
+                    next.version = safeTrim(override.updatedAt);
                 }
             }
 
