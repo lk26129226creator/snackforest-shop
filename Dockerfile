@@ -12,7 +12,7 @@ WORKDIR /app
 COPY --from=build /app/bin ./bin
 COPY --from=build /app/lib ./lib
 COPY frontend/ ./frontend
-COPY data/ ./data
+RUN mkdir -p data/uploads/images data/uploads/avatar
 
 # Environment variables (can be overridden on Render)
 ENV DB_HOST=localhost \
