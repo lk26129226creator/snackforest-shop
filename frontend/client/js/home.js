@@ -5,6 +5,9 @@
     const API_BASE = env.API_BASE || 'http://localhost:8000/api';
     const normalizeImageUrl = utils.normalizeImageUrl || ((u) => u || '');
     const formatPrice = utils.formatPrice || ((v) => v);
+    const sanitizeUploadUrl = typeof utils.sanitizeUploadUrl === 'function'
+        ? utils.sanitizeUploadUrl
+        : ((value) => (value == null ? '' : String(value).trim()));
     const fetchSiteConfig = window.fetchSiteConfig || (async () => ({}));
     const MOBILE_PRODUCT_BREAKPOINT = 768;
     const mobileProductMediaQuery = typeof window.matchMedia === 'function'
@@ -74,17 +77,6 @@
             }
         }
         return 'fa-basket-shopping';
-    }
-
-    function sanitizeUploadUrl(value) {
-        if (value == null) return '';
-        const trimmed = String(value).trim();
-        if (!trimmed) return '';
-        let sanitized = trimmed.replace(/\/api(?=\/uploads\/)/gi, '');
-        sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
-        sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
-        sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
-        return sanitized;
     }
 
     function shouldUseMobileProductLayout() {

@@ -4,6 +4,7 @@
     //  依序注入模組以建立全域命名空間與依賴。
     //
     const files = [
+        '../client/js/utils.js',
         'js/env.js',
         'js/core.js',
         'js/utils.js',

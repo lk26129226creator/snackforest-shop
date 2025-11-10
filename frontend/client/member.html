@@ -523,6 +523,13 @@
 		}
 		return API_ORIGIN;
 	})();
+	const utils = window.SF_UTILS || {};
+	const sanitizeUploadUrl = typeof utils.sanitizeUploadUrl === 'function'
+		? utils.sanitizeUploadUrl
+		: ((value) => (value == null ? '' : String(value).trim()));
+	const appendCacheBuster = typeof utils.appendCacheBuster === 'function'
+		? utils.appendCacheBuster
+		: ((url) => (url ? String(url) : ''));
 	const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 	const storedCustomerId = localStorage.getItem('customerId');
@@ -627,46 +634,6 @@
 		lockDownMemberUI('請先登入會員帳號以檢視會員中心。', 'warning', '../login.html');
 		return;
 	}
-
-		function sanitizeUploadUrl(value) {
-			if (value == null) return '';
-			const trimmed = String(value).trim();
-			if (!trimmed) return '';
-			let sanitized = trimmed.replace(/\/api(?=\/uploads\/)/gi, '');
-			sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
-			sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
-			sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
-			if (!/^https?:\/\//i.test(sanitized)) {
-				const cutQuery = sanitized.indexOf('?');
-				const cutHash = sanitized.indexOf('#');
-				let cutIndex = -1;
-				if (cutQuery >= 0 && cutHash >= 0) cutIndex = Math.min(cutQuery, cutHash);
-				else if (cutQuery >= 0) cutIndex = cutQuery;
-				else if (cutHash >= 0) cutIndex = cutHash;
-				if (cutIndex >= 0) {
-					sanitized = sanitized.slice(0, cutIndex);
-				}
-			}
-			return sanitized;
-		}
-
-		function appendCacheBuster(url, version) {
-			if (!url) return '';
-			const str = String(url);
-			const [base, hash] = str.split('#');
-			const queryIndex = base.indexOf('?');
-			let path = base;
-			let params = new URLSearchParams();
-			if (queryIndex >= 0) {
-				path = base.slice(0, queryIndex);
-				params = new URLSearchParams(base.slice(queryIndex + 1));
-			}
-			params.delete('v');
-			const token = (version && String(version).trim()) || String(Date.now());
-			params.set('v', token);
-			const finalBase = `${path}?${params.toString()}`;
-			return hash ? `${finalBase}#${hash}` : finalBase;
-		}
 
 	function resolveAssetUrl(path) {
 		if (!path) return '';

@@ -180,6 +180,29 @@ public class Server {
         if (e != null) e.printStackTrace();
     }
 
+    private static String readRequestBody(HttpExchange exchange, String defaultValue) throws IOException {
+        if (exchange == null) return defaultValue;
+        try (InputStream is = exchange.getRequestBody();
+             java.util.Scanner scanner = new java.util.Scanner(is, StandardCharsets.UTF_8.name())) {
+            scanner.useDelimiter("\\A");
+            return scanner.hasNext() ? scanner.next() : defaultValue;
+        }
+    }
+
+    private static List<String> toStringList(JSONArray array) {
+        List<String> out = new ArrayList<>();
+        if (array == null) {
+            return out;
+        }
+        for (int i = 0; i < array.length(); i++) {
+            String value = array.optString(i, null);
+            if (value != null) {
+                out.add(value);
+            }
+        }
+        return out;
+    }
+
     // --- 啟動時的資料庫欄位補強 ---
     /**
      * 檢查 customers 資料表是否具備新欄位，缺少時動態補上，允許在啟動時重複執行。
@@ -943,11 +966,7 @@ public class Server {
                         sendErrorResponse(exchange, 500, "Failed to retrieve orders", e);
                     }
                 } else if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                    InputStream is = exchange.getRequestBody();
-                    String body;
-                    try (java.util.Scanner s = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A")){
-                        body = s.hasNext() ? s.next() : "";
-                    }
+                    String body = readRequestBody(exchange, "");
                     JSONObject req = new JSONObject(body);
                     try (Connection conn = DBConnect.getConnection()) {
                         dao.OrderDAO orderDAO = new dao.OrderDAO(conn);
@@ -1119,20 +1138,10 @@ public class Server {
                         }
                     }
                 } else if ("POST".equalsIgnoreCase(method)) {
-                    String body;
-                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
-                        body = s.hasNext() ? s.next() : "";
-                    }
+                    String body = readRequestBody(exchange, "");
                     JSONObject req = new JSONObject(body);
                     int nextId = productDAO.getNextProductId();
-                    JSONArray imgsArr = req.optJSONArray("imageUrls");
-                    List<String> imageList = new ArrayList<>();
-                    if (imgsArr != null) {
-                        for (int i = 0; i < imgsArr.length(); i++) {
-                            String val = imgsArr.optString(i, null);
-                            if (val != null) imageList.add(val);
-                        }
-                    }
+                    List<String> imageList = toStringList(req.optJSONArray("imageUrls"));
                     String intro = req.optString("introduction", null);
                     String origin = req.optString("origin", null);
                     String productionDate = req.optString("productionDate", null);
@@ -1144,19 +1153,9 @@ public class Server {
                 } else if ("PUT".equalsIgnoreCase(method)) {
                     String path = exchange.getRequestURI().getPath();
                     int id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
-                    String body;
-                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
-                        body = s.hasNext() ? s.next() : "";
-                    }
+                    String body = readRequestBody(exchange, "");
                     JSONObject req = new JSONObject(body);
-                    JSONArray imgsArr2 = req.optJSONArray("imageUrls");
-                    List<String> imageList2 = new ArrayList<>();
-                    if (imgsArr2 != null) {
-                        for (int i = 0; i < imgsArr2.length(); i++) {
-                            String vv = imgsArr2.optString(i, null);
-                            if (vv != null) imageList2.add(vv);
-                        }
-                    }
+                    List<String> imageList2 = toStringList(req.optJSONArray("imageUrls"));
                     String intro2 = req.optString("introduction", null);
                     String origin2 = req.optString("origin", null);
                     String productionDate2 = req.optString("productionDate", null);
@@ -1201,10 +1200,7 @@ public class Server {
                     }
                     sendJsonResponse(exchange, jsonArray.toString(), 200);
                 } else if ("POST".equalsIgnoreCase(method)) {
-                    String body;
-                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
-                        body = s.hasNext() ? s.next() : "";
-                    }
+                    String body = readRequestBody(exchange, "");
                     JSONObject req = new JSONObject(body);
                     String name = req.optString("name", "").trim();
                     if (name.isEmpty()) {
@@ -1234,10 +1230,7 @@ public class Server {
                     } catch (Exception ignore) {
                         // 若路徑解析失敗，改由請求本文的欄位提供 id。
                     }
-                    String body;
-                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
-                        body = s.hasNext() ? s.next() : "";
-                    }
+                    String body = readRequestBody(exchange, "");
                     JSONObject req = new JSONObject(body);
                     if (id==0) id = req.optInt("id", 0);
                     String name = req.optString("name", "").trim();
@@ -1265,10 +1258,7 @@ public class Server {
                 return;
             }
             try {
-                String body;
-                try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
-                    body = s.hasNext() ? s.next() : "";
-                }
+                String body = readRequestBody(exchange, "");
                 JSONObject req = new JSONObject(body);
                 String username = req.optString("username");
                 String password = req.optString("password");
@@ -1398,10 +1388,7 @@ public class Server {
                 sendErrorResponse(exchange, 405, "Method Not Allowed", null);
                 return;
             }
-            String body;
-            try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
-                body = s.hasNext() ? s.next() : "";
-            }
+            String body = readRequestBody(exchange, "");
             try {
                 JSONObject req = new JSONObject(body);
                 String imageUrl = req.optString("imageUrl", null);
@@ -1646,10 +1633,7 @@ public class Server {
                         sendJsonResponse(exchange, json, 200);
                     }
                 } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
-                    String body;
-                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
-                        body = s.hasNext() ? s.next() : "[]";
-                    }
+                    String body = readRequestBody(exchange, "[]");
                     // 驗證輸入內容確實為 JSON 陣列格式。
                     try { new org.json.JSONArray(body); } catch (Exception e) {
                         sendErrorResponse(exchange, 400, "Invalid JSON array for carousel", e);
@@ -1674,6 +1658,36 @@ public class Server {
      */
     static class SiteConfigHandler implements HttpHandler {
         private static final Path CONFIG_FILE = DATA_DIR.resolve("site-config.json");
+
+        private static boolean isBlank(String value) {
+            return value == null || value.trim().isEmpty() || "null".equalsIgnoreCase(value.trim());
+        }
+
+        private static String sanitizeHeroImageReference(String value) {
+            if (isBlank(value)) return null;
+            String trimmed = value.trim().replace('\\', '/');
+            if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) {
+                return trimmed;
+            }
+            String sanitized = trimmed
+                    .replaceFirst("^/api(?=/uploads/)", "")
+                    .replaceFirst("^api(?=/uploads/)", "")
+                    .replaceFirst("^\\./(?=uploads/)", "/")
+                    .replaceFirst("^/{2,}(?=uploads/)", "/");
+            if (!sanitized.startsWith("/")) {
+                sanitized = "/" + sanitized.replaceFirst("^/+", "");
+            }
+            return sanitized;
+        }
+
+        private static String resolveHeroImageUrl(String sanitized) {
+            if (isBlank(sanitized)) return null;
+            String resolved = normalizeImageUrl(sanitized);
+            if (!isBlank(resolved)) {
+                return resolved;
+            }
+            return sanitized;
+        }
 
         /**
          * 讀取指定檔案內容，若不存在則回傳預設 JSON 字串。
@@ -1745,28 +1759,32 @@ public class Server {
                     JSONObject hero = payload.optJSONObject("hero");
                     if (hero != null) {
                         String raw = hero.optString("imageUrl", null);
-                        String resolved = normalizeImageUrl(raw);
-                        if (resolved != null) {
+                        String sanitized = sanitizeHeroImageReference(raw);
+                        if (sanitized != null) {
+                            hero.put("imageUrl", sanitized);
+                        } else {
+                            hero.put("imageUrl", JSONObject.NULL);
+                        }
+
+                        if (sanitized != null && raw != null && !raw.equals(sanitized)) {
+                            hero.put("imageUrlOriginal", raw);
+                        } else {
+                            hero.remove("imageUrlOriginal");
+                        }
+
+                        String resolved = resolveHeroImageUrl(sanitized);
+                        if (!isBlank(resolved)) {
                             hero.put("imageUrlResolved", resolved);
-                            if (raw != null && !raw.isEmpty() && !raw.equals(resolved)) {
-                                hero.put("imageUrlOriginal", raw);
-                            }
                             hero.remove("imageMissing");
                         } else {
-                            hero.put("imageUrlResolved", DEFAULT_PLACEHOLDER_IMAGE);
-                            if (raw != null && !raw.isEmpty()) {
-                                hero.put("imageUrlOriginal", raw);
-                            }
+                            hero.put("imageUrlResolved", JSONObject.NULL);
                             hero.put("imageMissing", true);
                         }
                     }
 
                     sendJsonResponse(exchange, payload.toString(), 200);
                 } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
-                    String body;
-                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
-                        body = s.hasNext() ? s.next() : DEFAULT_CONFIG;
-                    }
+                    String body = readRequestBody(exchange, DEFAULT_CONFIG);
                     // 驗證上傳內容為合法的 JSON 物件。
                     try { new JSONObject(body); } catch (Exception e) {
                         sendErrorResponse(exchange, 400, "Invalid JSON object for site-config", e);
@@ -1968,6 +1986,65 @@ public class Server {
                 return relocateAvatarPathIfAvailable(sanitizeRelativeAvatarPath(trimmed));
             }
 
+            private static String optStringOrNull(JSONObject obj, String key) {
+                if (obj == null || key == null || !obj.has(key) || obj.isNull(key)) {
+                    return null;
+                }
+                String value = obj.optString(key, null);
+                return isNullOrEmpty(value) ? null : value;
+            }
+
+            private static String normalizeAvatarFields(JSONObject target, HttpExchange exchange, String rawOverride) {
+                String rawValue = rawOverride;
+                if (isNullOrEmpty(rawValue)) {
+                    rawValue = optStringOrNull(target, "avatarUrl");
+                }
+
+                if (isNullOrEmpty(rawValue)) {
+                    target.put("avatarUrl", JSONObject.NULL);
+                    target.remove("avatarUrlOriginal");
+                    target.put("avatarUrlResolved", JSONObject.NULL);
+                    target.remove("avatarMissing");
+                    return null;
+                }
+
+                String canonical = canonicalizeAvatarForStorage(rawValue, exchange);
+                if (!isNullOrEmpty(canonical)) {
+                    target.put("avatarUrl", canonical);
+                    if (!canonical.equals(rawValue)) {
+                        target.put("avatarUrlOriginal", rawValue);
+                    } else {
+                        target.remove("avatarUrlOriginal");
+                    }
+                    String resolved = resolveAvatarReference(canonical, exchange);
+                    if (!isNullOrEmpty(resolved)) {
+                        target.put("avatarUrlResolved", resolved);
+                        target.remove("avatarMissing");
+                    } else {
+                        target.put("avatarUrlResolved", JSONObject.NULL);
+                        target.put("avatarMissing", true);
+                    }
+                    return canonical;
+                }
+
+                target.put("avatarUrl", JSONObject.NULL);
+                target.remove("avatarUrlOriginal");
+
+                String resolvedFallback = null;
+                if (rawValue.startsWith("http://") || rawValue.startsWith("https://")) {
+                    resolvedFallback = resolveAvatarReference(rawValue, exchange);
+                }
+                if (!isNullOrEmpty(resolvedFallback)) {
+                    target.put("avatarUrlResolved", resolvedFallback);
+                    target.remove("avatarMissing");
+                } else {
+                    target.put("avatarUrlResolved", JSONObject.NULL);
+                    target.put("avatarMissing", true);
+                }
+
+                return null;
+            }
+
             private static String buildAbsoluteUrl(String path, HttpExchange exchange) {
                 if (isNullOrEmpty(path)) return null;
                 String normalized = path.trim();
@@ -2115,44 +2192,14 @@ public class Server {
                     if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
                 }
 
-                String storedAvatarRaw = profile.has("avatarUrl") && !profile.isNull("avatarUrl")
-                        ? profile.optString("avatarUrl", null)
-                        : null;
-                String canonicalAvatar = canonicalizeAvatarForStorage(storedAvatarRaw, exchange);
-                if (canonicalAvatar != null) {
-                    profile.put("avatarUrl", canonicalAvatar);
-                } else {
-                    profile.put("avatarUrl", JSONObject.NULL);
-                }
-
-                if (!isNullOrEmpty(storedAvatarRaw) && canonicalAvatar != null && !storedAvatarRaw.equals(canonicalAvatar)) {
-                    profile.put("avatarUrlOriginal", storedAvatarRaw);
-                } else {
-                    profile.remove("avatarUrlOriginal");
-                }
-
-                String resolvedAvatar = resolveAvatarReference(canonicalAvatar != null ? canonicalAvatar : storedAvatarRaw, exchange);
-                if (!isNullOrEmpty(resolvedAvatar)) {
-                    profile.put("avatarUrlResolved", resolvedAvatar);
-                    profile.remove("avatarMissing");
-                } else {
-                    profile.put("avatarUrlResolved", JSONObject.NULL);
-                    if (!isNullOrEmpty(storedAvatarRaw)) {
-                        profile.put("avatarMissing", true);
-                    } else {
-                        profile.remove("avatarMissing");
-                    }
-                }
+                normalizeAvatarFields(profile, exchange, null);
 
                 sendJsonResponse(exchange, profile.toString(), 200);
                 return;
             }
 
             if ("PUT".equalsIgnoreCase(method)) {
-                String body;
-                try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
-                    body = s.hasNext() ? s.next() : "{}";
-                }
+                String body = readRequestBody(exchange, "{}");
                 JSONObject req;
                 try { req = new JSONObject(body); } catch (Exception e) {
                     sendErrorResponse(exchange, 400, "Invalid JSON", e);
@@ -2163,12 +2210,8 @@ public class Server {
                 JSONObject existing = store.optJSONObject(String.valueOf(id));
                 if (existing == null) existing = new JSONObject();
 
-                String previousStoredAvatar = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
-                        ? existing.optString("avatarUrl", null)
-                        : null;
-                if (isNullOrEmpty(previousStoredAvatar)) {
-                    previousStoredAvatar = null;
-                }
+                String previousStoredAvatar = optStringOrNull(existing, "avatarUrl");
+                String requestedAvatarValue = previousStoredAvatar;
 
                 boolean avatarRemoveRequested = false;
                 if (req.has("removeAvatar")) {
@@ -2201,9 +2244,9 @@ public class Server {
                 String avatarData = req.optString("avatarData", null);
                 String avatarFileName = req.optString("avatarFileName", null);
                 String avatarContentType = req.optString("avatarContentType", null);
-                String finalAvatarUrl = null;
                 boolean avatarUploaded = false;
                 boolean avatarCleared = false;
+                String uploadedAvatarRaw = null;
                 if (avatarData != null && !avatarData.isEmpty()) {
                     try {
                         byte[] bytes = java.util.Base64.getDecoder().decode(avatarData);
@@ -2219,7 +2262,7 @@ public class Server {
                             try {
                                 String objectKey = R2_CLIENT.buildObjectKey(unique, "uploads/avatar");
                                 CloudflareR2Client.UploadResult uploadRes = R2_CLIENT.uploadObject(objectKey, bytes, effectiveContentType);
-                                finalAvatarUrl = uploadRes.publicUrl();
+                                uploadedAvatarRaw = uploadRes.publicUrl();
                                 System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: uploaded avatar to R2 key=" + uploadRes.objectKey());
                             } catch (Exception r2ex) {
                                 System.err.println("Failed to upload avatar to R2, falling back to local disk: " + r2ex.getMessage());
@@ -2227,12 +2270,12 @@ public class Server {
                         }
 
                         // 若 R2 上傳未成功，改存成本機檔案，並回傳相對位址。
-                        if (finalAvatarUrl == null) {
+                        if (uploadedAvatarRaw == null) {
                             Files.createDirectories(AVATAR_UPLOADS_DIR);
                             Path target = AVATAR_UPLOADS_DIR.resolve(unique).normalize();
                             if (!target.startsWith(AVATAR_UPLOADS_DIR)) throw new IOException("Invalid upload path");
                             Files.write(target, bytes);
-                            finalAvatarUrl = localUrl;
+                            uploadedAvatarRaw = localUrl;
                         }
                     } catch (Exception e) {
                         System.err.println("Failed to save avatar: " + e.getMessage());
@@ -2240,78 +2283,27 @@ public class Server {
                     }
                 }
 
-                if (!isNullOrEmpty(finalAvatarUrl)) {
-                    String originalFinalAvatar = finalAvatarUrl;
-                    String canonicalAvatar = canonicalizeAvatarForStorage(originalFinalAvatar, exchange);
-                    if (!isNullOrEmpty(canonicalAvatar)) {
-                        existing.put("avatarUrl", canonicalAvatar);
-                        if (!canonicalAvatar.equals(originalFinalAvatar)) {
-                            existing.put("avatarUrlOriginal", originalFinalAvatar);
-                        } else {
-                            existing.remove("avatarUrlOriginal");
-                        }
-                        finalAvatarUrl = canonicalAvatar;
-                        avatarUploaded = true;
-                        System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: stored avatar for customer " + id + " -> " + canonicalAvatar + " (original=" + originalFinalAvatar + ")");
-                    } else {
-                        existing.remove("avatarUrl");
-                        existing.remove("avatarUrlOriginal");
-                        finalAvatarUrl = null;
-                    }
-                } else if (avatarRemoveRequested) {
-                    existing.remove("avatarUrl");
-                    existing.remove("avatarUrlOriginal");
-                    existing.remove("avatarMissing");
-                    finalAvatarUrl = null;
+                if (!isNullOrEmpty(uploadedAvatarRaw)) {
+                    requestedAvatarValue = uploadedAvatarRaw;
+                    avatarUploaded = true;
+                }
+
+                if (avatarRemoveRequested) {
+                    requestedAvatarValue = null;
                     avatarCleared = true;
                     System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: cleared avatar for customer " + id + " by request");
-                } else {
-                    String existingAvatarRaw = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
-                            ? existing.optString("avatarUrl", null)
-                            : null;
-                    if (!isNullOrEmpty(existingAvatarRaw)) {
-                        String canonicalExisting = canonicalizeAvatarForStorage(existingAvatarRaw, exchange);
-                        if (!isNullOrEmpty(canonicalExisting)) {
-                            existing.put("avatarUrl", canonicalExisting);
-                            if (!canonicalExisting.equals(existingAvatarRaw)) {
-                                existing.put("avatarUrlOriginal", existingAvatarRaw);
-                            } else {
-                                existing.remove("avatarUrlOriginal");
-                            }
-                            finalAvatarUrl = canonicalExisting;
-                            System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: normalized existing avatar for customer " + id + " -> " + canonicalExisting);
-                        } else {
-                            existing.remove("avatarUrl");
-                            existing.remove("avatarUrlOriginal");
-                            finalAvatarUrl = null;
-                        }
-                    } else {
-                        existing.remove("avatarUrl");
-                        existing.remove("avatarUrlOriginal");
-                        finalAvatarUrl = null;
-                    }
                 }
 
-                String storedAvatarReference = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
-                        ? existing.optString("avatarUrl", null)
-                        : null;
-                if (!isNullOrEmpty(storedAvatarReference)) {
-                    String resolvedAvatar = resolveAvatarReference(storedAvatarReference, exchange);
-                    if (!isNullOrEmpty(resolvedAvatar)) {
-                        existing.put("avatarUrlResolved", resolvedAvatar);
-                    } else {
-                        existing.remove("avatarUrlResolved");
-                    }
-                } else {
-                    existing.remove("avatarUrlResolved");
+                String canonicalAvatar = normalizeAvatarFields(existing, exchange, requestedAvatarValue);
+
+                if (avatarUploaded && !isNullOrEmpty(canonicalAvatar) && !isNullOrEmpty(requestedAvatarValue)) {
+                    System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: stored avatar for customer " + id + " -> " + canonicalAvatar + " (original=" + requestedAvatarValue + ")");
+                } else if (!avatarUploaded && !avatarCleared && !isNullOrEmpty(canonicalAvatar)
+                        && previousStoredAvatar != null && !previousStoredAvatar.equals(canonicalAvatar)) {
+                    System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: normalized existing avatar for customer " + id + " -> " + canonicalAvatar);
                 }
 
-                String currentStoredAvatar = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
-                        ? existing.optString("avatarUrl", null)
-                        : null;
-                if (isNullOrEmpty(currentStoredAvatar)) {
-                    currentStoredAvatar = null;
-                }
+                String currentStoredAvatar = optStringOrNull(existing, "avatarUrl");
 
                 if (previousStoredAvatar != null) {
                     boolean avatarPathChanged = currentStoredAvatar == null || !previousStoredAvatar.equals(currentStoredAvatar);
@@ -2339,10 +2331,10 @@ public class Server {
                         ps.setString(2, email);
                         ps.setString(3, phone);
                         ps.setString(4, address);
-                        if (isNullOrEmpty(finalAvatarUrl)) {
+                        if (isNullOrEmpty(canonicalAvatar)) {
                             ps.setNull(5, Types.VARCHAR);
                         } else {
-                            ps.setString(5, finalAvatarUrl);
+                            ps.setString(5, canonicalAvatar);
                         }
                         ps.setInt(6, id);
                         ps.executeUpdate();

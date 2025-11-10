@@ -7,21 +7,13 @@
     const { escapeAttr, deepClone } = Admin.utils;
     const carousel = Admin.carousel || {};
     const LEGACY_KEYS = Array.isArray(config.CAROUSEL_LEGACY_KEYS) ? config.CAROUSEL_LEGACY_KEYS : [];
+    const sanitizeUploadUrl = (window.SF_UTILS && typeof window.SF_UTILS.sanitizeUploadUrl === 'function')
+        ? window.SF_UTILS.sanitizeUploadUrl
+        : ((value) => (value == null ? '' : String(value).trim()));
 
     // 透過 deepClone 避免直接操作 state.carousel.slides。
     function cloneSlides(slides) {
         return deepClone(Array.isArray(slides) ? slides : [], []);
-    }
-
-    function sanitizeUploadUrl(value) {
-        if (value == null) return '';
-        const trimmed = String(value).trim();
-        if (!trimmed) return '';
-        let sanitized = trimmed.replace(/\/api(?=\/uploads\/)/gi, '');
-        sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
-        sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
-        sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
-        return sanitized;
     }
 
     // 將輪播資料正規化，必要時過濾沒有圖片的項目。

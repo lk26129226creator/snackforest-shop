@@ -94,8 +94,7 @@ import model.*;
         while (true) {
             System.out.println("\n====== 歡迎來到 SnackForest 商店 ======");
             System.out.println("輸入RG (註冊新帳號) | exit (離開系統)");
-            System.out.print("請輸入帳號：");
-            String account = scanner.nextLine().trim();
+            String account = promptInput("請輸入帳號：");
 
             if (account.equalsIgnoreCase("exit")) {
                 return "EXIT";
@@ -105,8 +104,7 @@ import model.*;
                 continue;
             }
 
-            System.out.print("請輸入密碼：");
-            String password = scanner.nextLine().trim();
+            String password = promptInput("請輸入密碼：");
 
             if (account.equalsIgnoreCase("admin") && password.equalsIgnoreCase("000000")) {
                 System.out.println("你好，管理員！");
@@ -130,21 +128,17 @@ import model.*;
      */
     private static void registerCustomer() throws SQLException, NoSuchAlgorithmException {
         System.out.println("\n--- 註冊新帳號 ---");
-        System.out.print("請輸入您的姓名 (或輸入 'B' 返回)：");
-        String newName = scanner.nextLine().trim();
+        String newName = promptInput("請輸入您的姓名 (或輸入 'B' 返回)：");
         if (newName.equalsIgnoreCase("B")) {
             return;
         }
 
-        System.out.print("請輸入您要設定的帳號：");
-        String newAccount = scanner.nextLine().trim();
+        String newAccount = promptInput("請輸入您要設定的帳號：");
 
         String newPassword;
         while (true) {
-            System.out.print("請輸入您要設定的密碼：");
-            newPassword = scanner.nextLine().trim();
-            System.out.print("請再次輸入密碼以確認：");
-            String confirmPassword = scanner.nextLine().trim();
+            newPassword = promptInput("請輸入您要設定的密碼：");
+            String confirmPassword = promptInput("請再次輸入密碼以確認：");
             if (newPassword.equals(confirmPassword)) {
                 break;
             } else {
@@ -210,12 +204,17 @@ import model.*;
     private static int getChoice() {
         while (true) {
             try { // `try` 區塊包住可能出錯的程式碼
-                return Integer.parseInt(scanner.nextLine());
+                return Integer.parseInt(scanner.nextLine().trim());
             } catch (NumberFormatException e) { // 如果使用者輸入的不是數字，`parseInt` 會拋出此例外
                 // 如果輸入的不是合法整數（如輸入文字），顯示錯誤訊息並要求重新輸入
                 System.out.print("輸入錯誤，請輸入數字：");
             }
         }
+    }
+
+    private static String promptInput(String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine().trim();
     }
 
     /**
@@ -278,8 +277,7 @@ import model.*;
             System.out.println("1. 查詢歷史訂單"); // 選項一：查看過去的購買紀錄
             System.out.println("2. 修改密碼"); // 選項二：變更登入密碼
             System.out.println("M. 返回主選單"); // 選項M：退出會員中心
-            System.out.print("請選擇功能：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("請選擇功能：");
             if (input.equalsIgnoreCase("M")) { // 優先處理返回指令
                 return; // 返回主選單
             }
@@ -323,8 +321,7 @@ import model.*;
      * 讓當前登入的顧客修改自己的密碼。
      */
     private static void changeMyPassword() throws SQLException, NoSuchAlgorithmException {
-        System.out.print("請輸入目前的密碼以進行驗證：");
-        String oldPassword = scanner.nextLine().trim();
+    String oldPassword = promptInput("請輸入目前的密碼以進行驗證：");
 
         // 驗證使用者輸入的舊密碼是否與記憶體中儲存的密碼相符
         Customer verifiedCustomer = customerDAO.findByAccountAndPassword(currentCustomer.getAccount(), oldPassword);
@@ -334,10 +331,8 @@ import model.*;
             return;
         }
 
-        System.out.print("請輸入新密碼：");
-        String newPassword = scanner.nextLine().trim();
-        System.out.print("請再次輸入新密碼以確認：");
-        String confirmPassword = scanner.nextLine().trim();
+    String newPassword = promptInput("請輸入新密碼：");
+    String confirmPassword = promptInput("請再次輸入新密碼以確認：");
 
         if (!newPassword.equals(confirmPassword)) {
             System.out.println("❌ 兩次輸入的新密碼不一致！");
@@ -421,8 +416,7 @@ import model.*;
             System.out.println("2. 新增客戶"); // 選項二
             System.out.println("3. 刪除客戶"); // 選項三
             System.out.println("B. 返回後台選單"); // 返回指令
-            System.out.print("請選擇功能：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("請選擇功能：");
 
             if (input.equalsIgnoreCase("B")) {
                 return; // 返回後台主選單
@@ -448,15 +442,12 @@ import model.*;
      */
     private static void addCustomer() throws SQLException, NoSuchAlgorithmException {
         System.out.println("\n--- 新增客戶 ---");
-        System.out.print("請輸入新客戶姓名 (或輸入 'B' 返回)：");
-        String newName = scanner.nextLine().trim();
+        String newName = promptInput("請輸入新客戶姓名 (或輸入 'B' 返回)：");
         if (newName.equalsIgnoreCase("B")) {
             return; // `return` 會直接結束當前方法的執行
         }
-        System.out.print("請輸入新客戶帳號：");
-        String newAccount = scanner.nextLine().trim();
-        System.out.print("請輸入新客戶密碼 (建議使用電話)：");
-        String newPassword = scanner.nextLine().trim();
+        String newAccount = promptInput("請輸入新客戶帳號：");
+        String newPassword = promptInput("請輸入新客戶密碼 (建議使用電話)：");
 
         // 找到下一個可用的 ID
         int newId = findNextAvailableId("customers", "idCustomers");
@@ -487,8 +478,7 @@ import model.*;
      */
     private static void deleteCustomer() throws SQLException {
         showAllCustomers(); // 先顯示所有客戶，方便管理員查看ID
-        System.out.print("\n請輸入要刪除的客戶 ID (或輸入 'B' 返回)：");
-        String input = scanner.nextLine().trim();
+    String input = promptInput("\n請輸入要刪除的客戶 ID (或輸入 'B' 返回)：");
         if (input.equalsIgnoreCase("B")) {
             return;
         }
@@ -501,8 +491,8 @@ import model.*;
             return;
         }
 
-        System.out.print("確定要刪除此客戶嗎？這將無法復原！ (y/n): ");
-        if (!scanner.nextLine().trim().equalsIgnoreCase("y")) { // 提供二次確認，增加操作安全性
+    String confirm = promptInput("確定要刪除此客戶嗎？這將無法復原！ (y/n): ");
+    if (!confirm.equalsIgnoreCase("y")) { // 提供二次確認，增加操作安全性
             System.out.println("操作已取消。");
             return;
         }
@@ -580,9 +570,8 @@ import model.*;
 
         System.out.println("\n你想要刪除購物車的商品嗎？"); // 提示是否要刪除商品
         System.out.println("輸入格式：商品編號 數量（數字需空格）"); // 提示輸入格式
-        System.out.println("輸入 ++ 立即結帳，或 M 返回主選單："); // 顯示其他操作選項
-        System.out.print("> "); // 顯示輸入提示符號
-        String input = scanner.nextLine().trim(); // 讀取使用者輸入並去除前後空白
+    System.out.println("輸入 ++ 立即結帳，或 M 返回主選單："); // 顯示其他操作選項
+    String input = promptInput("> "); // 讀取使用者輸入並去除前後空白
 
         if (input.equals("++"))
             return CartAction.PROCEED_TO_CHECKOUT; // 跳轉結帳
@@ -661,8 +650,7 @@ import model.*;
             System.out.println("3. 修改商品");
             System.out.println("4. 刪除商品");
             System.out.println("B. 返回後台選單");
-            System.out.print("請選擇功能：");
-            String input = scanner.nextLine().trim(); // 讀取使用者輸入的字串
+            String input = promptInput("請選擇功能："); // 讀取使用者輸入的字串
 
             if (input.equalsIgnoreCase("B")) {
                 return; // 離開這個功能並返回上一層選單
@@ -734,14 +722,12 @@ import model.*;
      */
     private static void addProduct() throws SQLException {
         System.out.println("\n--- 新增商品 ---");
-        System.out.print("請輸入商品名稱 (或輸入 'B' 返回)：");
-        String name = scanner.nextLine().trim(); // 讀取商品名稱
+        String name = promptInput("請輸入商品名稱 (或輸入 'B' 返回)："); // 讀取商品名稱
         if (name.equalsIgnoreCase("B")) {
             return; // 返回上一層
         }
 
-        System.out.print("請輸入商品價格 (或輸入 'B' 返回)：");
-        String priceInput = scanner.nextLine().trim();
+        String priceInput = promptInput("請輸入商品價格 (或輸入 'B' 返回)：");
         if (priceInput.equalsIgnoreCase("B")) {
             return; // 返回上一層
         }
@@ -759,8 +745,7 @@ import model.*;
         for (Map<String, String> category : categories) {
             System.out.println(category.get("id") + ". " + category.get("name")); // 輸出分類選單
         }
-        System.out.print("請輸入分類編號 (或輸入 'B' 返回)：");
-        String categoryInput = scanner.nextLine().trim();
+        String categoryInput = promptInput("請輸入分類編號 (或輸入 'B' 返回)：");
         if (categoryInput.equalsIgnoreCase("B")) {
             return; // 返回上一層
         }
@@ -802,8 +787,7 @@ import model.*;
      */
     private static void updateProduct() throws SQLException {
         adminShowProducts(); // 先顯示目前所有商品
-        System.out.print("\n請輸入要修改的商品 ID (或輸入 'B' 返回)：");
-        String input = scanner.nextLine().trim();
+        String input = promptInput("\n請輸入要修改的商品 ID (或輸入 'B' 返回)：");
         if (input.equalsIgnoreCase("B")) {
             return;
         }
@@ -817,18 +801,15 @@ import model.*;
         }
 
         // 讀取新的名稱與價格，允許略過不想修改的欄位
-        System.out.print("請輸入新的商品名稱（留空則不修改）：");
-        String newName = scanner.nextLine(); // 留空代表不修改
+        String newName = promptInput("請輸入新的商品名稱（留空則不修改）：");
 
         // 顯示分類清單讓使用者重新選擇
-        System.out.print("請輸入新的商品價格（留空則不修改）：");
-        String priceInput = scanner.nextLine().trim();
+        String priceInput = promptInput("請輸入新的商品價格（留空則不修改）：");
 
         List<Map<String, String>> categories = getCategories();
         System.out.println("請選擇新的商品分類（留空則不修改）：");
         categories.forEach(c -> System.out.println(c.get("id") + ". " + c.get("name")));
-        System.out.print("請輸入分類編號：");
-        String categoryInput = scanner.nextLine().trim();
+        String categoryInput = promptInput("請輸入分類編號：");
 
         try {
             Integer newPrice = priceInput.isEmpty() ? null : Integer.parseInt(priceInput);
@@ -863,8 +844,7 @@ import model.*;
      */
     private static void deleteProduct() throws SQLException {
         adminShowProducts(); // 顯示商品清單
-        System.out.print("\n請輸入要刪除的商品 ID (或輸入 'B' 返回)：");
-        String input = scanner.nextLine().trim();
+        String input = promptInput("\n請輸入要刪除的商品 ID (或輸入 'B' 返回)：");
         if (input.equalsIgnoreCase("B")) {
             return;
         }
@@ -877,8 +857,8 @@ import model.*;
             return;
         }
 
-        System.out.print("確定要刪除此商品嗎？ (y/n): ");
-        if (!scanner.nextLine().trim().equalsIgnoreCase("y")) {
+        String confirm = promptInput("確定要刪除此商品嗎？ (y/n): ");
+    if (!confirm.equalsIgnoreCase("y")) {
             System.out.println("操作已取消。");
             return; // 使用者取消操作
         }
@@ -914,8 +894,7 @@ import model.*;
             }
             System.out.println("C. 前往結帳");
             System.out.println("M. 返回主選單");
-            System.out.print("請選擇分類：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("請選擇分類：");
             if (input.equalsIgnoreCase("M")) {
                 return false;
             }
@@ -952,8 +931,7 @@ import model.*;
             }
             while (true) {
                 System.out.println("\n請輸入要購買的商品編號（B 返回分類選單，M 返回主選單）：");
-                System.out.print("> ");
-                String buyInput = scanner.nextLine().trim();
+                String buyInput = promptInput("> ");
                 if (buyInput.equalsIgnoreCase("B"))
                     break;
                 if (buyInput.equalsIgnoreCase("M"))
@@ -986,8 +964,7 @@ import model.*;
             System.out.println("1. 查詢所有訂單");
             System.out.println("2. 依客戶姓名查詢");
             System.out.println("B. 返回後台選單");
-            System.out.print("請選擇查詢方式：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("請選擇查詢方式：");
 
             if (input.equalsIgnoreCase("B")) {
                 return; // 返回後台主選單
@@ -1001,8 +978,7 @@ import model.*;
             try {
                 int choice = Integer.parseInt(input);
                 if (choice == 2) {
-                    System.out.print("請輸入客戶姓名：");
-                    String customerName = scanner.nextLine().trim();
+                    String customerName = promptInput("請輸入客戶姓名：");
                     sql += "WHERE c.CustomerName LIKE ? ORDER BY o.OrderDate DESC"; // `LIKE` 用於模糊查詢，`%` 是萬用字元。
                     try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                         stmt.setString(1, "%" + customerName + "%");
@@ -1044,8 +1020,7 @@ import model.*;
                 return;
             }
             System.out.println("--------------------------------------------------------------");
-            System.out.print("輸入訂單 ID 查看詳細內容，或輸入 'B' 返回上一頁：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("輸入訂單 ID 查看詳細內容，或輸入 'B' 返回上一頁：");
             if (input.equalsIgnoreCase("B")) {
                 return; // 返回上一頁
             }
@@ -1162,9 +1137,7 @@ import model.*;
                     System.out.printf("%d. %s\n", i + 1, shippingOptions.get(i));
                 }
                 System.out.println("M. 返回購物 (返回主選單)");
-                System.out.print("輸入選項：");
-
-                String input = scanner.nextLine().trim();
+                String input = promptInput("輸入選項：");
                 if (input.equalsIgnoreCase("M")) {
                     return; // 直接退出結帳流程，返回主選單
                 }
@@ -1198,8 +1171,7 @@ import model.*;
         while (true) {
             switch (step) {
                 case 0:
-                    System.out.print("\n請輸入收件人姓名 (按B返回選擇付款方式)：");
-                    String r = scanner.nextLine().trim();
+                    String r = promptInput("\n請輸入收件人姓名 (按B返回選擇付款方式)：");
                     if (r.equalsIgnoreCase("B")) {
                         // 回到付款方式
                         paymentMethod = null;
@@ -1220,8 +1192,7 @@ import model.*;
                     }
                     break;
                 case 1:
-                    System.out.print("請輸入收件地址（面交者可填面交地點）(按B返回輸入姓名)：");
-                    String a = scanner.nextLine().trim();
+                    String a = promptInput("請輸入收件地址（面交者可填面交地點）(按B返回輸入姓名)：");
                     if (a.equalsIgnoreCase("B")) {
                         step = 0;
                         continue;
@@ -1232,8 +1203,7 @@ import model.*;
                     }
                     break;
                 case 2:
-                    System.out.print("請輸入聯絡電話 (按B返回輸入地址)：");
-                    String p = scanner.nextLine().trim();
+                    String p = promptInput("請輸入聯絡電話 (按B返回輸入地址)：");
                     if (p.equalsIgnoreCase("B")) {
                         step = 1;
                         continue;
@@ -1252,8 +1222,7 @@ import model.*;
                     System.out.println("收件人：" + recipient);
                     System.out.println("收件地址：" + address);
                     System.out.println("聯絡電話：" + phone);
-                    System.out.print("\nY 送出訂單 / N 全部重填 / B 返回購物車：");
-                    String confirm = scanner.nextLine().trim();
+                    String confirm = promptInput("\nY 送出訂單 / N 全部重填 / B 返回購物車：");
                     if (confirm.equalsIgnoreCase("Y")) {
                         step = 4; // 進入訂單寫入
                         break;
@@ -1369,8 +1338,7 @@ import model.*;
                 System.out.printf("%d. %s\n", i + 1, names.get(i));
             }
             System.out.println("B. 返回上一層");
-            System.out.print("輸入選項：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("輸入選項：");
             if (input.equalsIgnoreCase("B"))
                 return null;
             int choice;
@@ -1440,8 +1408,7 @@ import model.*;
                 System.out.printf("%d. %s\n", i + 1, subOptions.get(i));
             }
             System.out.println("B. 返回上一層");
-            System.out.print("輸入選項：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("輸入選項：");
             if (input.equalsIgnoreCase("B"))
                 return null; // 使用者選擇返回
             try {
@@ -1484,8 +1451,7 @@ import model.*;
             System.out.println("2. 新增貨運方式");
             System.out.println("3. 刪除貨運方式");
             System.out.println("B. 返回後台選單");
-            System.out.print("請選擇功能：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("請選擇功能：");
 
             if (input.equalsIgnoreCase("B")) {
                 return;
@@ -1513,8 +1479,7 @@ import model.*;
             System.out.println("2. 新增付款方式");
             System.out.println("3. 刪除付款方式");
             System.out.println("B. 返回後台選單");
-            System.out.print("請選擇功能：");
-            String input = scanner.nextLine().trim();
+            String input = promptInput("請選擇功能：");
 
             if (input.equalsIgnoreCase("B")) {
                 return;
@@ -1550,8 +1515,7 @@ import model.*;
 
     // --- 新增 addShippingMethod 方法 ---
     private static void addShippingMethod() throws SQLException {
-        System.out.print("請輸入新的貨運方式名稱：");
-        String name = scanner.nextLine().trim();
+    String name = promptInput("請輸入新的貨運方式名稱：");
         if (name.isEmpty()) {
             System.out.println("名稱不可為空！");
             return;
@@ -1569,8 +1533,7 @@ import model.*;
     // --- 新增 deleteShippingMethod 方法 ---
     private static void deleteShippingMethod() throws SQLException {
         showAllShippingMethods();
-        System.out.print("請輸入要刪除的貨運方式 ID：");
-        int id = Integer.parseInt(scanner.nextLine().trim());
+    int id = Integer.parseInt(promptInput("請輸入要刪除的貨運方式 ID："));
         String sql = "DELETE FROM shipping_methods WHERE idshipping_methods = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
@@ -1593,8 +1556,7 @@ import model.*;
 
     // --- 新增 addPaymentMethod 方法 ---
     private static void addPaymentMethod() throws SQLException {
-        System.out.print("請輸入新的付款方式名稱：");
-        String name = scanner.nextLine().trim();
+    String name = promptInput("請輸入新的付款方式名稱：");
         if (name.isEmpty()) {
             System.out.println("名稱不可為空！");
             return;
@@ -1612,8 +1574,7 @@ import model.*;
     // --- 新增 deletePaymentMethod 方法 ---
     private static void deletePaymentMethod() throws SQLException {
         showAllPaymentMethods();
-        System.out.print("請輸入要刪除的付款方式 ID：");
-        int id = Integer.parseInt(scanner.nextLine().trim());
+    int id = Integer.parseInt(promptInput("請輸入要刪除的付款方式 ID："));
         String sql = "DELETE FROM payment_methods WHERE idPaymentMethod = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);

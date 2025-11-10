@@ -71,6 +71,21 @@
         return fallback;
     })();
 
+    const sanitizeUploadUrl = typeof utils.sanitizeUploadUrl === 'function'
+        ? utils.sanitizeUploadUrl
+        : (value) => (value == null ? '' : String(value).trim());
+
+    const appendCacheBuster = typeof utils.appendCacheBuster === 'function'
+        ? utils.appendCacheBuster
+        : (url, version) => {
+            if (!url) return '';
+            const token = (version && String(version).trim()) || String(Date.now());
+            const [base, hash] = String(url).split('#');
+            const separator = base.includes('?') ? '&' : '?';
+            const finalBase = `${base}${separator}v=${encodeURIComponent(token)}`;
+            return hash ? `${finalBase}#${hash}` : finalBase;
+        };
+
     /**
      * 將開發時硬編成 localhost 的網址調整為目前網站的來源，避免跨來源問題。
      * @param {string} url 需要修正的網址。
@@ -374,45 +389,6 @@
         return String(value).trim();
     }
 
-    function sanitizeUploadUrl(value) {
-        const trimmed = safeTrim(value);
-        if (!trimmed) return '';
-        let sanitized = trimmed.replace(/\/api(?=\/uploads\/)/gi, '');
-        sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
-        sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
-        sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
-        if (!/^https?:\/\//i.test(sanitized)) {
-            const cutQuery = sanitized.indexOf('?');
-            const cutHash = sanitized.indexOf('#');
-            let cutIndex = -1;
-            if (cutQuery >= 0 && cutHash >= 0) cutIndex = Math.min(cutQuery, cutHash);
-            else if (cutQuery >= 0) cutIndex = cutQuery;
-            else if (cutHash >= 0) cutIndex = cutHash;
-            if (cutIndex >= 0) {
-                sanitized = sanitized.slice(0, cutIndex);
-            }
-        }
-        return sanitized;
-    }
-
-    function appendCacheBuster(url, version) {
-        if (!url) return '';
-        const str = String(url);
-        const [base, hash] = str.split('#');
-        const queryIndex = base.indexOf('?');
-        let path = base;
-        let params = new URLSearchParams();
-        if (queryIndex >= 0) {
-            path = base.slice(0, queryIndex);
-            params = new URLSearchParams(base.slice(queryIndex + 1));
-        }
-        params.delete('v');
-        const token = safeTrim(version) || String(Date.now());
-        params.set('v', token);
-        const finalBase = `${path}?${params.toString()}`;
-        return hash ? `${finalBase}#${hash}` : finalBase;
-    }
-
     /**
      * 從 localStorage 蒐集目前登入會員的名稱、編號與頭像。
      * @returns {{name:string,id:string,avatar:string}}
@@ -571,11 +547,12 @@
         const displayName = safeTrim(profile.displayName || profile.name || stored.name);
         const avatarKeys = ['avatarUrlResolved', 'avatarUrl', 'avatarUrlOriginal', 'avatar', 'avatarPath'];
         const avatarKeyProvided = avatarKeys.some((key) => Object.prototype.hasOwnProperty.call(profile, key));
+        const avatarMissing = profile.avatarMissing === true;
         const avatarSources = avatarKeys.map((key) => profile[key]);
-        if (!avatarKeyProvided && stored.avatar) {
+        if (!avatarMissing && !avatarKeyProvided && stored.avatar) {
             avatarSources.push(stored.avatar);
         }
-        const avatarUrl = resolveProfileAvatarCandidate(avatarSources);
+        const avatarUrl = avatarMissing ? '' : resolveProfileAvatarCandidate(avatarSources);
         const customerId = safeTrim(profile.customerId || memberId);
         const updatedAt = safeTrim(profile.updatedAt || readStoredProfileVersion());
 

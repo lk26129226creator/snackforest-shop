@@ -89,6 +89,57 @@
     }
 
     /**
+     * 去除多餘前綴與查詢字串，將 uploads 相對路徑正規化為穩定格式。
+     * @param {*} value 原始輸入。
+     * @returns {string}
+     */
+    function sanitizeUploadUrl(value) {
+        if (value == null) return '';
+        let sanitized = String(value).trim();
+        if (!sanitized) return '';
+        sanitized = sanitized.replace(/\/api(?=\/uploads\/)/gi, '');
+        sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
+        sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
+        sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
+        if (!/^https?:\/\//i.test(sanitized)) {
+            const cutQuery = sanitized.indexOf('?');
+            const cutHash = sanitized.indexOf('#');
+            let cutIndex = -1;
+            if (cutQuery >= 0 && cutHash >= 0) cutIndex = Math.min(cutQuery, cutHash);
+            else if (cutQuery >= 0) cutIndex = cutQuery;
+            else if (cutHash >= 0) cutIndex = cutHash;
+            if (cutIndex >= 0) {
+                sanitized = sanitized.slice(0, cutIndex);
+            }
+        }
+        return sanitized;
+    }
+
+    /**
+     * 為圖片網址附加 cache-buster 參數，確保最新內容被載入。
+     * @param {string} url 來源網址。
+     * @param {string|number} version 與圖片綁定的版本資訊。
+     * @returns {string}
+     */
+    function appendCacheBuster(url, version) {
+        if (!url) return '';
+        const str = String(url);
+        const [base, hash] = str.split('#');
+        const queryIndex = base.indexOf('?');
+        let path = base;
+        let params = new URLSearchParams();
+        if (queryIndex >= 0) {
+            path = base.slice(0, queryIndex);
+            params = new URLSearchParams(base.slice(queryIndex + 1));
+        }
+        params.delete('v');
+        const token = safeStr(version).trim() || String(Date.now());
+        params.set('v', token);
+        const finalBase = `${path}?${params.toString()}`;
+        return hash ? `${finalBase}#${hash}` : finalBase;
+    }
+
+    /**
      * 將數值轉為「NT$」加千分位的字串，保留 fallback 行為避免例外。
      * @param {*} value 可被轉為數字的輸入。
      * @returns {string|*}
@@ -118,6 +169,8 @@
         normalizeImageUrl,
         formatPrice,
         safeStr,
+        sanitizeUploadUrl,
+        appendCacheBuster,
         fallbackProductImage: FALLBACK_IMAGE
     };
 
@@ -125,5 +178,7 @@
     if (typeof window.normalizeImageUrl !== 'function') window.normalizeImageUrl = normalizeImageUrl;
     if (typeof window.formatPrice !== 'function') window.formatPrice = formatPrice;
     if (typeof window.safeStr !== 'function') window.safeStr = safeStr;
+    if (typeof window.sanitizeUploadUrl !== 'function') window.sanitizeUploadUrl = sanitizeUploadUrl;
+    if (typeof window.appendCacheBuster !== 'function') window.appendCacheBuster = appendCacheBuster;
     if (typeof window.SF_FALLBACK_PRODUCT_IMAGE === 'undefined') window.SF_FALLBACK_PRODUCT_IMAGE = FALLBACK_IMAGE;
 })();
