@@ -6,64 +6,33 @@ import com.sun.net.httpserver.HttpContext;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.net.URL;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.io.ByteArrayOutputStream;
 import java.sql.*;
 import java.util.*;
-import java.nio.charset.StandardCharsets;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.security.MessageDigest;
+import java.util.UUID;
+import java.time.Instant;
+import java.net.URLDecoder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/**
- * SnackForest 後端 HTTP 伺服器入口點，負責啟動嵌入式 HttpServer、註冊 API 與靜態資源處理器，
- * 並在啟動前執行輕量資料庫遷移以確保必備欄位存在。
- */
 public class Server {
 
-    /**
-     * 應用程式進入點：建立 HttpServer、註冊所有 API 上下文並啟動常駐迴圈。
-     * @param args CLI 參數，目前未使用。
-     */
     public static void main(String[] args) {
         try {
             System.out.println("啟動 SnackForest 伺服器...");
+            
+            HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
 
-            int port = resolvePort();
-            HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-            // 啟動前執行資料庫欄位檢查：確保管理端客製功能需要的欄位都存在。
-            try (Connection conn = DBConnect.getConnection()) {
-                ensureCustomerColumns(conn);
-            } catch (Exception e) {
-                System.err.println("啟動前資料庫欄位檢查/建立失敗（可稍後再試）：" + e.getMessage());
-            }
-
-            // API: 商品列表，供前台 client/js/product-list.js 與 admin/js/products.js 讀取。
             HttpContext productsCtx = server.createContext("/api/products", new ProductsHandler());
-            // API: 資料庫除錯介面，僅管理端工具使用。
             HttpContext dbDebugCtx = server.createContext("/api/debug/db", new DbDebugHandler());
-            // 靜態資源：對應 /frontend 目錄，給管理端/前台 HTML、JS、CSS 使用。
-            HttpContext staticCtx = server.createContext("/frontend", new StaticHandler());
-            // 靜態資源：根路徑導到前端頁面（例如 /index.html、/cart.html）。
-            HttpContext rootCtx = server.createContext("/", new StaticHandler());
-            // 圖片資源：提供預設產品圖片，與 client/js/product-detail.js 連動。
+        HttpContext staticCtx = server.createContext("/frontend", new StaticHandler());
+        // serve root as static too so requests like /index.html or /cart.html work
+        HttpContext rootCtx = server.createContext("/", new StaticHandler());
             HttpContext imagesCtx = server.createContext("/frontend/images/products/", new ImageFileHandler());
-            // 圖片資源：提供管理端上傳的使用者自訂圖片。
-            HttpContext uploadsCtx = server.createContext("/uploads/images/", new UploadsImageFileHandler());
-            HttpContext avatarUploadsCtx = server.createContext("/uploads/avatar/", new AvatarUploadsFileHandler());
-            // 健康檢查：前端 env.js 或監控工具可呼叫 /ping 檢查伺服器是否存活。
             HttpContext pingCtx = server.createContext("/ping", exchange -> {
                 try {
                     JSONObject resp = new JSONObject();
@@ -75,37 +44,27 @@ public class Server {
                     e.printStackTrace();
                 }
             });
-            // API: 單一分類 CRUD，供 admin/js/categories.js 操作表單使用。
             HttpContext categoryCtx = server.createContext("/api/category", new CategoryHandler());
-            // API: 分類清單列表，供前台與管理端載入下拉與側邊導航。
             HttpContext categoriesCtx = server.createContext("/api/categories", new CategoryHandler());
-            // API: 訂單管理，對應 admin/js/orders.js 與 client/js/cart.js 結帳流程。
             HttpContext orderCtx = server.createContext("/api/order", new OrderHandler());
-            // API: 配送方式清單，供 admin/js/orders.js 與 client/js/cart-page.js 使用。
             HttpContext shipCtx = server.createContext("/api/shippingmethod", new ShippingMethodHandler());
-            // API: 付款方式清單，供 admin/js/orders.js 與 client/js/cart-page.js 使用。
             HttpContext payCtx = server.createContext("/api/paymentmethod", new PaymentMethodHandler());
-            // API: 登入驗證，對應 client/js/auth-guard.js 與 admin/js/auth 模組。
             HttpContext loginCtx = server.createContext("/api/login", new LoginHandler());
-            // API: 圖片上傳，同步管理端商品與輪播管理上傳需求。
             HttpContext uploadCtx = server.createContext("/api/upload/image", new ImageUploadHandler());
-            // API: 圖片刪除，與 admin/js/images.js 清理功能對應。
             HttpContext deleteCtx = server.createContext("/api/upload/image/delete", new ImageDeleteHandler());
-            // API: 首頁輪播設定，供 admin/js/carousel.js 管理輪播資料。
             HttpContext carouselCtx = server.createContext("/api/carousel", new CarouselHandler());
-            // API: 網站設定，對應 admin/js/site-config.js 控制基本資訊。
             HttpContext siteConfigCtx = server.createContext("/api/site-config", new SiteConfigHandler());
-            // API: 客戶輪廓資料，提供 admin/js/customer-profiles.js 與前台會員頁面。
-            HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
+            CustomerProfileHandler profileHandler = new CustomerProfileHandler();
+            HttpContext customerProfileCtx = server.createContext("/api/customer-profile", profileHandler);
+            HttpContext customerProfileIdCtx = server.createContext("/api/customer-profile/", profileHandler);
 
-            // 彙總所有 Context，統一加入 CORS Filter 以支援跨來源的前端 fetch。
-            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, customerProfileCtx};
+        HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, customerProfileCtx, customerProfileIdCtx};
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
-            System.out.println("✅ Server started at http://localhost:" + port);
+            System.out.println("✅ Server started at http://localhost:8000");
             
-            // 保持主執行緒存活，避免 HttpServer 因 main 結束而停止服務。
+            // Prevent main thread from exiting so HttpServer keeps running
             while (true) {
                 Thread.sleep(30_000);
                 System.out.println("伺服器運行中... " + new java.util.Date());
@@ -117,27 +76,7 @@ public class Server {
         }
     }
 
-    private static int resolvePort() {
-        String envPort = System.getenv("PORT");
-        if (envPort != null) {
-            try {
-                int parsed = Integer.parseInt(envPort.trim());
-                if (parsed > 0 && parsed <= 65535) return parsed;
-            } catch (NumberFormatException ignored) {
-                System.err.println("無法解析 PORT 環境變數，改用預設 8000：" + envPort);
-            }
-        }
-        return 8000;
-    }
-
-    // --- 內建 Http 工具函式（取代額外依賴） ---
-    /**
-     * 送出 JSON 回應，統一設定 Content-Type 與 UTF-8 編碼。
-     * @param exchange 當前請求的交換物件。
-     * @param body 要回傳的 JSON 字串內容，允許為 null。
-     * @param status HTTP 狀態碼。
-     * @throws IOException 回應寫入失敗時拋出。
-     */
+    // --- Local minimal HttpUtils replacement ---
     private static void sendJsonResponse(HttpExchange exchange, String body, int status) throws IOException {
         byte[] bytes = body == null ? new byte[0] : body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
@@ -145,25 +84,11 @@ public class Server {
         try (OutputStream os = exchange.getResponseBody()) { os.write(bytes); }
     }
 
-    /**
-     * 傳送無內容回應（例如 OPTIONS 預檢），維持 JSON Content-Type 與 -1 內容長度。
-     * @param exchange 當前請求。
-     * @param status HTTP 狀態碼。
-     * @throws IOException 回應寫入失敗時拋出。
-     */
     private static void sendNoContent(HttpExchange exchange, int status) throws IOException {
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
         exchange.sendResponseHeaders(status, -1);
     }
 
-    /**
-     * 以統一格式回傳錯誤 JSON，並視需要附上 detail 訊息與堆疊輸出。
-     * @param exchange 當前請求。
-     * @param status HTTP 狀態碼。
-     * @param message 對客戶端顯示的錯誤訊息，可為 null。
-     * @param e 例外物件，若提供則會在 detail 中附上 message。
-     * @throws IOException 回應寫入失敗時拋出。
-     */
     private static void sendErrorResponse(HttpExchange exchange, int status, String message, Exception e) throws IOException {
         JSONObject obj = new JSONObject();
         obj.put("error", message == null ? JSONObject.NULL : message);
@@ -180,54 +105,13 @@ public class Server {
         if (e != null) e.printStackTrace();
     }
 
-    // --- 啟動時的資料庫欄位補強 ---
-    /**
-     * 檢查 customers 資料表是否具備新欄位，缺少時動態補上，允許在啟動時重複執行。
-     * @param conn SQL 連線。
-     * @throws SQLException 取得資料庫資訊或 ALTER TABLE 失敗時拋出。
-     */
-    static void ensureCustomerColumns(Connection conn) throws SQLException {
-        String dbName = null;
-        try (PreparedStatement ps = conn.prepareStatement("SELECT DATABASE()")) {
-            try (ResultSet rs = ps.executeQuery()) { if (rs.next()) dbName = rs.getString(1); }
-        }
-        if (dbName == null || dbName.isEmpty()) return;
-
-        String[][] columns = new String[][]{
-            {"Email", "VARCHAR(255) NULL"},
-            {"Address", "TEXT NULL"},
-            {"AvatarUrl", "VARCHAR(512) NULL"},
-            {"UpdatedAt", "DATETIME NULL"}
-        };
-
-    for (String[] col : columns) {
-            String name = col[0];
-            String ddl = col[1];
-            boolean exists = false;
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='customers' AND COLUMN_NAME=?")) {
-                ps.setString(1, dbName);
-                ps.setString(2, name);
-                try (ResultSet rs = ps.executeQuery()) { if (rs.next()) exists = rs.getInt(1) > 0; }
-            }
-            if (!exists) {
-                // 管理端客戶資料維護需要這些欄位，缺少就即時補上避免前端欄位錯誤。
-                String sql = "ALTER TABLE customers ADD COLUMN " + name + " " + ddl;
-                try (PreparedStatement alter = conn.prepareStatement(sql)) { alter.executeUpdate(); }
-            }
-        }
-    }
-
-    // --- 簡易 CORS 過濾器 ---
-    /**
-     * 最小化的 CORS Filter，允許所有來源並處理預檢請求。
-     */
+    // --- Simple CORS filter ---
     static class CorsFilter extends com.sun.net.httpserver.Filter {
         @Override
         public void doFilter(HttpExchange exchange, Chain chain) throws IOException {
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
             exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-                exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization, Slug, slug");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization, Slug, X-Image-Scope");
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
@@ -239,386 +123,48 @@ public class Server {
         public String description() { return "Adds CORS headers"; }
     }
 
-    // --- 共用工具函式與路徑常數 ---
-    // 前端根目錄支援在本機（專案根目錄）與容器內（/app/frontend）執行。
-    private static final Path FRONTEND_DIR = resolveExistingDirectory(
-            Paths.get("frontend"),
-            Paths.get("..", "frontend")
-    );
-    // 前端預設產品圖目錄，供 normalizeImageUrl 對應 /frontend/images/products/ 靜態資源。
-    private static final Path IMAGES_DIR = resolveExistingDirectory(
-            FRONTEND_DIR.resolve("images").resolve("products"),
-            Paths.get("frontend", "images", "products"),
-            Paths.get("..", "frontend", "images", "products")
-    );
-    // 使用者上傳檔案儲存位置，管理端商品/輪播上傳皆寫入此處。
-    private static final Path UPLOADS_DIR = resolveExistingDirectory(
-        Paths.get("data", "uploads", "images"),
-        Paths.get("..", "data", "uploads", "images")
-    );
-    private static final Path AVATAR_UPLOADS_DIR = resolveExistingDirectory(
-        Paths.get("data", "uploads", "avatar"),
-        Paths.get("..", "data", "uploads", "avatar")
-    );
-    // data 目錄根路徑，供其他 handler 讀寫 JSON seed 資料。
-    private static final Path DATA_DIR = resolveExistingDirectory(
-            Paths.get("data"),
-            Paths.get("..", "data")
-    );
-    private static final CloudflareR2Client R2_CLIENT = CloudflareR2Client.fromEnvironment();
-    private static final String DEFAULT_PLACEHOLDER_IMAGE = "/frontend/images/products/no-image.svg";
+    // --- Utility Methods ---
+    // First, determine the project root directory.
+    private static final Path baseDir = findBaseDir();
 
-    private static Path resolveExistingDirectory(Path... candidates) {
-        IOException lastIOException = null;
-        for (Path candidate : candidates) {
-            if (candidate == null) continue;
-            Path normalized = candidate.toAbsolutePath().normalize();
-            try {
-                if (!Files.exists(normalized)) {
-                    Files.createDirectories(normalized);
-                }
-                if (Files.isDirectory(normalized) && Files.isWritable(normalized)) {
-                    return normalized;
-                }
-            } catch (IOException ioe) {
-                lastIOException = ioe;
-            }
+    private static Path findBaseDir() {
+        Path candidate1 = Paths.get(".").toAbsolutePath().normalize();
+        Path candidate2 = Paths.get("..").toAbsolutePath().normalize();
+        
+        // We assume the project root is the directory that contains the "frontend" folder.
+        if (Files.exists(candidate1.resolve("frontend")) && Files.isDirectory(candidate1.resolve("frontend"))) {
+            System.err.println("[PATH_INIT] Project root detected at: " + candidate1);
+            return candidate1;
         }
-        Path fallback = candidates.length > 0 ? candidates[0] : Paths.get(".");
-        Path normalizedFallback = fallback.toAbsolutePath().normalize();
-        if (lastIOException != null) {
-            System.err.println(java.time.LocalDateTime.now() + " - Failed to resolve writable directory: " + lastIOException.getMessage());
+        if (Files.exists(candidate2.resolve("frontend")) && Files.isDirectory(candidate2.resolve("frontend"))) {
+            System.err.println("[PATH_INIT] Project root detected at: " + candidate2);
+            return candidate2;
         }
-        return normalizedFallback;
+        // Fallback to current directory, though it might be wrong.
+        System.err.println("[PATH_INIT] Warning: Could not reliably detect project root. Falling back to CWD.");
+        return candidate1;
     }
 
-    /**
-     * 與 Cloudflare R2 整合的最小客製簽名客戶端，使用 SigV4 直接對 R2 API 上傳/刪除物件。
-     */
-    static class CloudflareR2Client {
-        private static final DateTimeFormatter AMZ_DATE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
-        private static final String REGION = "auto";
-        private static final String SERVICE = "s3";
-
-        private final String accountId;
-        private final String accessKeyId;
-        private final String secretAccessKey;
-        private final String bucket;
-        private final String publicBaseUrl;
-        private final String pathPrefix;
-        private final String host;
-
-        private CloudflareR2Client(String accountId, String accessKeyId, String secretAccessKey, String bucket, String publicBaseUrl, String pathPrefix) {
-            this.accountId = accountId;
-            this.accessKeyId = accessKeyId;
-            this.secretAccessKey = secretAccessKey;
-            this.bucket = bucket;
-            this.publicBaseUrl = normalizeBaseUrl(publicBaseUrl);
-            this.pathPrefix = normalizePathPrefix(pathPrefix);
-            this.host = accountId + ".r2.cloudflarestorage.com";
-        }
-
-        static CloudflareR2Client fromEnvironment() {
-            String accountId = trimToNull(System.getenv("R2_ACCOUNT_ID"));
-            String accessKeyId = trimToNull(System.getenv("R2_ACCESS_KEY_ID"));
-            String secretAccessKey = trimToNull(System.getenv("R2_SECRET_ACCESS_KEY"));
-            String bucket = trimToNull(System.getenv("R2_BUCKET_NAME"));
-            if (accountId == null || accessKeyId == null || secretAccessKey == null || bucket == null) {
-                return null;
-            }
-            String publicBaseUrl = trimToNull(System.getenv("R2_PUBLIC_BASE_URL"));
-            String pathPrefix = trimToNull(System.getenv("R2_PATH_PREFIX"));
-            if (pathPrefix == null || pathPrefix.isEmpty()) {
-                pathPrefix = "uploads/images";
-            }
-            CloudflareR2Client client = new CloudflareR2Client(accountId, accessKeyId, secretAccessKey, bucket, publicBaseUrl, pathPrefix);
-            System.err.println(java.time.LocalDateTime.now() + " - Cloudflare R2 configured with bucket=" + bucket + " prefix=" + client.pathPrefix + " publicBase=" + client.publicBaseUrl);
-            return client;
-        }
-
-        boolean isConfigured() {
-            return accountId != null && accessKeyId != null && secretAccessKey != null && bucket != null;
-        }
-
-        String buildObjectKey(String filename) {
-            return buildObjectKey(filename, null);
-        }
-
-        String buildObjectKey(String filename, String overridePrefix) {
-            String safeName = sanitizeFilename(filename);
-            String prefix = overridePrefix != null ? normalizePathPrefix(overridePrefix) : pathPrefix;
-            if (prefix == null || prefix.isEmpty()) return safeName;
-            return prefix + "/" + safeName;
-        }
-
-        UploadResult uploadObject(String objectKey, byte[] data, String contentType) throws Exception {
-            if (!isConfigured()) throw new IllegalStateException("Cloudflare R2 client is not configured");
-            if (objectKey == null || objectKey.isEmpty()) {
-                objectKey = buildObjectKey(UUID.randomUUID().toString());
-            }
-            String normalizedKey = objectKey.replace('\\', '/');
-            String finalContentType = (contentType == null || contentType.isEmpty()) ? "application/octet-stream" : contentType;
-            String payloadHash = sha256Hex(data);
-            ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
-            String amzDate = AMZ_DATE_TIME.format(now);
-            String dateStamp = amzDate.substring(0, 8);
-
-            String canonicalUri = "/" + bucket + "/" + normalizedKey;
-            String canonicalHeaders =
-                    "content-type:" + finalContentType + "\n" +
-                    "host:" + host + "\n" +
-                    "x-amz-content-sha256:" + payloadHash + "\n" +
-                    "x-amz-date:" + amzDate + "\n";
-            String signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
-            String canonicalRequest = "PUT\n" + canonicalUri + "\n\n" + canonicalHeaders + "\n" + signedHeaders + "\n" + payloadHash;
-
-            String credentialScope = dateStamp + "/" + REGION + "/" + SERVICE + "/aws4_request";
-            String stringToSign = "AWS4-HMAC-SHA256\n" + amzDate + "\n" + credentialScope + "\n" + sha256Hex(canonicalRequest.getBytes(StandardCharsets.UTF_8));
-            byte[] signingKey = signingKey(secretAccessKey, dateStamp, REGION, SERVICE);
-            String signature = bytesToHex(hmacSha256(signingKey, stringToSign));
-
-            String authorization = "AWS4-HMAC-SHA256 Credential=" + accessKeyId + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
-
-            URL url = new URL("https://" + host + canonicalUri);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("PUT");
-            conn.setDoOutput(true);
-            conn.setConnectTimeout(15_000);
-            conn.setReadTimeout(30_000);
-            conn.setFixedLengthStreamingMode(data.length);
-            conn.setRequestProperty("Content-Type", finalContentType);
-            conn.setRequestProperty("x-amz-date", amzDate);
-            conn.setRequestProperty("x-amz-content-sha256", payloadHash);
-            conn.setRequestProperty("Authorization", authorization);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(data);
-            }
-
-            int status = conn.getResponseCode();
-            if (status < 200 || status >= 300) {
-                String errorBody = readStream(conn.getErrorStream());
-                throw new IOException("R2 upload failed with status " + status + ": " + errorBody);
-            }
-
-            String publicUrl = toPublicUrl(normalizedKey);
-            if (publicUrl == null) {
-                publicUrl = "https://" + host + canonicalUri;
-            }
-            return new UploadResult(normalizedKey, publicUrl);
-        }
-
-        boolean deleteByReference(String reference) throws Exception {
-            if (reference == null || reference.isEmpty()) return false;
-            String key = extractObjectKey(reference);
-            if (key == null || key.isEmpty()) return false;
-            return deleteObject(key);
-        }
-
-        String toPublicUrl(String pathOrUrl) {
-            if (pathOrUrl == null || pathOrUrl.trim().isEmpty()) return null;
-            String trimmed = pathOrUrl.trim();
-            if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-                return trimmed;
-            }
-            String key = extractObjectKey(trimmed);
-            if (key == null) return null;
-            return buildPublicBaseUrl() + "/" + key;
-        }
-
-        String toRelativePath(String pathOrUrl) {
-            if (pathOrUrl == null || pathOrUrl.trim().isEmpty()) return null;
-            String key = extractObjectKey(pathOrUrl);
-            if (key == null || key.isEmpty()) return null;
-            String normalized = key.replace('\\', '/');
-            if (normalized.startsWith("/")) normalized = normalized.substring(1);
-            if (normalized.isEmpty()) return null;
-            return "/" + normalized;
-        }
-
-        private boolean deleteObject(String objectKey) throws Exception {
-            String normalizedKey = objectKey.replace('\\', '/');
-            ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
-            String amzDate = AMZ_DATE_TIME.format(now);
-            String dateStamp = amzDate.substring(0, 8);
-
-            String canonicalUri = "/" + bucket + "/" + normalizedKey;
-            String payloadHash = sha256Hex(new byte[0]);
-            String canonicalHeaders =
-                    "host:" + host + "\n" +
-                    "x-amz-content-sha256:" + payloadHash + "\n" +
-                    "x-amz-date:" + amzDate + "\n";
-            String signedHeaders = "host;x-amz-content-sha256;x-amz-date";
-            String canonicalRequest = "DELETE\n" + canonicalUri + "\n\n" + canonicalHeaders + "\n" + signedHeaders + "\n" + payloadHash;
-
-            String credentialScope = dateStamp + "/" + REGION + "/" + SERVICE + "/aws4_request";
-            String stringToSign = "AWS4-HMAC-SHA256\n" + amzDate + "\n" + credentialScope + "\n" + sha256Hex(canonicalRequest.getBytes(StandardCharsets.UTF_8));
-            byte[] signingKey = signingKey(secretAccessKey, dateStamp, REGION, SERVICE);
-            String signature = bytesToHex(hmacSha256(signingKey, stringToSign));
-
-            String authorization = "AWS4-HMAC-SHA256 Credential=" + accessKeyId + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
-
-            URL url = new URL("https://" + host + canonicalUri);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("DELETE");
-            conn.setConnectTimeout(10_000);
-            conn.setReadTimeout(20_000);
-            conn.setRequestProperty("x-amz-date", amzDate);
-            conn.setRequestProperty("x-amz-content-sha256", payloadHash);
-            conn.setRequestProperty("Authorization", authorization);
-
-            int status = conn.getResponseCode();
-            if (status == 404) return false;
-            if (status < 200 || status >= 300) {
-                String errorBody = readStream(conn.getErrorStream());
-                throw new IOException("R2 delete failed with status " + status + ": " + errorBody);
-            }
-            return true;
-        }
-
-        private String extractObjectKey(String reference) {
-            if (reference == null || reference.trim().isEmpty()) return null;
-            String trimmed = reference.trim();
-            if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-                if (publicBaseUrl != null && trimmed.startsWith(publicBaseUrl)) {
-                    return trimmed.substring(publicBaseUrl.length()).replaceFirst("^/+", "");
-                }
-                String apiBase = "https://" + host + "/" + bucket + "/";
-                if (trimmed.startsWith(apiBase)) {
-                    return trimmed.substring(apiBase.length());
-                }
-                int idx = trimmed.indexOf("/" + bucket + "/");
-                if (idx >= 0) {
-                    return trimmed.substring(idx + bucket.length() + 2);
-                }
-                return null;
-            }
-            String normalized = trimmed.replace('\\', '/');
-            if (normalized.startsWith("/")) normalized = normalized.substring(1);
-            if (normalized.isEmpty()) return null;
-            if (normalized.startsWith(pathPrefix)) return normalized;
-            if (normalized.contains("/")) return normalized;
-            if (pathPrefix.isEmpty()) return normalized;
-            return pathPrefix + "/" + normalized;
-        }
-
-        private String buildPublicBaseUrl() {
-            if (publicBaseUrl != null && !publicBaseUrl.isEmpty()) {
-                String base = publicBaseUrl;
-                if (base.contains("{bucket}")) {
-                    base = base.replace("{bucket}", bucket);
-                }
-                return base;
-            }
-            return "https://" + host + "/" + bucket;
-        }
-
-        private static String normalizeBaseUrl(String value) {
-            if (value == null) return null;
-            String trimmed = value.trim();
-            if (trimmed.isEmpty()) return null;
-            while (trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
-            return trimmed;
-        }
-
-        private static String normalizePathPrefix(String prefix) {
-            if (prefix == null) return "";
-            String normalized = prefix.replace('\\', '/');
-            while (normalized.startsWith("/")) normalized = normalized.substring(1);
-            while (normalized.endsWith("/")) normalized = normalized.substring(0, normalized.length() - 1);
-            return normalized;
-        }
-
-        private static String trimToNull(String value) {
-            if (value == null) return null;
-            String trimmed = value.trim();
-            return trimmed.isEmpty() ? null : trimmed;
-        }
-
-        private static String sanitizeFilename(String filename) {
-            if (filename == null || filename.isEmpty()) {
-                return UUID.randomUUID().toString();
-            }
-            String cleaned = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
-            if (cleaned.isEmpty()) cleaned = UUID.randomUUID().toString();
-            return cleaned;
-        }
-
-        private static String sha256Hex(byte[] data) throws Exception {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] digest = md.digest(data);
-            return bytesToHex(digest);
-        }
-
-        private static byte[] hmacSha256(byte[] key, String data) throws Exception {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(key, "HmacSHA256"));
-            return mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-        }
-
-        private static byte[] signingKey(String secretKey, String dateStamp, String regionName, String serviceName) throws Exception {
-            byte[] kSecret = ("AWS4" + secretKey).getBytes(StandardCharsets.UTF_8);
-            byte[] kDate = hmacSha256(kSecret, dateStamp);
-            byte[] kRegion = hmacSha256(kDate, regionName);
-            byte[] kService = hmacSha256(kRegion, serviceName);
-            return hmacSha256(kService, "aws4_request");
-        }
-
-        private static String bytesToHex(byte[] bytes) {
-            StringBuilder sb = new StringBuilder(bytes.length * 2);
-            for (byte b : bytes) {
-                sb.append(String.format(java.util.Locale.ROOT, "%02x", b));
-            }
-            return sb.toString();
-        }
-
-        private static String readStream(InputStream is) {
-            if (is == null) return "";
-            try (java.util.Scanner s = new java.util.Scanner(is, StandardCharsets.UTF_8).useDelimiter("\\A")) {
-                return s.hasNext() ? s.next() : "";
-            }
-        }
-
-        static boolean headExists(String url) {
-            if (url == null || url.trim().isEmpty()) return false;
-            try {
-                URL target = new URL(url);
-                HttpURLConnection conn = (HttpURLConnection) target.openConnection();
-                conn.setRequestMethod("HEAD");
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
-                int code = conn.getResponseCode();
-                return code >= 200 && code < 300;
-            } catch (Exception e) {
-                System.err.println(java.time.LocalDateTime.now() + " - CloudflareR2Client.headExists failed: " + e.getMessage());
-                return false;
-            }
-        }
-
-        static final class UploadResult {
-            private final String objectKey;
-            private final String publicUrl;
-
-            UploadResult(String objectKey, String publicUrl) {
-                this.objectKey = objectKey;
-                this.publicUrl = publicUrl;
-            }
-
-            String objectKey() { return objectKey; }
-
-            String publicUrl() { return publicUrl; }
-        }
+    private static final Path IMAGES_DIR = baseDir.resolve(Paths.get("frontend", "images", "products")).normalize();
+    private static final String DEFAULT_PRODUCT_IMAGE = "/frontend/images/products/no-image.svg";
+    private static final Path DEFAULT_PRODUCT_IMAGE_PATH = IMAGES_DIR.resolve("no-image.svg").normalize();
+    private static final Path AVATAR_DIR = baseDir.resolve(Paths.get("frontend", "images", "avatars")).normalize();
+    private static final Path DATA_DIR = baseDir.resolve(Paths.get("data")).normalize();
+    private static boolean isDefaultProductImage(String value) {
+        if (value == null) return false;
+        String normalized = value.trim();
+        if (normalized.isEmpty()) return true;
+        normalized = normalized.replace('\\', '/').toLowerCase(Locale.ROOT);
+        String defaultLower = DEFAULT_PRODUCT_IMAGE.toLowerCase(Locale.ROOT);
+        if (normalized.equals(defaultLower)) return true;
+        if (normalized.endsWith("/no-image.svg")) return true;
+        if (normalized.equals("no-image.svg")) return true;
+        return false;
     }
 
-    /**
-     * 清理影像網址清單，移除 null 與多餘的引號，保持路徑格式一致。
-     * @param raw 從資料庫或外部輸入取得的原始列表。
-     * @return 處理後的新陣列，永不為 null。
-     */
     private static List<String> cleanImageUrlList(List<String> raw) {
         List<String> out = new ArrayList<>();
         if (raw == null) return out;
-        // 逐一處理 DAO 回傳的路徑字串，去除外圍引號與空白，確保回傳 JSON 整潔。
         for (String s : raw) {
             if (s == null) continue;
             String t = s.trim();
@@ -630,119 +176,63 @@ public class Server {
         return out;
     }
 
-    /**
-     * 將傳入的圖片路徑正規化為前端可存取的 URL，優先對應 uploads，再回落至預設產品圖目錄。
-     * @param rawUrl 來源字串，可為絕對或相對路徑。
-     * @return 正規化後的路徑，若無法對應有效檔案則回傳 null。
-     */
     private static String normalizeImageUrl(String rawUrl) {
-        if (rawUrl == null) return null;
+        if (rawUrl == null) return DEFAULT_PRODUCT_IMAGE;
+        System.err.println("normalizeImageUrl - rawUrl: " + rawUrl);
         String trimmed = rawUrl.trim().replace('\\', '/');
-        String lowered = trimmed.toLowerCase(java.util.Locale.ROOT);
-        if (!trimmed.startsWith("/") && (lowered.startsWith("uploads/") || lowered.startsWith("frontend/"))) {
-            trimmed = "/" + trimmed;
+        if (trimmed.isEmpty()) return DEFAULT_PRODUCT_IMAGE;
+        String lowered = trimmed.toLowerCase(Locale.ROOT);
+        if (lowered.contains("placeholder.com") || lowered.contains("dummyimage.com")) return DEFAULT_PRODUCT_IMAGE;
+        System.err.println("normalizeImageUrl - trimmed: " + trimmed);
+        String prefix = "/frontend/images/products/";
+        if (trimmed.startsWith(prefix)) {
+            String filename = trimmed.substring(prefix.length());
+            Path candidate = IMAGES_DIR.resolve(filename);
+            if (Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
         }
-        if (trimmed.isEmpty()) return null;
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-        final String productsPrefix = "/frontend/images/products/";
-    final String uploadsPrefix = "/uploads/images/";
-    final String avatarPrefix = "/uploads/avatar/";
-        // 若已是帶有既有前綴的絕對路徑且檔案存在，直接回傳原始值。
-        if (trimmed.startsWith(productsPrefix)) {
-            String filename = trimmed.substring(productsPrefix.length());
-            Path candidate = IMAGES_DIR.resolve(filename).normalize();
-            if (candidate.startsWith(IMAGES_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
-        }
-        if (trimmed.startsWith(uploadsPrefix)) {
-            String filename = trimmed.substring(uploadsPrefix.length());
-            Path candidate = UPLOADS_DIR.resolve(filename).normalize();
-            if (candidate.startsWith(UPLOADS_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
-            Path avatarCandidate = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
-            if (avatarCandidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarCandidate) && Files.isRegularFile(avatarCandidate)) {
-                return avatarPrefix + filename;
-            }
-            if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                String avatarRemote = R2_CLIENT.toPublicUrl(avatarPrefix + filename);
-                if (avatarRemote != null && CloudflareR2Client.headExists(avatarRemote)) return avatarRemote;
-                String remote = R2_CLIENT.toPublicUrl(trimmed);
-                if (remote != null && CloudflareR2Client.headExists(remote)) return remote;
-            }
-        }
-        if (trimmed.startsWith(avatarPrefix)) {
-            String filename = trimmed.substring(avatarPrefix.length());
-            Path candidate = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
-            if (candidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
-            if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                String remote = R2_CLIENT.toPublicUrl(trimmed);
-                if (remote != null) return remote;
-            }
-        }
-        // 若為其他絕對路徑，嘗試將檔名映射到 uploads 或預設產品圖目錄。
         if (trimmed.startsWith("/")) {
-            String base = trimmed.substring(trimmed.lastIndexOf('/') + 1);
-            if (!base.isEmpty()) {
-                Path u = UPLOADS_DIR.resolve(base).normalize();
-                if (u.startsWith(UPLOADS_DIR) && Files.exists(u) && Files.isRegularFile(u)) return uploadsPrefix + base;
-                Path a = AVATAR_UPLOADS_DIR.resolve(base).normalize();
-                if (a.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(a) && Files.isRegularFile(a)) return avatarPrefix + base;
-                Path p = IMAGES_DIR.resolve(base).normalize();
-                if (p.startsWith(IMAGES_DIR) && Files.exists(p) && Files.isRegularFile(p)) return productsPrefix + base;
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    String avatarRemote = R2_CLIENT.toPublicUrl(avatarPrefix + base);
-                    if (avatarRemote != null && CloudflareR2Client.headExists(avatarRemote)) return avatarRemote;
-                    String imageRemote = R2_CLIENT.toPublicUrl(uploadsPrefix + base);
-                    if (imageRemote != null && CloudflareR2Client.headExists(imageRemote)) return imageRemote;
-                }
-            }
+            Path candidate = IMAGES_DIR.resolve(trimmed.substring(trimmed.lastIndexOf('/') + 1));
+            if (Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
         }
-            // 最後備援：遍歷 uploads 與 products 目錄，以檔名開頭對應第一個找到的檔案。
         String filenameToSearch = trimmed;
         int lastSlash = trimmed.lastIndexOf('/');
         if (lastSlash > -1) filenameToSearch = trimmed.substring(lastSlash + 1);
         final String baseName = filenameToSearch;
-        if (baseName.isEmpty()) return null;
+        System.err.println("normalizeImageUrl - filenameToSearch: " + filenameToSearch);
+        if (filenameToSearch.isEmpty()) return DEFAULT_PRODUCT_IMAGE;
         try {
-            if (Files.exists(UPLOADS_DIR) && Files.isDirectory(UPLOADS_DIR)) {
-                try (java.util.stream.Stream<Path> s = Files.list(UPLOADS_DIR)) {
-                    Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
-                    if (found.isPresent()) return uploadsPrefix + found.get().getFileName().toString();
+            if (!Files.exists(IMAGES_DIR) || !Files.isDirectory(IMAGES_DIR)) return DEFAULT_PRODUCT_IMAGE;
+            try (java.util.stream.Stream<Path> s = Files.list(IMAGES_DIR)) {
+                Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
+                if (found.isPresent()) {
+                    System.err.println("normalizeImageUrl - found: " + found.get().getFileName().toString());
+                    return prefix + found.get().getFileName().toString();
                 }
-            }
-            if (Files.exists(AVATAR_UPLOADS_DIR) && Files.isDirectory(AVATAR_UPLOADS_DIR)) {
-                try (java.util.stream.Stream<Path> s = Files.list(AVATAR_UPLOADS_DIR)) {
-                    Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
-                    if (found.isPresent()) return avatarPrefix + found.get().getFileName().toString();
-                }
-            }
-            if (Files.exists(IMAGES_DIR) && Files.isDirectory(IMAGES_DIR)) {
-                try (java.util.stream.Stream<Path> s = Files.list(IMAGES_DIR)) {
-                    Optional<Path> found = s.filter(p -> p.getFileName().toString().startsWith(baseName)).findFirst();
-                    if (found.isPresent()) return productsPrefix + found.get().getFileName().toString();
-                }
-            }
-            if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                String avatarRemote = R2_CLIENT.toPublicUrl(avatarPrefix + baseName);
-                if (avatarRemote != null && CloudflareR2Client.headExists(avatarRemote)) return avatarRemote;
-                String imageRemote = R2_CLIENT.toPublicUrl(uploadsPrefix + baseName);
-                if (imageRemote != null && CloudflareR2Client.headExists(imageRemote)) return imageRemote;
             }
         } catch (Exception e) {
             System.err.println(java.time.LocalDateTime.now() + " - Error in normalizeImageUrl: " + e.getMessage());
         }
-        return null;
+        System.err.println("normalizeImageUrl - not found");
+        return DEFAULT_PRODUCT_IMAGE;
     }
 
-    // --- 各 API 與靜態資源處理器 ---
+    private static String readFileOrDefault(Path path, String defaultJson) throws IOException {
+        if (!Files.exists(path)) return defaultJson;
+        return Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
+    }
 
-    /**
-     * 提供付款方式列表的 API 處理器，對應 /api/paymentmethod。
-     */
+    private static void writeJsonToFile(Path path, String json) throws IOException {
+        Files.createDirectories(path.getParent());
+        Files.writeString(path, json, java.nio.charset.StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+    }
+
+    // --- Handlers ---
+
     static class PaymentMethodHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             JSONArray jsonArray = new JSONArray();
             try (Connection conn = DBConnect.getConnection()) {
-                // 從 dao.PaymentMethodDAO 取得資料，供購物車與管理端下拉選單串接。
                 List<model.PaymentMethod> methods = new dao.PaymentMethodDAO(conn).getAll();
                 for (model.PaymentMethod method : methods) {
                     JSONObject jsonObject = new JSONObject();
@@ -757,15 +247,11 @@ public class Server {
         }
     }
 
-    /**
-     * 提供物流/配送方式列表的 API 處理器，對應 /api/shippingmethod。
-     */
     static class ShippingMethodHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             JSONArray jsonArray = new JSONArray();
             try (Connection conn = DBConnect.getConnection()) {
-                // 透過 dao.ShippingMethodDAO 讀取資料，對應前台結帳與管理端表單。
                 List<model.ShippingMethod> methods = new dao.ShippingMethodDAO(conn).getAll();
                 for (model.ShippingMethod m : methods) {
                     JSONObject o = new JSONObject();
@@ -780,18 +266,14 @@ public class Server {
         }
     }
 
-    /**
-     * 處理訂單查詢與建立的 API（/api/order），支援 GET 列表與 POST 建立訂單。
-     */
     static class OrderHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
-                // GET：提供管理端訂單列表，POST：由 client/js/cart.js 建立訂單。
                 if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
                     JSONArray ordersArray = new JSONArray();
                     try (Connection conn = DBConnect.getConnection()) {
-                        String sql = "SELECT o.idOrders, o.idCustomers, o.OrderDate, o.TotalAmount, c.CustomerName, o.ShippingMethod, o.PaymentMethod, o.RecipientName, o.RecipientAddress, o.RecipientPhone FROM orders o JOIN customers c ON o.idCustomers = c.idCustomers ORDER BY o.OrderDate DESC";
+                        String sql = "SELECT o.idOrders, o.OrderDate, o.TotalAmount, c.CustomerName, c.idCustomers AS CustomerId, o.ShippingMethod, o.PaymentMethod, o.RecipientName, o.RecipientAddress, o.RecipientPhone FROM orders o JOIN customers c ON o.idCustomers = c.idCustomers ORDER BY o.OrderDate DESC";
                         String detailSql = "SELECT od.idOrders, od.Quantity, od.PriceAtTimeOfPurchase, p.ProductName FROM order_details od JOIN products p ON od.idProducts = p.idProducts";
 
                         Map<Integer, JSONObject> ordersMap = new LinkedHashMap<>();
@@ -805,7 +287,7 @@ public class Server {
                                 String customerNameVal = rs.getString("CustomerName");
                                 if (customerNameVal == null) customerNameVal = "";
                                 order.put("customerName", customerNameVal);
-                                try { order.put("customerId", rs.getInt("idCustomers")); } catch (Exception __ignore) {}
+                                try { order.put("customerId", rs.getInt("CustomerId")); } catch (SQLException ignore) { order.put("customerId", JSONObject.NULL); }
                                 order.put("status", JSONObject.NULL);
                                 String ship = rs.getString("ShippingMethod");
                                 order.put("shippingMethod", ship == null ? "" : ship);
@@ -814,9 +296,9 @@ public class Server {
                                 String rName = rs.getString("RecipientName"); if (rName == null) rName = "";
                                 String rAddr = rs.getString("RecipientAddress"); if (rAddr == null) rAddr = "";
                                 String rPhone = rs.getString("RecipientPhone"); if (rPhone == null) rPhone = "";
-                                // 若收件人姓名為空，改採用顧客姓名，以免管理端列表無法辨識訂單。
+                                // If recipient name is empty, fallback to customer name so admin list shows something
                                 if (rName.isEmpty()) rName = customerNameVal == null ? "" : customerNameVal;
-                                // 偵錯用途：確認資料庫讀出的收件資訊內容。
+                                // Debug: log what we read from DB for recipient fields
                                 System.err.println("OrderHandler - DB values for orderId=" + rs.getInt("idOrders") + ": RecipientName='" + rName + "', RecipientAddress='" + rAddr + "', RecipientPhone='" + rPhone + "'");
                                 order.put("recipientName", rName);
                                 order.put("recipientAddress", rAddr);
@@ -841,8 +323,10 @@ public class Server {
                             }
                         }
                         ordersArray = new JSONArray(ordersMap.values());
-                        // 部分環境第一次查詢 orders 時收件人欄位可能為空（例如帳號權限、資料庫驅動差異或非預期的 NULL）。
-                        // 為避免管理端列表出現空值，若偵測到任一訂單資料缺漏，就再查詢一次單筆訂單，補齊缺少欄位後再回應。
+                        // Some setups may return empty recipient fields in the first query (e.g. permissions,
+                        // driver quirks or unexpected NULLs). As a robust fallback, for any order that
+                        // has empty recipient info, re-query the orders table for that single order id
+                        // and fill the missing values before returning the response.
                         try (PreparedStatement refillStmt = conn.prepareStatement(
                                 "SELECT RecipientName, RecipientAddress, RecipientPhone FROM orders WHERE idOrders = ?")) {
                             for (Map.Entry<Integer, JSONObject> e : ordersMap.entrySet()) {
@@ -858,7 +342,7 @@ public class Server {
                                                 String rName2 = rrs.getString("RecipientName"); if (rName2 == null) rName2 = "";
                                                 String rAddr2 = rrs.getString("RecipientAddress"); if (rAddr2 == null) rAddr2 = "";
                                                 String rPhone2 = rrs.getString("RecipientPhone"); if (rPhone2 == null) rPhone2 = "";
-                                                // 只有在原本為空值時才覆寫，避免覆蓋既有的正確資料。
+                                                // only overwrite when the existing value is empty to avoid clobbering valid data
                                                 if (rn == null || rn.isEmpty()) ord.put("recipientName", rName2);
                                                 if (ra == null || ra.isEmpty()) ord.put("recipientAddress", rAddr2);
                                                 if (rp == null || rp.isEmpty()) ord.put("recipientPhone", rPhone2);
@@ -871,7 +355,7 @@ public class Server {
                                 }
                             }
                         } catch (SQLException e) {
-                            // 非致命錯誤：即使補資料失敗仍會回傳現有資訊。
+                            // non-fatal: we'll still return whatever we have
                             System.err.println("OrderHandler - refill loop failed: " + e.getMessage());
                         }
 
@@ -954,9 +438,6 @@ public class Server {
         }
     }
 
-    /**
-     * 提供簡易資料庫健康檢查資訊的端點（/api/debug/db）。
-     */
     static class DbDebugHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -986,9 +467,6 @@ public class Server {
         }
     }
 
-    /**
-     * 商品 CRUD API 處理器（/api/products），依 HTTP 方法對應查詢、新增、更新與刪除。
-     */
     static class ProductsHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -999,7 +477,7 @@ public class Server {
                 if ("GET".equalsIgnoreCase(method)) {
                     String path = exchange.getRequestURI().getPath();
                     String[] parts = path.split("/");
-                    // 未指定產品編號時，預設回傳全部商品清單。
+                    // If no specific ID provided, return list of all products
                     if (parts.length <= 3) {
                         try {
                             List<model.Product> products = productDAO.findAll();
@@ -1016,11 +494,15 @@ public class Server {
                                 obj.put("productionDate", p.getProductionDate() == null ? JSONObject.NULL : p.getProductionDate());
                                 obj.put("expiryDate", p.getExpiryDate() == null ? JSONObject.NULL : p.getExpiryDate());
                                 List<String> cleaned = cleanImageUrlList(p.getImageUrlList());
-                                JSONArray imgsOut = new JSONArray();
+                                java.util.LinkedHashSet<String> imageSet = new java.util.LinkedHashSet<>();
                                 for (String u : cleaned) {
+                                    if (isDefaultProductImage(u)) continue;
                                     String nu = normalizeImageUrl(u);
-                                    if (nu != null) imgsOut.put(nu);
+                                    if (nu == null || isDefaultProductImage(nu)) continue;
+                                    imageSet.add(nu);
                                 }
+                                JSONArray imgsOut = new JSONArray();
+                                for (String img : imageSet) imgsOut.put(img);
                                 obj.put("imageUrls", imgsOut);
                                 out.put(obj);
                             }
@@ -1047,8 +529,15 @@ public class Server {
                                     jsonObject.put("productionDate", product.getProductionDate() == null ? JSONObject.NULL : product.getProductionDate());
                                     jsonObject.put("expiryDate", product.getExpiryDate() == null ? JSONObject.NULL : product.getExpiryDate());
                                 List<String> cleaned = cleanImageUrlList(product.getImageUrlList());
+                                java.util.LinkedHashSet<String> imageSet = new java.util.LinkedHashSet<>();
+                                for (String u : cleaned) {
+                                    if (isDefaultProductImage(u)) continue;
+                                    String nu = normalizeImageUrl(u);
+                                    if (nu == null || isDefaultProductImage(nu)) continue;
+                                    imageSet.add(nu);
+                                }
                                 JSONArray imgsOut = new JSONArray();
-                                for (String u : cleaned) imgsOut.put(normalizeImageUrl(u));
+                                for (String img : imageSet) imgsOut.put(img);
                                 jsonObject.put("imageUrls", imgsOut);
                                 sendJsonResponse(exchange, jsonObject.toString(), 200);
                             }
@@ -1068,7 +557,9 @@ public class Server {
                     if (imgsArr != null) {
                         for (int i = 0; i < imgsArr.length(); i++) {
                             String val = imgsArr.optString(i, null);
-                            if (val != null) imageList.add(val);
+                            if (val == null) continue;
+                            if (isDefaultProductImage(val)) continue;
+                            imageList.add(val);
                         }
                     }
                     String intro = req.optString("introduction", null);
@@ -1092,7 +583,9 @@ public class Server {
                     if (imgsArr2 != null) {
                         for (int i = 0; i < imgsArr2.length(); i++) {
                             String vv = imgsArr2.optString(i, null);
-                            if (vv != null) imageList2.add(vv);
+                            if (vv == null) continue;
+                            if (isDefaultProductImage(vv)) continue;
+                            imageList2.add(vv);
                         }
                     }
                     String intro2 = req.optString("introduction", null);
@@ -1119,9 +612,6 @@ public class Server {
         }
     }
 
-    /**
-     * 商品分類 CRUD API 處理器，覆蓋 /api/category 與 /api/categories。
-     */
     static class CategoryHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -1144,12 +634,8 @@ public class Server {
                         body = s.hasNext() ? s.next() : "";
                     }
                     JSONObject req = new JSONObject(body);
-                    String name = req.optString("name", "").trim();
-                    if (name.isEmpty()) {
-                        sendErrorResponse(exchange, 400, "Missing 'name' for category", null);
-                        return;
-                    }
-                    model.Category newCategory = new model.Category(0, name); // 主鍵由資料庫自動產生。
+                    String name = req.getString("name");
+                    model.Category newCategory = new model.Category(0, name); // ID will be generated by DB
                     int newId = categoryDAO.save(newCategory);
                     if (newId != -1) {
                         sendJsonResponse(exchange, new JSONObject().put("id", newId).toString(), 201);
@@ -1165,22 +651,16 @@ public class Server {
                         sendErrorResponse(exchange, 404, "Category not found for deletion", null);
                     }
                 } else if ("PUT".equalsIgnoreCase(method)) {
-                    String path = exchange.getRequestURI().getPath();
+                    String query = exchange.getRequestURI().getQuery();
                     int id = 0;
-                    try {
-                        id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
-                    } catch (Exception ignore) {
-                        // 若路徑解析失敗，改由請求本文的欄位提供 id。
-                    }
+                    if (query!=null && query.startsWith("id=")) id = Integer.parseInt(query.substring(3));
                     String body;
                     try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
                         body = s.hasNext() ? s.next() : "";
                     }
                     JSONObject req = new JSONObject(body);
                     if (id==0) id = req.optInt("id", 0);
-                    String name = req.optString("name", "").trim();
-                    if (id <= 0) { sendErrorResponse(exchange, 400, "Missing category id", null); return; }
-                    if (name.isEmpty()) { sendErrorResponse(exchange, 400, "Missing 'name' for category", null); return; }
+                    String name = req.getString("name");
                     model.Category updatedCategory = new model.Category(id, name);
                     if (categoryDAO.update(updatedCategory)) {
                         sendNoContent(exchange, 200);
@@ -1192,9 +672,6 @@ public class Server {
         }
     }
 
-    /**
-     * 處理登入請求（/api/login），支援內建 admin 帳號與客戶驗證。
-     */
     static class LoginHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -1216,10 +693,13 @@ public class Server {
                     resp.put("success", true);
                     resp.put("role", "admin");
                     loggedIn = true;
-                } else {
+                }
+
+                // Try customer login against DB using Account + Phone (as password)
+                if (!loggedIn) {
                     try (Connection conn = DBConnect.getConnection()) {
                         dao.CustomerDAO customerDAO = new dao.CustomerDAO(conn);
-                        model.Customer customer = customerDAO.findByAccountAndPassword(username, password);
+                        model.Customer customer = customerDAO.findByAccountAndPhone(username == null ? null : username.trim(), password == null ? null : password.trim());
                         if (customer != null) {
                             resp.put("success", true);
                             resp.put("role", "customer");
@@ -1227,7 +707,7 @@ public class Server {
                             resp.put("customerName", customer.getName());
                             loggedIn = true;
                         }
-                    } catch (SQLException | java.security.NoSuchAlgorithmException e) {
+                    } catch (SQLException e) {
                         e.printStackTrace();
                         sendErrorResponse(exchange, 500, "Login error", e);
                         return;
@@ -1241,11 +721,7 @@ public class Server {
         }
     }
 
-    /**
-     * 處理前台與後台圖片上傳請求，將檔案儲存至 data/uploads/images。
-     */
     static class ImageUploadHandler implements HttpHandler {
-
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
@@ -1255,14 +731,11 @@ public class Server {
             try {
                 String fileName = exchange.getRequestHeaders().getFirst("Slug");
                 if (fileName == null || fileName.trim().isEmpty()) {
-                    fileName = exchange.getRequestHeaders().getFirst("slug");
-                }
-                if (fileName == null || fileName.trim().isEmpty()) {
                     sendErrorResponse(exchange, 400, "Bad Request: Missing Slug header with filename", null);
                     return;
                 }
 
-                // 清理檔名，避免目錄穿越等安全風險。
+                // Sanitize filename to prevent directory traversal
                 fileName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
                 InputStream is = exchange.getRequestBody();
@@ -1274,47 +747,25 @@ public class Server {
                 }
                 byte[] fileContent = baos.toByteArray();
 
-                String contentType = exchange.getRequestHeaders().getFirst("Content-Type");
                 String fileExtension = "";
                 int dotIndex = fileName.lastIndexOf('.');
                 if (dotIndex > 0) {
                     fileExtension = fileName.substring(dotIndex);
                 }
-                if (fileExtension.isEmpty()) {
-                    if (contentType != null) {
-                        String l = contentType.toLowerCase(java.util.Locale.ROOT);
-                        if (l.contains("png")) fileExtension = ".png";
-                        else if (l.contains("jpeg") || l.contains("jpg")) fileExtension = ".jpg";
-                        else if (l.contains("gif")) fileExtension = ".gif";
-                    }
-                    if (fileExtension.isEmpty()) fileExtension = ".png";
-                }
 
                 String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-                String effectiveContentType = (contentType == null || contentType.isEmpty()) ? "application/octet-stream" : contentType;
-                String storagePath = (R2_CLIENT != null && R2_CLIENT.isConfigured()) ? R2_CLIENT.buildObjectKey(uniqueFilename) : null;
-                String imageUrl = null;
-
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    try {
-                        CloudflareR2Client.UploadResult res = R2_CLIENT.uploadObject(storagePath, fileContent, effectiveContentType);
-                        imageUrl = res.publicUrl();
-                        System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: uploaded to R2 key=" + res.objectKey());
-                    } catch (Exception r2Ex) {
-                        System.err.println(java.time.LocalDateTime.now() + " - R2 upload failed, falling back to local disk: " + r2Ex.getMessage());
-                    }
+                Files.createDirectories(IMAGES_DIR);
+                Path filePath = IMAGES_DIR.resolve(uniqueFilename).normalize();
+                if (!filePath.startsWith(IMAGES_DIR)) {
+                    sendErrorResponse(exchange, 400, "Invalid image path", null);
+                    return;
                 }
-
-                if (imageUrl == null) {
-                    Files.createDirectories(UPLOADS_DIR);
-                    Path filePath = UPLOADS_DIR.resolve(uniqueFilename);
-                    Files.write(filePath, fileContent);
-                    imageUrl = "/uploads/images/" + uniqueFilename;
-                    System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: saved " + filePath.toString() + " -> returning " + imageUrl);
-                }
+                Files.write(filePath, fileContent);
 
                 JSONObject responseJson = new JSONObject();
+                String imageUrl = "/frontend/images/products/" + uniqueFilename;
                 responseJson.put("imageUrl", imageUrl);
+                System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: saved " + filePath.toString() + " -> returning " + imageUrl);
                 sendJsonResponse(exchange, responseJson.toString(), 200);
 
             } catch (Exception e) {
@@ -1324,12 +775,7 @@ public class Server {
         }
     }
 
-    /**
-     * 負責刪除上傳或舊版目錄中的圖片，支援以 imageUrl 或 filename 指定檔案。
-     */
     static class ImageDeleteHandler implements HttpHandler {
-        private static final Path LEGACY_DIR = Paths.get("..", "frontend", "images", "products").toAbsolutePath().normalize();
-
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
@@ -1349,47 +795,23 @@ public class Server {
                     return;
                 }
                 if (imageUrl != null) {
-                    // 從提供的 URL 解析出檔名，方便定位本機檔案。
+                    // extract filename from url
                     int idx = imageUrl.lastIndexOf('/');
                     if (idx >= 0) filename = imageUrl.substring(idx + 1);
                     else filename = imageUrl;
                 }
-                // 再次清理檔名，排除非法字元。
+                // sanitize
                 filename = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
-                boolean deleted = false;
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    try {
-                        String ref = imageUrl != null ? imageUrl : filename;
-                        deleted = R2_CLIENT.deleteByReference(ref);
-                    } catch (Exception e) {
-                        System.err.println(java.time.LocalDateTime.now() + " - Failed to delete R2 object: " + e.getMessage());
-                    }
+                if (isDefaultProductImage(filename)) {
+                    sendErrorResponse(exchange, 400, "Cannot delete default product placeholder", null);
+                    return;
                 }
-                if (!deleted) {
-                    Path target = UPLOADS_DIR.resolve(filename).normalize();
-                    if (target.startsWith(UPLOADS_DIR) && Files.exists(target)) {
-                        Files.delete(target);
-                        deleted = true;
-                    }
-                }
-                if (!deleted) {
-                    Path avatarTarget = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
-                    if (avatarTarget.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarTarget)) {
-                        Files.delete(avatarTarget);
-                        deleted = true;
-                    }
-                }
-                if (!deleted) {
-                    Path legacy = LEGACY_DIR.resolve(filename).normalize();
-                    if (legacy.startsWith(LEGACY_DIR) && Files.exists(legacy)) {
-                        Files.delete(legacy);
-                        deleted = true;
-                    }
-                }
-                if (!deleted) {
+                Path target = IMAGES_DIR.resolve(filename).normalize();
+                if (!target.startsWith(IMAGES_DIR) || !Files.exists(target)) {
                     sendErrorResponse(exchange, 404, "File not found: " + filename, null);
                     return;
                 }
+                Files.delete(target);
                 JSONObject resp = new JSONObject();
                 resp.put("deleted", filename);
                 sendJsonResponse(exchange, resp.toString(), 200);
@@ -1399,10 +821,8 @@ public class Server {
         }
     }
 
-    /**
-     * 服務舊版產品圖片目錄（frontend/images/products）的靜態檔案。
-     */
     static class ImageFileHandler implements HttpHandler {
+
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
@@ -1414,8 +834,14 @@ public class Server {
                 System.err.println(java.time.LocalDateTime.now() + " - ImageFileHandler: Files.isReadable(imagePath): " + Files.isReadable(imagePath));
 
                 if (!imagePath.startsWith(IMAGES_DIR) || !Files.exists(imagePath) || !Files.isReadable(imagePath)) {
-                    sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
-                    return;
+                    Path fallbackPath = DEFAULT_PRODUCT_IMAGE_PATH;
+                    if (Files.exists(fallbackPath) && Files.isReadable(fallbackPath)) {
+                        System.err.println(java.time.LocalDateTime.now() + " - ImageFileHandler: Serving fallback image for " + fileName);
+                        imagePath = fallbackPath;
+                    } else {
+                        sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
+                        return;
+                    }
                 }
 
                 String contentType = Files.probeContentType(imagePath);
@@ -1432,115 +858,43 @@ public class Server {
         }
     }
 
-    // 專門服務 data/uploads/images 目錄下的使用者上傳檔案。
-    /**
-     * 服務使用者上傳的圖片目錄（data/uploads/images）的靜態檔案。
-     */
-    static class UploadsImageFileHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                String uriPath = exchange.getRequestURI().getPath();
-                String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                Path imagePath = UPLOADS_DIR.resolve(fileName).normalize();
-                if (imagePath.startsWith(UPLOADS_DIR) && Files.exists(imagePath) && Files.isReadable(imagePath)) {
-                    String contentType = Files.probeContentType(imagePath);
-                    if (contentType == null) contentType = "application/octet-stream";
-                    exchange.getResponseHeaders().set("Content-Type", contentType);
-                    exchange.sendResponseHeaders(200, Files.size(imagePath));
-                    try (OutputStream os = exchange.getResponseBody()) { Files.copy(imagePath, os); }
-                    return;
-                }
-
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    String remoteUrl = R2_CLIENT.toPublicUrl(uriPath);
-                    if (remoteUrl == null) remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fileName);
-                    if (remoteUrl != null) {
-                        // 先對 R2 公開網址做 HEAD 檢查，確保物件存在再轉向，避免把使用者導到會 404 的外部 URL。
-                        if (CloudflareR2Client.headExists(remoteUrl)) {
-                            exchange.getResponseHeaders().set("Location", remoteUrl);
-                            exchange.sendResponseHeaders(302, -1);
-                            return;
-                        }
-                    }
-                }
-
-                sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
-            } catch (Exception e) {
-                sendErrorResponse(exchange, 500, "Error serving upload image", e);
-            }
-        }
-    }
-
-    /**
-     * 服務使用者頭像目錄（data/uploads/avatar）的靜態檔案。
-     */
-    static class AvatarUploadsFileHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                String uriPath = exchange.getRequestURI().getPath();
-                String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                Path avatarPath = AVATAR_UPLOADS_DIR.resolve(fileName).normalize();
-                if (avatarPath.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarPath) && Files.isReadable(avatarPath)) {
-                    String contentType = Files.probeContentType(avatarPath);
-                    if (contentType == null) contentType = "application/octet-stream";
-                    exchange.getResponseHeaders().set("Content-Type", contentType);
-                    exchange.sendResponseHeaders(200, Files.size(avatarPath));
-                    try (OutputStream os = exchange.getResponseBody()) { Files.copy(avatarPath, os); }
-                    return;
-                }
-
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    String remoteUrl = R2_CLIENT.toPublicUrl(uriPath);
-                    if (remoteUrl == null) remoteUrl = R2_CLIENT.toPublicUrl("/uploads/avatar/" + fileName);
-                    if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
-                        exchange.getResponseHeaders().set("Location", remoteUrl);
-                        exchange.sendResponseHeaders(302, -1);
-                        return;
-                    }
-                }
-
-                sendErrorResponse(exchange, 404, "Avatar not found: " + fileName, null);
-            } catch (Exception e) {
-                sendErrorResponse(exchange, 500, "Error serving avatar image", e);
-            }
-        }
-    }
-
-    /**
-     * 一般靜態檔案處理器，支援根目錄與 /frontend 底下的 HTML/CSS/JS 讀取。
-     */
     static class StaticHandler implements HttpHandler {
         private final Path baseDir;
 
         public StaticHandler() {
-            baseDir = FRONTEND_DIR;
+            Path candidate1 = Paths.get("frontend").toAbsolutePath().normalize();
+            Path candidate2 = Paths.get("..", "frontend").toAbsolutePath().normalize();
+            if (Files.exists(candidate1) && Files.isDirectory(candidate1)) baseDir = candidate1;
+            else if (Files.exists(candidate2) && Files.isDirectory(candidate2)) baseDir = candidate2;
+            else baseDir = candidate1;
             System.err.println(java.time.LocalDateTime.now() + " - StaticHandler baseDir = " + baseDir.toString());
         }
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             String uriPath = exchange.getRequestURI().getPath();
-            // 正規化常見的根目錄請求，讓 / 或 /frontend 轉向首頁。
+            System.err.println("[STATIC_HANDLER] Received request for: " + uriPath);
+
+            // normalize common root requests
             if (uriPath.equals("/") || uriPath.equals("/frontend") || uriPath.equals("/frontend/")) {
-                uriPath = "/frontend/client/index.html";
+                // Landing page for unauthenticated users
+                uriPath = "/frontend/welcome.html";
             }
 
-            // 如果路徑以 /frontend 起頭，就直接以 baseDir 為根目錄解析。
+            // If request starts with /frontend, resolve normally under baseDir
             Path resolved = null;
             if (uriPath.startsWith("/frontend")) {
                 String rel = uriPath.substring("/frontend".length());
                 resolved = baseDir.resolve(rel.substring(1)).normalize();
             } else {
-                // 先嘗試在 baseDir 下尋找同名檔案（如 /frontend/client/cart.html 會於前段處理），
-                // 若是根目錄請求（例：/cart.html）則改映射到 frontend/client/<檔名>。
+                // Try resolving directly under baseDir first (e.g., /frontend/client/cart.html -> handled above),
+                // but for root-level requests like /cart.html, try mapping to frontend/client/<name>
                 String candidatePath = uriPath.startsWith("/") ? uriPath.substring(1) : uriPath;
                 Path direct = baseDir.resolve(candidatePath).normalize();
                 if (Files.exists(direct) && direct.startsWith(baseDir) && Files.isReadable(direct)) {
                     resolved = direct;
                 } else {
-                    // 最後備援：轉向 frontend/client/<檔名> 掃描實際檔案。
+                    // fallback: try frontend/client/<candidatePath>
                     Path clientCandidate = baseDir.resolve("client").resolve(candidatePath).normalize();
                     if (Files.exists(clientCandidate) && clientCandidate.startsWith(baseDir) && Files.isReadable(clientCandidate)) {
                         resolved = clientCandidate;
@@ -1548,51 +902,25 @@ public class Server {
                 }
             }
 
+            System.err.println("[STATIC_HANDLER] Resolved path to: " + (resolved != null ? resolved.toString() : "null"));
+
             if (resolved == null || !resolved.startsWith(baseDir) || !Files.exists(resolved) || !Files.isReadable(resolved)) {
-                String fallbackName = null;
-                int idx = uriPath.lastIndexOf('/') + 1;
-                if (idx > 0 && idx < uriPath.length()) fallbackName = uriPath.substring(idx);
-                if (fallbackName != null && !fallbackName.isEmpty()) {
-                    Path uploadCandidate = UPLOADS_DIR.resolve(fallbackName).normalize();
-                    if (uploadCandidate.startsWith(UPLOADS_DIR) && Files.exists(uploadCandidate) && Files.isReadable(uploadCandidate)) {
-                        String contentType = Files.probeContentType(uploadCandidate);
-                        if (contentType == null) contentType = "application/octet-stream";
-                        exchange.getResponseHeaders().set("Content-Type", contentType);
-                        exchange.sendResponseHeaders(200, Files.size(uploadCandidate));
-                        try (OutputStream os = exchange.getResponseBody()) { Files.copy(uploadCandidate, os); }
-                        return;
-                    }
-                        Path avatarCandidate = AVATAR_UPLOADS_DIR.resolve(fallbackName).normalize();
-                        if (avatarCandidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarCandidate) && Files.isReadable(avatarCandidate)) {
-                            String contentType = Files.probeContentType(avatarCandidate);
-                            if (contentType == null) contentType = "application/octet-stream";
-                            exchange.getResponseHeaders().set("Content-Type", contentType);
-                            exchange.sendResponseHeaders(200, Files.size(avatarCandidate));
-                            try (OutputStream os = exchange.getResponseBody()) { Files.copy(avatarCandidate, os); }
-                            return;
-                        }
-                    if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                        String remoteUrl = R2_CLIENT.toPublicUrl("/uploads/images/" + fallbackName);
-                            if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
-                                exchange.getResponseHeaders().set("Location", remoteUrl);
-                                exchange.sendResponseHeaders(302, -1);
-                                return;
-                            }
-                            remoteUrl = R2_CLIENT.toPublicUrl("/uploads/avatar/" + fallbackName);
-                            if (remoteUrl != null && CloudflareR2Client.headExists(remoteUrl)) {
-                            exchange.getResponseHeaders().set("Location", remoteUrl);
-                            exchange.sendResponseHeaders(302, -1);
-                            return;
-                        }
-                    }
-                }
+                System.err.println("[STATIC_HANDLER] Path resolution failed or file not found/readable. Sending 404.");
                 sendErrorResponse(exchange, 404, "Static file not found", null);
                 return;
             }
 
-            if (Files.isDirectory(resolved)) resolved = resolved.resolve("index.html");
-            if (!Files.exists(resolved)) { sendErrorResponse(exchange, 404, "Static file not found", null); return; }
+            if (Files.isDirectory(resolved)) {
+                System.err.println("[STATIC_HANDLER] Path is a directory, resolving to index.html.");
+                resolved = resolved.resolve("index.html");
+            }
+            if (!Files.exists(resolved)) { 
+                System.err.println("[STATIC_HANDLER] index.html not found in directory. Sending 404.");
+                sendErrorResponse(exchange, 404, "Static file not found", null); 
+                return; 
+            }
 
+            System.err.println("[STATIC_HANDLER] Serving file: " + resolved.toString());
             String contentType = Files.probeContentType(resolved);
             if (contentType == null) contentType = "application/octet-stream";
             exchange.getResponseHeaders().set("Content-Type", contentType + "; charset=UTF-8");
@@ -1601,77 +929,52 @@ public class Server {
         }
     }
 
-    // 輪播資料儲存：站內各頁共用 carousel.json。
-    /**
-     * 管理首頁輪播資料（data/carousel.json）的讀寫。
-     */
+    // --- Simple JSON persistence for carousel slides ---
     static class CarouselHandler implements HttpHandler {
         private static final Path CAROUSEL_FILE = DATA_DIR.resolve("carousel.json");
+        private static final String DEFAULT_CAROUSEL_JSON = new JSONArray()
+            .put(new JSONObject()
+                .put("imageUrl", "https://picsum.photos/1200/380?random=11")
+                .put("title", "精選零食推薦")
+                .put("text", "發掘這週最新上架")
+                .put("link", "product.html"))
+            .put(new JSONObject()
+                .put("imageUrl", "https://picsum.photos/1200/380?random=12")
+                .put("title", "甜鹹一次滿足")
+                .put("text", "逛逛更多人氣組合")
+                .put("link", "product.html?category=all"))
+            .put(new JSONObject()
+                .put("imageUrl", "https://picsum.photos/1200/380?random=13")
+                .put("title", "限時優惠")
+                .put("text", "折扣商品不要錯過")
+                .put("link", "product.html"))
+            .toString();
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             String method = exchange.getRequestMethod();
             try {
                 if ("GET".equalsIgnoreCase(method)) {
-                    String defaultJson = "[]";
-                    String json;
-                    if (Files.exists(CAROUSEL_FILE)) {
-                        json = Files.readString(CAROUSEL_FILE, java.nio.charset.StandardCharsets.UTF_8);
-                    } else {
+                    String defaultJson = DEFAULT_CAROUSEL_JSON; // align admin/client fallback when file missing
+                    String json = readFileOrDefault(CAROUSEL_FILE, defaultJson);
+                    String trimmed = json == null ? "" : json.trim();
+                    if (trimmed.isEmpty() || "[]".equals(trimmed) || "null".equalsIgnoreCase(trimmed)) {
                         json = defaultJson;
                     }
-                    JSONArray normalized = new JSONArray();
-                    boolean normalizedSuccessfully = true;
-                    try {
-                        JSONArray arr = new JSONArray(json);
-                        for (int i = 0; i < arr.length(); i++) {
-                            Object item = arr.get(i);
-                            if (!(item instanceof JSONObject)) {
-                                continue;
-                            }
-                            JSONObject slide = new JSONObject(((JSONObject) item).toString());
-                            String raw = slide.optString("imageUrl", null);
-                            String resolved = normalizeImageUrl(raw);
-                            if (raw == null) {
-                                slide.put("imageUrl", "");
-                            }
-                            if (resolved != null) {
-                                slide.put("imageUrlResolved", resolved);
-                                if (raw != null && !raw.isEmpty() && !raw.equals(resolved)) {
-                                    slide.put("imageUrlOriginal", raw);
-                                }
-                                slide.remove("imageMissing");
-                            } else {
-                                slide.put("imageUrlResolved", DEFAULT_PLACEHOLDER_IMAGE);
-                                if (raw != null && !raw.isEmpty()) {
-                                    slide.put("imageUrlOriginal", raw);
-                                }
-                                slide.put("imageMissing", true);
-                            }
-                            normalized.put(slide);
-                        }
-                    } catch (Exception parseEx) {
-                        normalizedSuccessfully = false;
-                        System.err.println("CarouselHandler: failed to normalize carousel data: " + parseEx.getMessage());
-                    }
-                    if (normalizedSuccessfully) {
-                        sendJsonResponse(exchange, normalized.toString(), 200);
-                    } else {
-                        sendJsonResponse(exchange, json, 200);
-                    }
+                    sendJsonResponse(exchange, json, 200);
                 } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
                     String body;
-                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
+                    try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")){
                         body = s.hasNext() ? s.next() : "[]";
                     }
-                    // 驗證輸入內容確實為 JSON 陣列格式。
-                    try { new org.json.JSONArray(body); } catch (Exception e) {
+                    // basic validation: ensure it's a JSON array
+                    try {
+                        new JSONArray(body);
+                    } catch (Exception e) {
                         sendErrorResponse(exchange, 400, "Invalid JSON array for carousel", e);
                         return;
                     }
-                    Files.createDirectories(CAROUSEL_FILE.getParent());
-                    Files.writeString(CAROUSEL_FILE, body, java.nio.charset.StandardCharsets.UTF_8,
-                            java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+                    writeJsonToFile(CAROUSEL_FILE, body);
                     sendNoContent(exchange, 200);
                 } else {
                     sendErrorResponse(exchange, 405, "Method Not Allowed", null);
@@ -1682,65 +985,31 @@ public class Server {
         }
     }
 
-    // 站台設定：涵蓋主視覺、優勢、精選商品與頁尾資訊。
-    /**
-     * 管理站台設定（data/site-config.json）的讀寫與預設值載入。
-     */
+    // --- Site config (hero, benefits, featured product ids, etc.) ---
     static class SiteConfigHandler implements HttpHandler {
         private static final Path CONFIG_FILE = DATA_DIR.resolve("site-config.json");
 
-        /**
-         * 讀取指定檔案內容，若不存在則回傳預設 JSON 字串。
-         * @param path 設定檔路徑。
-         * @param defaultJson 檔案不存在時使用的預設內容。
-         * @return 檔案內容或預設字串。
-         * @throws IOException 讀檔失敗時拋出。
-         */
-        private static String readFileOrDefault(Path path, String defaultJson) throws IOException {
-            if (!Files.exists(path)) return defaultJson;
-            return Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
-        }
-
-        /**
-         * 將 JSON 字串寫入指定檔案，必要時建立目錄。
-         * @param path 目標檔案路徑。
-         * @param json 要儲存的內容。
-         * @throws IOException 寫檔失敗時拋出。
-         */
-        private static void writeJsonToFile(Path path, String json) throws IOException {
-            Files.createDirectories(path.getParent());
-            Files.writeString(path, json, java.nio.charset.StandardCharsets.UTF_8,
-                    java.nio.file.StandardOpenOption.CREATE,
-                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
-        }
-
-        private static final String DEFAULT_CONFIG = new JSONObject()
-                .put("hero", new JSONObject()
-                        .put("title", "探索世界零食的靈感地圖")
-                        .put("subtitle", "精挑細選、快速到貨、安心付款。從人氣熱銷到限時新品，一鍵帶你吃遍全球風味。")
-                        .put("imageUrl", "/frontend/images/products/no-image.svg")
-                        .put("primaryText", "開始購物")
-                        .put("primaryLink", "product.html")
-                        .put("secondaryText", "逛逛全部")
-                        .put("secondaryLink", "product.html?category=all"))
-                .put("benefits", new JSONArray()
-                        .put(new JSONObject().put("icon", "truck-fast").put("title", "快速到貨").put("desc", "下單 24 小時內出貨"))
-                        .put(new JSONObject().put("icon", "shield-halved").put("title", "安全付款").put("desc", "多元支付、SSL 安全"))
-                        .put(new JSONObject().put("icon", "arrows-rotate").put("title", "七日鑑賞").put("desc", "不滿意可退換"))
-                        .put(new JSONObject().put("icon", "gift").put("title", "會員回饋").put("desc", "點數折抵更划算")))
-        .put("promotions", new JSONArray()
-            .put(new JSONObject().put("text", "全館滿 NT$999 免運").put("link", "product.html"))
-            .put(new JSONObject().put("text", "加入會員立即享 95 折優惠").put("link", "member.html"))
-            .put(new JSONObject().put("text", "最新上架零食！把握限量好味道").put("link", "product.html?category=all")))
-        .put("support", new JSONObject()
-            .put("email", "snackforest1688@gmail.com")
-            .put("phone", "0909-585-898")
-            .put("hours", "週一至週五 09:00 - 18:00")
-            .put("liveChatUrl", "")
-            .put("liveChatLabel", ""))
-                .put("featuredProductIds", new JSONArray())
-                .put("footer", new JSONObject().put("text", "© 2025 SnackForest. 保留所有權利。"))
-                .toString();
+    private static final String DEFAULT_CONFIG = new JSONObject()
+        .put("hero", new JSONObject()
+            .put("title", "探索世界零食的靈感地圖")
+            .put("subtitle", "精挑細選、快速到貨、安心付款。從人氣熱銷到限時新品，一鍵帶你吃遍全球風味。")
+            .put("imageUrl", DEFAULT_PRODUCT_IMAGE)
+            .put("primaryText", "開始購物")
+            .put("primaryLink", "product.html")
+            .put("secondaryText", "逛逛全部")
+            .put("secondaryLink", "product.html?category=all"))
+        .put("benefits", new JSONArray()
+            .put(new JSONObject().put("icon", "truck-fast").put("title", "快速到貨").put("desc", "下單 24 小時內出貨"))
+            .put(new JSONObject().put("icon", "shield-halved").put("title", "安全付款").put("desc", "多元支付、SSL 安全"))
+            .put(new JSONObject().put("icon", "arrows-rotate").put("title", "七日鑑賞").put("desc", "不滿意可退換"))
+            .put(new JSONObject().put("icon", "gift").put("title", "會員回饋").put("desc", "點數折抵更划算")))
+        .put("featuredProductIds", new JSONArray())
+        .put("branding", new JSONObject()
+            .put("logoUrl", "")
+            .put("brandName", "SnackForest")
+            .put("tagline", "探索零食世界"))
+        .put("footer", new JSONObject().put("text", "© 2025 SnackForest. 保留所有權利。"))
+        .toString();
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -1748,45 +1017,22 @@ public class Server {
             try {
                 if ("GET".equalsIgnoreCase(method)) {
                     String json = readFileOrDefault(CONFIG_FILE, DEFAULT_CONFIG);
-                    JSONObject payload;
-                    try {
-                        payload = new JSONObject(json);
-                    } catch (Exception ex) {
-                        System.err.println("SiteConfigHandler: invalid JSON, returning defaults: " + ex.getMessage());
-                        payload = new JSONObject(DEFAULT_CONFIG);
-                    }
-
-                    JSONObject hero = payload.optJSONObject("hero");
-                    if (hero != null) {
-                        String raw = hero.optString("imageUrl", null);
-                        String resolved = normalizeImageUrl(raw);
-                        if (resolved != null) {
-                            hero.put("imageUrlResolved", resolved);
-                            if (raw != null && !raw.isEmpty() && !raw.equals(resolved)) {
-                                hero.put("imageUrlOriginal", raw);
-                            }
-                            hero.remove("imageMissing");
-                        } else {
-                            hero.put("imageUrlResolved", DEFAULT_PLACEHOLDER_IMAGE);
-                            if (raw != null && !raw.isEmpty()) {
-                                hero.put("imageUrlOriginal", raw);
-                            }
-                            hero.put("imageMissing", true);
-                        }
-                    }
-
-                    sendJsonResponse(exchange, payload.toString(), 200);
+                    sendJsonResponse(exchange, json, 200);
                 } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
                     String body;
                     try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
                         body = s.hasNext() ? s.next() : DEFAULT_CONFIG;
                     }
-                    // 驗證上傳內容為合法的 JSON 物件。
-                    try { new JSONObject(body); } catch (Exception e) {
+
+                    JSONObject json;
+                    try {
+                        json = new JSONObject(body);
+                    } catch (Exception e) {
                         sendErrorResponse(exchange, 400, "Invalid JSON object for site-config", e);
                         return;
                     }
-                    writeJsonToFile(CONFIG_FILE, body);
+
+                    writeJsonToFile(CONFIG_FILE, json.toString());
                     sendNoContent(exchange, 200);
                 } else {
                     sendErrorResponse(exchange, 405, "Method Not Allowed", null);
@@ -1795,500 +1041,242 @@ public class Server {
                 sendErrorResponse(exchange, 500, "Site config handler error", e);
             }
         }
+
     }
 
-    // 顧客檔案 API：支援 GET /api/customer-profile/{id} 與 PUT 同一路徑。
-    /**
-     * 處理顧客檔案的取得與更新（/api/customer-profile/{id}）。
-     */
     static class CustomerProfileHandler implements HttpHandler {
-        private static final Path PROFILES_FILE = DATA_DIR.resolve("customer-profiles.json");
+        private static final Path PROFILE_FILE = DATA_DIR.resolve("customer-profiles.json");
 
-    /**
-     * 讀取顧客檔案 JSON 資料，若檔案不存在或解析失敗則回傳空物件。
-     * @return 代表所有顧客資料的 JSONObject。
-     */
-    private static JSONObject readProfiles() {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            String customerId = resolveCustomerId(exchange);
+            if (customerId == null || customerId.isBlank()) {
+                sendErrorResponse(exchange, 400, "缺少 customerId", null);
+                return;
+            }
+
+            if ("GET".equalsIgnoreCase(method)) {
+                handleGet(exchange, customerId);
+            } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
+                handleUpsert(exchange, customerId);
+            } else {
+                sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+            }
+        }
+
+        private String resolveCustomerId(HttpExchange exchange) {
+            String contextPath = exchange.getHttpContext().getPath();
+            String path = exchange.getRequestURI().getPath();
+            String remainder = path.length() > contextPath.length() ? path.substring(contextPath.length()) : "";
+            remainder = remainder.replaceFirst("^/+", "").trim();
+            if (!remainder.isEmpty()) return remainder;
+
+            String query = exchange.getRequestURI().getQuery();
+            if (query != null && !query.isEmpty()) {
+                for (String part : query.split("&")) {
+                    if (part == null || part.isEmpty()) continue;
+                    int idx = part.indexOf('=');
+                    String key = idx >= 0 ? part.substring(0, idx) : part;
+                    if (key == null) continue;
+                    if ("customerId".equalsIgnoreCase(key) || "cid".equalsIgnoreCase(key) || "id".equalsIgnoreCase(key)) {
+                        String rawValue = idx >= 0 ? part.substring(idx + 1) : "";
+                        if (rawValue == null) return "";
+                        try {
+                            return URLDecoder.decode(rawValue, java.nio.charset.StandardCharsets.UTF_8);
+                        } catch (Exception e) {
+                            return rawValue;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        private JSONObject readAllProfiles() throws IOException {
+            String json = readFileOrDefault(PROFILE_FILE, "{}");
             try {
-                if (!Files.exists(PROFILES_FILE)) return new JSONObject();
-                String json = Files.readString(PROFILES_FILE, java.nio.charset.StandardCharsets.UTF_8);
                 return new JSONObject(json);
             } catch (Exception e) {
-                System.err.println("readProfiles error: " + e.getMessage());
                 return new JSONObject();
             }
         }
 
-    /**
-     * 將顧客檔案 JSON 寫回磁碟，必要時建立目錄。
-     * @param obj 要儲存的顧客資料集合。
-     * @throws IOException 寫檔失敗時拋出。
-     */
-    private static void writeProfiles(JSONObject obj) throws IOException {
-            Files.createDirectories(PROFILES_FILE.getParent());
-            Files.writeString(PROFILES_FILE, obj.toString(), java.nio.charset.StandardCharsets.UTF_8,
-                    java.nio.file.StandardOpenOption.CREATE,
-                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+        private void writeAllProfiles(JSONObject root) throws IOException {
+            writeJsonToFile(PROFILE_FILE, root.toString(2));
         }
 
-    /**
-     * 依顧客編號查詢資料庫的顧客姓名，用於補強檔案資料缺漏。
-     * @param id 顧客 ID。
-     * @return 顧客姓名，若查無則回傳空字串。
-     */
-    private static String getCustomerNameById(int id) {
-            try (Connection conn = DBConnect.getConnection()) {
-                try (PreparedStatement ps = conn.prepareStatement("SELECT CustomerName FROM customers WHERE idCustomers = ?")) {
-                    ps.setInt(1, id);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            String name = rs.getString(1);
-                            return name == null ? "" : name;
-                        }
+        private void handleGet(HttpExchange exchange, String customerId) throws IOException {
+            System.err.println("[DEBUG] handleGet for customerId: " + customerId);
+            JSONObject root = readAllProfiles();
+            JSONObject stored = root.optJSONObject(customerId);
+            JSONObject response = stored != null ? new JSONObject(stored.toString()) : new JSONObject();
+
+            String avatarUrl = response.optString("avatarUrl", null);
+            System.err.println("[DEBUG] avatarUrl from JSON: " + avatarUrl);
+            boolean needsUpdate = false;
+            if (avatarUrl != null && !avatarUrl.isBlank()) {
+                Path avatarPath = resolveAvatarPath(avatarUrl);
+                System.err.println("[DEBUG] Resolved avatarPath: " + (avatarPath != null ? avatarPath.toString() : "null"));
+                
+                boolean fileExists = avatarPath != null && Files.exists(avatarPath);
+                System.err.println("[DEBUG] Does file exist? " + fileExists);
+
+                if (!fileExists) {
+                    System.err.println("[DEBUG] File does not exist. Removing avatarUrl from response and marking for update.");
+                    response.remove("avatarUrl");
+                    if (stored != null) {
+                        stored.remove("avatarUrl");
+                        needsUpdate = true;
                     }
                 }
-            } catch (Exception e) {
-                System.err.println("getCustomerNameById error: " + e.getMessage());
             }
-            return "";
+            
+            if (needsUpdate) {
+                System.err.println("[DEBUG] Writing updated profiles JSON to remove invalid avatarUrl.");
+                root.put(customerId, stored);
+                writeAllProfiles(root);
+            }
+
+            response.put("customerId", customerId);
+            sendJsonResponse(exchange, response.toString(), 200);
         }
 
-    /**
-     * 根據檔名或 Content-Type 推測適當的副檔名，預設為 .png。
-     * @param fileName 上傳時提供的檔名。
-     * @param contentType HTTP Content-Type。
-     * @return 合適的副檔名。
-     */
-    private static String inferExtension(String fileName, String contentType) {
+        private void handleUpsert(HttpExchange exchange, String initialCustomerId) throws IOException {
+            String body;
+            try (java.util.Scanner scanner = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
+                body = scanner.hasNext() ? scanner.next() : "{}";
+            }
+
+            JSONObject payload;
+            try {
+                payload = new JSONObject(body);
+            } catch (Exception e) {
+                sendErrorResponse(exchange, 400, "Invalid JSON object for customer profile", e);
+                return;
+            }
+
+            String customerId = payload.optString("customerId", initialCustomerId);
+            if (customerId == null || customerId.trim().isEmpty()) {
+                sendErrorResponse(exchange, 400, "缺少 customerId", null);
+                return;
+            }
+            customerId = customerId.trim();
+
+            JSONObject root = readAllProfiles();
+            JSONObject current = root.optJSONObject(customerId);
+            if (current == null) current = new JSONObject();
+
+            applyString(current, "displayName", payload.opt("displayName"));
+            applyString(current, "email", payload.opt("email"));
+            applyString(current, "phone", payload.opt("phone"));
+            applyString(current, "address", payload.opt("address"));
+
+            String avatarData = payload.optString("avatarData", null);
+            boolean hasNewAvatar = avatarData != null && !avatarData.trim().isEmpty();
+            if (hasNewAvatar) {
+                String avatarFileName = payload.optString("avatarFileName", "avatar");
+                String avatarContentType = payload.optString("avatarContentType", "image/png");
+                try {
+                    String existingUrl = current.optString("avatarUrl", null);
+                    String avatarUrl = saveAvatar(customerId, avatarData, avatarFileName, avatarContentType, existingUrl);
+                    if (avatarUrl != null) current.put("avatarUrl", avatarUrl);
+                } catch (Exception e) {
+                    sendErrorResponse(exchange, 400, "頭像處理失敗", e);
+                    return;
+                }
+            } else if (payload.has("avatarUrl") && (payload.isNull("avatarUrl") || payload.optString("avatarUrl").trim().isEmpty())) {
+                deleteExistingAvatar(current.optString("avatarUrl", null));
+                current.remove("avatarUrl");
+            }
+
+            current.put("customerId", customerId);
+            current.put("updatedAt", Instant.now().toString());
+
+            root.put(customerId, current);
+            writeAllProfiles(root);
+            sendJsonResponse(exchange, current.toString(), 200);
+        }
+
+        private Path resolveAvatarPath(String avatarUrl) {
+            if (avatarUrl == null || avatarUrl.isBlank()) return null;
+            int idx = avatarUrl.lastIndexOf('/');
+            String fileName = idx >= 0 ? avatarUrl.substring(idx + 1) : avatarUrl;
+            if (fileName.isBlank()) return null;
+            Path target = AVATAR_DIR.resolve(fileName).normalize();
+            if (!target.startsWith(AVATAR_DIR)) return null;
+            return target;
+        }
+
+        private void applyString(JSONObject target, String key, Object raw) {
+            if (raw == null || JSONObject.NULL.equals(raw)) {
+                target.remove(key);
+                return;
+            }
+            String value = raw.toString().trim();
+            if (value.isEmpty()) target.remove(key);
+            else target.put(key, value);
+        }
+
+        private String saveAvatar(String customerId, String base64Data, String originalName, String contentType, String existingUrl) throws IOException {
+            String clean = base64Data.trim();
+            int comma = clean.indexOf(',');
+            if (comma >= 0) clean = clean.substring(comma + 1);
+            byte[] data;
+            try {
+                data = Base64.getDecoder().decode(clean);
+            } catch (IllegalArgumentException e) {
+                throw new IOException("Invalid avatar data", e);
+            }
+            if (data.length == 0) return existingUrl;
+
+            Files.createDirectories(AVATAR_DIR);
+            String ext = resolveExtension(originalName, contentType);
+            String safeId = customerId.replaceAll("[^a-zA-Z0-9_-]", "");
+            if (safeId.isEmpty()) safeId = "guest";
+            String filename = "customer-" + safeId + "-" + System.currentTimeMillis() + ext;
+            Path target = AVATAR_DIR.resolve(filename).normalize();
+            if (!target.startsWith(AVATAR_DIR)) throw new IOException("Invalid avatar path");
+
+            Files.write(target, data);
+            if (existingUrl != null && !existingUrl.isBlank()) {
+                deleteExistingAvatar(existingUrl);
+            }
+            return "/frontend/images/avatars/" + filename;
+        }
+
+        private String resolveExtension(String fileName, String contentType) {
             String ext = "";
             if (fileName != null) {
                 int dot = fileName.lastIndexOf('.');
-                if (dot > -1) ext = fileName.substring(dot).toLowerCase(Locale.ROOT);
+                if (dot >= 0 && dot < fileName.length() - 1) {
+                    ext = fileName.substring(dot).toLowerCase(Locale.ROOT);
+                }
             }
             if (ext.isEmpty() && contentType != null) {
                 String ct = contentType.toLowerCase(Locale.ROOT);
                 if (ct.contains("png")) ext = ".png";
-                else if (ct.contains("jpeg")) ext = ".jpg";
-                else if (ct.contains("jpg")) ext = ".jpg";
+                else if (ct.contains("jpeg") || ct.contains("jpg")) ext = ".jpg";
                 else if (ct.contains("gif")) ext = ".gif";
-                else if (ct.contains("webp")) ext = ".webp";
             }
             if (ext.isEmpty()) ext = ".png";
             return ext;
         }
 
-        // 資料庫欄位補強已由外層 Server.ensureCustomerColumns 處理，這裡不再重複。
-
-            private static boolean isNullOrEmpty(String value) {
-                return value == null || value.trim().isEmpty() || "null".equalsIgnoreCase(value.trim());
+        private void deleteExistingAvatar(String avatarUrl) {
+            if (avatarUrl == null || avatarUrl.isBlank()) return;
+            int idx = avatarUrl.lastIndexOf('/');
+            String fileName = idx >= 0 ? avatarUrl.substring(idx + 1) : avatarUrl;
+            if (fileName.isBlank()) return;
+            Path target = AVATAR_DIR.resolve(fileName).normalize();
+            if (!target.startsWith(AVATAR_DIR)) return;
+            try {
+                if (Files.exists(target) && Files.isRegularFile(target)) {
+                    Files.delete(target);
+                }
+            } catch (Exception e) {
+                System.err.println("刪除舊頭像失敗: " + e.getMessage());
             }
-
-            private static boolean isLocalHost(String host) {
-                if (host == null) return false;
-                String lowered = host.toLowerCase(Locale.ROOT);
-                return "localhost".equals(lowered) || "127.0.0.1".equals(lowered) || "::1".equals(lowered);
-            }
-
-            private static String sanitizeRelativeAvatarPath(String value) {
-                if (value == null) return null;
-                String trimmed = value.trim().replace('\\', '/');
-                if (trimmed.isEmpty()) return null;
-                int queryIndex = trimmed.indexOf('?');
-                if (queryIndex >= 0) {
-                    trimmed = trimmed.substring(0, queryIndex);
-                }
-                int fragmentIndex = trimmed.indexOf('#');
-                if (fragmentIndex >= 0) {
-                    trimmed = trimmed.substring(0, fragmentIndex);
-                }
-                if (trimmed.startsWith("/api/uploads/")) trimmed = trimmed.substring(4);
-                else if (trimmed.startsWith("api/uploads/")) trimmed = trimmed.substring(3);
-                if (trimmed.startsWith("./uploads/")) trimmed = trimmed.substring(1);
-                while (trimmed.startsWith("//")) {
-                    trimmed = trimmed.substring(1);
-                }
-                if (!trimmed.startsWith("/")) {
-                    trimmed = "/" + trimmed;
-                }
-                return trimmed;
-            }
-
-            private static String relocateAvatarPathIfAvailable(String value) {
-                if (value == null) return null;
-                String trimmed = value.trim().replace('\\', '/');
-                final String legacyPrefix = "/uploads/images/";
-                final String avatarPrefix = "/uploads/avatar/";
-                if (!trimmed.startsWith(legacyPrefix)) return trimmed;
-                String filename = trimmed.substring(legacyPrefix.length());
-                if (filename.isEmpty()) return trimmed;
-
-                Path avatarCandidate = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
-                if (avatarCandidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarCandidate) && Files.isRegularFile(avatarCandidate)) {
-                    return avatarPrefix + filename;
-                }
-
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    String remote = R2_CLIENT.toPublicUrl(avatarPrefix + filename);
-                    if (remote != null && CloudflareR2Client.headExists(remote)) {
-                        return avatarPrefix + filename;
-                    }
-                }
-
-                Path legacyCandidate = UPLOADS_DIR.resolve(filename).normalize();
-                if (legacyCandidate.startsWith(UPLOADS_DIR) && Files.exists(legacyCandidate) && Files.isRegularFile(legacyCandidate)) {
-                    return trimmed;
-                }
-
-                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    String legacyRemote = R2_CLIENT.toPublicUrl(trimmed);
-                    if (legacyRemote != null && CloudflareR2Client.headExists(legacyRemote)) {
-                        return trimmed;
-                    }
-                }
-
-                return null;
-            }
-
-            private static String canonicalizeAvatarForStorage(String value, HttpExchange exchange) {
-                if (isNullOrEmpty(value)) return null;
-                String trimmed = value.trim().replace('\\', '/');
-                if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-                    if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                        String r2Relative = R2_CLIENT.toRelativePath(trimmed);
-                        if (!isNullOrEmpty(r2Relative)) {
-                            return relocateAvatarPathIfAvailable(sanitizeRelativeAvatarPath(r2Relative));
-                        }
-                    }
-                    try {
-                        URI uri = new URI(trimmed);
-                        String host = uri.getHost();
-                        if (host != null) {
-                            String hostLower = host.toLowerCase(Locale.ROOT);
-                            String hostHeader = exchange.getRequestHeaders().getFirst("Host");
-                            String requestHost = hostHeader != null ? hostHeader.split(":")[0].toLowerCase(Locale.ROOT) : "";
-                            if (isLocalHost(hostLower) || (!requestHost.isEmpty() && hostLower.equals(requestHost))) {
-                                String path = uri.getPath();
-                                if (path == null || path.isEmpty()) {
-                                    path = "/";
-                                }
-                                return relocateAvatarPathIfAvailable(sanitizeRelativeAvatarPath(path));
-                            }
-                        }
-                        return trimmed;
-                    } catch (URISyntaxException ignored) {
-                        return trimmed;
-                    }
-                }
-                return relocateAvatarPathIfAvailable(sanitizeRelativeAvatarPath(trimmed));
-            }
-
-            private static String buildAbsoluteUrl(String path, HttpExchange exchange) {
-                if (isNullOrEmpty(path)) return null;
-                String normalized = path.trim();
-                if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-                    return normalized;
-                }
-                if (!normalized.startsWith("/")) {
-                    normalized = "/" + normalized.replaceFirst("^/+", "");
-                }
-
-                String scheme = "http";
-                String forwardedProto = exchange.getRequestHeaders().getFirst("X-Forwarded-Proto");
-                if (!isNullOrEmpty(forwardedProto)) {
-                    scheme = forwardedProto.split(",")[0].trim();
-                } else if (exchange.getLocalAddress().getPort() == 443) {
-                    scheme = "https";
-                }
-
-                String host = exchange.getRequestHeaders().getFirst("X-Forwarded-Host");
-                if (isNullOrEmpty(host)) {
-                    host = exchange.getRequestHeaders().getFirst("Host");
-                }
-                if (isNullOrEmpty(host)) {
-                    InetSocketAddress addr = exchange.getLocalAddress();
-                    StringBuilder sb = new StringBuilder(addr.getHostString());
-                    int port = addr.getPort();
-                    if (port != 80 && port != 443) {
-                        sb.append(':').append(port);
-                    }
-                    host = sb.toString();
-                }
-                host = host.trim();
-                while (host.endsWith("/")) {
-                    host = host.substring(0, host.length() - 1);
-                }
-
-                return scheme + "://" + host + normalized;
-            }
-
-            private static String resolveAvatarReference(String storedValue, HttpExchange exchange) {
-                if (isNullOrEmpty(storedValue)) return null;
-                String normalized = normalizeImageUrl(storedValue);
-                if (isNullOrEmpty(normalized)) {
-                    normalized = storedValue;
-                }
-                return buildAbsoluteUrl(normalized, exchange);
-            }
-
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            String method = exchange.getRequestMethod();
-            String path = exchange.getRequestURI().getPath();
-            // 預期路徑格式為 /api/customer-profile/{id}
-            String[] parts = path.split("/");
-            if (parts.length < 4) {
-                sendErrorResponse(exchange, 400, "Missing customer id", null);
-                return;
-            }
-            int id;
-            try { id = Integer.parseInt(parts[3]); } catch (Exception e) {
-                sendErrorResponse(exchange, 400, "Invalid customer id", e);
-                return;
-            }
-
-            if ("GET".equalsIgnoreCase(method)) {
-                JSONObject store = readProfiles();
-                JSONObject profile = store.optJSONObject(String.valueOf(id));
-                if (profile == null) profile = new JSONObject();
-                profile.put("customerId", String.valueOf(id));
-
-                // 將檔案內容與資料庫欄位合併，資料庫值若存在則具有優先權。
-                try (Connection conn = DBConnect.getConnection()) {
-                    Server.ensureCustomerColumns(conn);
-                    try (PreparedStatement ps = conn.prepareStatement(
-                            "SELECT CustomerName, Email, Phone, Address, AvatarUrl, UpdatedAt FROM customers WHERE idCustomers=?")) {
-                        ps.setInt(1, id);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            if (rs.next()) {
-                                String name = rs.getString("CustomerName");
-                                String email = rs.getString("Email");
-                                String phone = rs.getString("Phone");
-                                String address = rs.getString("Address");
-                                String avatar = rs.getString("AvatarUrl");
-                                java.sql.Timestamp updated = rs.getTimestamp("UpdatedAt");
-                                if (name != null && !name.isEmpty()) profile.put("displayName", name);
-                                if (email != null) profile.put("email", email); else if (!profile.has("email")) profile.put("email", JSONObject.NULL);
-                                if (phone != null) profile.put("phone", phone); else if (!profile.has("phone")) profile.put("phone", JSONObject.NULL);
-                                if (address != null) profile.put("address", address); else if (!profile.has("address")) profile.put("address", JSONObject.NULL);
-                                if (avatar != null && !avatar.trim().isEmpty() && !"null".equalsIgnoreCase(avatar.trim())) {
-                                    profile.put("avatarUrl", avatar);
-                                } else if (!profile.has("avatarUrl")) {
-                                    profile.put("avatarUrl", JSONObject.NULL);
-                                }
-                                if (updated != null) profile.put("updatedAt", updated.toInstant().toString());
-                            } else {
-                                    // 若資料庫沒有該筆紀錄，盡量帶入先前保存的名稱作為備援。
-                                String name = getCustomerNameById(id);
-                                if (name != null && !name.isEmpty()) profile.put("displayName", name);
-                                if (!profile.has("email")) profile.put("email", JSONObject.NULL);
-                                if (!profile.has("phone")) profile.put("phone", JSONObject.NULL);
-                                if (!profile.has("address")) profile.put("address", JSONObject.NULL);
-                                if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    System.err.println("GET customer-profile merge DB failed: " + e.getMessage());
-                    if (!profile.has("email")) profile.put("email", JSONObject.NULL);
-                    if (!profile.has("phone")) profile.put("phone", JSONObject.NULL);
-                    if (!profile.has("address")) profile.put("address", JSONObject.NULL);
-                    if (!profile.has("avatarUrl")) profile.put("avatarUrl", JSONObject.NULL);
-                }
-
-                String storedAvatarRaw = profile.has("avatarUrl") && !profile.isNull("avatarUrl")
-                        ? profile.optString("avatarUrl", null)
-                        : null;
-                String canonicalAvatar = canonicalizeAvatarForStorage(storedAvatarRaw, exchange);
-                if (canonicalAvatar != null) {
-                    profile.put("avatarUrl", canonicalAvatar);
-                } else {
-                    profile.put("avatarUrl", JSONObject.NULL);
-                }
-
-                if (!isNullOrEmpty(storedAvatarRaw) && canonicalAvatar != null && !storedAvatarRaw.equals(canonicalAvatar)) {
-                    profile.put("avatarUrlOriginal", storedAvatarRaw);
-                } else {
-                    profile.remove("avatarUrlOriginal");
-                }
-
-                String resolvedAvatar = resolveAvatarReference(canonicalAvatar != null ? canonicalAvatar : storedAvatarRaw, exchange);
-                if (!isNullOrEmpty(resolvedAvatar)) {
-                    profile.put("avatarUrlResolved", resolvedAvatar);
-                    profile.remove("avatarMissing");
-                } else {
-                    profile.put("avatarUrlResolved", JSONObject.NULL);
-                    if (!isNullOrEmpty(storedAvatarRaw)) {
-                        profile.put("avatarMissing", true);
-                    } else {
-                        profile.remove("avatarMissing");
-                    }
-                }
-
-                sendJsonResponse(exchange, profile.toString(), 200);
-                return;
-            }
-
-            if ("PUT".equalsIgnoreCase(method)) {
-                String body;
-                try (java.util.Scanner s = new java.util.Scanner(exchange.getRequestBody(), "UTF-8").useDelimiter("\\A")) {
-                    body = s.hasNext() ? s.next() : "{}";
-                }
-                JSONObject req;
-                try { req = new JSONObject(body); } catch (Exception e) {
-                    sendErrorResponse(exchange, 400, "Invalid JSON", e);
-                    return;
-                }
-
-                JSONObject store = readProfiles();
-                JSONObject existing = store.optJSONObject(String.valueOf(id));
-                if (existing == null) existing = new JSONObject();
-
-                // 合併可更新的欄位值，僅覆寫使用者透過表單提交的內容。
-                String displayName = req.optString("displayName", null);
-                String email = req.optString("email", null);
-                String phone = req.optString("phone", null);
-                String address = req.optString("address", null);
-
-                if (displayName != null && !displayName.isEmpty()) existing.put("displayName", displayName);
-                if (email != null) existing.put("email", email.isEmpty() ? JSONObject.NULL : email);
-                if (phone != null) existing.put("phone", phone.isEmpty() ? JSONObject.NULL : phone);
-                if (address != null) existing.put("address", address.isEmpty() ? JSONObject.NULL : address);
-
-                // 若請求內帶有頭像資料，將 base64 內容解碼並儲存成檔案。
-                String avatarData = req.optString("avatarData", null);
-                String avatarFileName = req.optString("avatarFileName", null);
-                String avatarContentType = req.optString("avatarContentType", null);
-                String finalAvatarUrl = null;
-                if (avatarData != null && !avatarData.isEmpty()) {
-                    try {
-                        byte[] bytes = java.util.Base64.getDecoder().decode(avatarData);
-                        String ext = inferExtension(avatarFileName, avatarContentType);
-                        String unique = "customer-" + id + "-" + System.currentTimeMillis() + ext;
-                        String relativePath = "uploads/avatar/" + unique;
-                        String localUrl = "/" + relativePath;
-
-                        String effectiveContentType = (avatarContentType == null || avatarContentType.isEmpty()) ? "application/octet-stream" : avatarContentType;
-
-                        // 先嘗試上傳到 Cloudflare R2，成功則使用公開網址作為頭像位置。
-                        if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                            try {
-                                String objectKey = R2_CLIENT.buildObjectKey(unique, "uploads/avatar");
-                                CloudflareR2Client.UploadResult uploadRes = R2_CLIENT.uploadObject(objectKey, bytes, effectiveContentType);
-                                finalAvatarUrl = uploadRes.publicUrl();
-                                System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: uploaded avatar to R2 key=" + uploadRes.objectKey());
-                            } catch (Exception r2ex) {
-                                System.err.println("Failed to upload avatar to R2, falling back to local disk: " + r2ex.getMessage());
-                            }
-                        }
-
-                        // 若 R2 上傳未成功，改存成本機檔案，並回傳相對位址。
-                        if (finalAvatarUrl == null) {
-                            Files.createDirectories(AVATAR_UPLOADS_DIR);
-                            Path target = AVATAR_UPLOADS_DIR.resolve(unique).normalize();
-                            if (!target.startsWith(AVATAR_UPLOADS_DIR)) throw new IOException("Invalid upload path");
-                            Files.write(target, bytes);
-                            finalAvatarUrl = localUrl;
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Failed to save avatar: " + e.getMessage());
-                        // 若儲存失敗，保留舊有頭像以免造成斷圖。
-                    }
-                }
-
-                if (!isNullOrEmpty(finalAvatarUrl)) {
-                    String originalFinalAvatar = finalAvatarUrl;
-                    String canonicalAvatar = canonicalizeAvatarForStorage(originalFinalAvatar, exchange);
-                    if (!isNullOrEmpty(canonicalAvatar)) {
-                        existing.put("avatarUrl", canonicalAvatar);
-                        if (!canonicalAvatar.equals(originalFinalAvatar)) {
-                            existing.put("avatarUrlOriginal", originalFinalAvatar);
-                        } else {
-                            existing.remove("avatarUrlOriginal");
-                        }
-                        finalAvatarUrl = canonicalAvatar;
-                        System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: stored avatar for customer " + id + " -> " + canonicalAvatar + " (original=" + originalFinalAvatar + ")");
-                    } else {
-                        existing.remove("avatarUrl");
-                        existing.remove("avatarUrlOriginal");
-                        finalAvatarUrl = null;
-                    }
-                } else {
-                    String existingAvatarRaw = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
-                            ? existing.optString("avatarUrl", null)
-                            : null;
-                    if (!isNullOrEmpty(existingAvatarRaw)) {
-                        String canonicalExisting = canonicalizeAvatarForStorage(existingAvatarRaw, exchange);
-                        if (!isNullOrEmpty(canonicalExisting)) {
-                            existing.put("avatarUrl", canonicalExisting);
-                            if (!canonicalExisting.equals(existingAvatarRaw)) {
-                                existing.put("avatarUrlOriginal", existingAvatarRaw);
-                            } else {
-                                existing.remove("avatarUrlOriginal");
-                            }
-                            finalAvatarUrl = canonicalExisting;
-                            System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: normalized existing avatar for customer " + id + " -> " + canonicalExisting);
-                        } else {
-                            existing.remove("avatarUrl");
-                            existing.remove("avatarUrlOriginal");
-                            finalAvatarUrl = null;
-                        }
-                    } else {
-                        existing.remove("avatarUrl");
-                        existing.remove("avatarUrlOriginal");
-                        finalAvatarUrl = null;
-                    }
-                }
-
-                String storedAvatarReference = existing.has("avatarUrl") && !existing.isNull("avatarUrl")
-                        ? existing.optString("avatarUrl", null)
-                        : null;
-                if (!isNullOrEmpty(storedAvatarReference)) {
-                    String resolvedAvatar = resolveAvatarReference(storedAvatarReference, exchange);
-                    if (!isNullOrEmpty(resolvedAvatar)) {
-                        existing.put("avatarUrlResolved", resolvedAvatar);
-                    } else {
-                        existing.remove("avatarUrlResolved");
-                    }
-                } else {
-                    existing.remove("avatarUrlResolved");
-                }
-
-                existing.put("customerId", String.valueOf(id));
-                existing.put("updatedAt", java.time.Instant.now().toString());
-                store.put(String.valueOf(id), existing);
-                writeProfiles(store);
-
-                // 將同樣資料同步寫回 customers 資料表，維持前台/後台資料一致。
-                try (Connection conn = DBConnect.getConnection()) {
-                    Server.ensureCustomerColumns(conn);
-                    String sql = "UPDATE customers SET CustomerName = COALESCE(?, CustomerName), " +
-                            "Email = ?, Phone = ?, Address = ?, AvatarUrl = ?, UpdatedAt = NOW() WHERE idCustomers = ?";
-                    try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                        ps.setString(1, displayName);
-                        ps.setString(2, email);
-                        ps.setString(3, phone);
-                        ps.setString(4, address);
-                        String avatarForDb = !isNullOrEmpty(finalAvatarUrl)
-                                ? finalAvatarUrl
-                                : (existing.has("avatarUrl") && !existing.isNull("avatarUrl")
-                                    ? existing.optString("avatarUrl", null)
-                                    : null);
-                        if (isNullOrEmpty(avatarForDb)) {
-                            ps.setNull(5, Types.VARCHAR);
-                        } else {
-                            ps.setString(5, avatarForDb);
-                        }
-                        ps.setInt(6, id);
-                        ps.executeUpdate();
-                    }
-                } catch (Exception e) {
-                    System.err.println("Persisting customer profile to DB failed: " + e.getMessage());
-                }
-                sendJsonResponse(exchange, existing.toString(), 200);
-                return;
-            }
-
-            sendErrorResponse(exchange, 405, "Method Not Allowed", null);
         }
     }
 }
