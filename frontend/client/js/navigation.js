@@ -864,9 +864,6 @@
                 <div class="client-search-overlay-backdrop" data-mobile-search-dismiss aria-hidden="true"></div>
                 <div class="client-search-overlay-panel" role="dialog" aria-modal="true" aria-label="搜尋商品">
                     <div class="client-search-overlay-header">
-                        <button type="button" class="client-search-overlay-close" data-mobile-search-dismiss aria-label="關閉搜尋">
-                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                        </button>
                         <form class="client-search-overlay-form" data-mobile-search-form role="search">
                             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                             <label class="visually-hidden" for="client-search-overlay-input">搜尋商品</label>

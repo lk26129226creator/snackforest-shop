@@ -395,7 +395,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 .client-search-overlay-header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px; /* slightly reduced after removing close button so form sits closer to left edge */
+    padding-left: 6px; /* nudge content a bit so the form fits nicely inside the rounded corner */
 }
 
 .client-search-overlay-close {
