@@ -396,7 +396,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     display: flex;
     align-items: center;
     gap: 8px; /* slightly reduced after removing close button so form sits closer to left edge */
-    padding-left: 6px; /* nudge content a bit so the form fits nicely inside the rounded corner */
+    padding-left: 12px; /* nudge content a bit so the form fits nicely inside the rounded corner */
+    padding-right: 12px;
 }
 
 .client-search-overlay-close {
@@ -420,9 +421,11 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     flex: 1 1 auto;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0.75rem 1rem;
-    border-radius: 18px;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.55rem 0.65rem; /* slightly smaller so the form fits within panel */
+    border-radius: 14px;
     background: rgba(15, 23, 42, 0.55);
     border: 1px solid rgba(226, 232, 240, 0.14);
     box-shadow: inset 0 0 0 1px rgba(148, 196, 165, 0.12);
@@ -447,9 +450,9 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 }
 
 .client-search-overlay-form button[type="submit"] {
-    width: 44px;
-    height: 44px;
-    border-radius: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
     border: none;
     display: grid;
     place-items: center;
