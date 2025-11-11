@@ -2315,6 +2315,41 @@ public class Server {
 
                 String canonicalAvatar = normalizeAvatarFields(existing, exchange, requestedAvatarValue);
 
+                // 如果 normalizeAvatarFields 沒有回傳 canonicalAvatar（可能因為暫時性檔案可見性或其他原因），
+                // 但我們剛剛確定 avatarUploaded 為 true，則嘗試以 uploadedAvatarRaw 建立 canonical 與 resolved，
+                // 並回填 existing 與 canonicalAvatar，確保 API 回應中包含可用的 avatar 欄位。
+                if (isNullOrEmpty(canonicalAvatar) && avatarUploaded && !isNullOrEmpty(uploadedAvatarRaw)) {
+                    try {
+                        // 先嘗試 canonicalize uploaded raw reference
+                        String tryCanonical = canonicalizeAvatarForStorage(uploadedAvatarRaw, exchange);
+                        if (!isNullOrEmpty(tryCanonical)) {
+                            canonicalAvatar = tryCanonical;
+                            existing.put("avatarUrl", canonicalAvatar);
+                            String resolved = resolveAvatarReference(canonicalAvatar, exchange);
+                            if (!isNullOrEmpty(resolved)) {
+                                existing.put("avatarUrlResolved", resolved);
+                                existing.remove("avatarMissing");
+                            } else {
+                                existing.put("avatarUrlResolved", JSONObject.NULL);
+                                existing.put("avatarMissing", true);
+                            }
+                        } else {
+                            // 無法 canonicalize，至少把上傳原始路徑放回 existing，並嘗試以此產生 resolved
+                            existing.put("avatarUrl", uploadedAvatarRaw);
+                            String resolved = resolveAvatarReference(uploadedAvatarRaw, exchange);
+                            if (!isNullOrEmpty(resolved)) {
+                                existing.put("avatarUrlResolved", resolved);
+                                existing.remove("avatarMissing");
+                            } else {
+                                existing.put("avatarUrlResolved", JSONObject.NULL);
+                                existing.put("avatarMissing", true);
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("CustomerProfileHandler: fallback canonicalization failed: " + e.getMessage());
+                    }
+                }
+
                 if (avatarUploaded && !isNullOrEmpty(canonicalAvatar) && !isNullOrEmpty(requestedAvatarValue)) {
                     System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: stored avatar for customer " + id + " -> " + canonicalAvatar + " (original=" + requestedAvatarValue + ")");
                 } else if (!avatarUploaded && !avatarCleared && !isNullOrEmpty(canonicalAvatar)
