@@ -1261,13 +1261,22 @@
         }
 
         if (overlay && !overlay.dataset.dismissBound) {
+            // 使用事件委派（delegation）來處理關閉/背景點擊，
+            // 可確保即使內部節點結構改變或被子元素覆蓋，仍能正確關閉 overlay。
             overlay.dataset.dismissBound = '1';
-            overlayDismissNodes.forEach((node) => {
-                node.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    closeOverlay({ restoreFocus: true });
-                });
-            });
+            overlay.addEventListener('click', (event) => {
+                try {
+                    const target = event.target instanceof Element ? event.target : null;
+                    const dismissEl = target ? target.closest('[data-mobile-search-dismiss]') : null;
+                    if (dismissEl) {
+                        event.preventDefault();
+                        // restoreFocus: true 會嘗試把焦點還給桌面輸入框
+                        closeOverlay({ restoreFocus: true });
+                    }
+                } catch (_) {
+                    // swallow
+                }
+            }, true);
         }
 
         window.addEventListener('resize', () => {
