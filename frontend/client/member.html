@@ -787,29 +787,51 @@
 
 		data.avatarVersion = avatarVersion || '';
 		if (avatar && avatarImg) {
-			if (finalAvatarUrl) {
-				// 嘗試多個候選來源載入頭像（先嘗試後端回傳的 finalAvatarUrl），若失敗再嘗試其他可能來源
-				const candidates = [finalAvatarUrl];
-				try {
-					const storedResolved = localStorage.getItem('sf-client-avatar-resolved') || '';
-					if (storedResolved && !candidates.includes(storedResolved)) candidates.push(storedResolved);
-				} catch (_) {}
-				try {
-					if (sanitizedAvatar && !/^https?:\/\//i.test(sanitizedAvatar) ) {
+			// 準備候選 URL，但過濾掉 null / 'null' / undefined / '' 等不可用值
+			const candidates = [];
+			try {
+				if (finalAvatarUrl) candidates.push(finalAvatarUrl);
+			} catch (_) {}
+			try {
+				const storedResolved = (localStorage.getItem('sf-client-avatar-resolved') || '').trim();
+				if (storedResolved && storedResolved.toLowerCase() !== 'null' && storedResolved.toLowerCase() !== 'undefined' && !candidates.includes(storedResolved)) {
+					candidates.push(storedResolved);
+				}
+			} catch (_) {}
+			try {
+				if (sanitizedAvatar && sanitizedAvatar.toLowerCase() !== 'null' && sanitizedAvatar.toLowerCase() !== 'undefined') {
+					if (!/^https?:\/\//i.test(sanitizedAvatar)) {
 						const clean = sanitizedAvatar.replace(/^\/*/, '');
-						if (typeof STORAGE_ORIGIN === 'string' && STORAGE_ORIGIN) candidates.push(STORAGE_ORIGIN.replace(/\/$/, '') + '/' + clean);
-						if (typeof window !== 'undefined' && window.location && window.location.origin) candidates.push(window.location.origin.replace(/\/$/, '') + '/' + clean);
-					} else if (sanitizedAvatar) {
+						if (typeof STORAGE_ORIGIN === 'string' && STORAGE_ORIGIN) {
+							const u = STORAGE_ORIGIN.replace(/\/$/, '') + '/' + clean;
+							if (!candidates.includes(u)) candidates.push(u);
+						}
+						if (typeof window !== 'undefined' && window.location && window.location.origin) {
+							const u2 = window.location.origin.replace(/\/$/, '') + '/' + clean;
+							if (!candidates.includes(u2)) candidates.push(u2);
+						}
+					} else {
 						if (!candidates.includes(sanitizedAvatar)) candidates.push(sanitizedAvatar);
 					}
-				} catch (_) {}
+				}
+			} catch (_) {}
 
+			if (candidates.length === 0) {
+				// 沒有任何有效的候選 URL，清除預覽並結束
+				clearAvatarPreview();
+			} else {
 				(function tryLoad(i) {
 					if (i >= candidates.length) {
 						clearAvatarPreview();
 						return;
 					}
-					const url = appendCacheBuster(candidates[i], avatarVersion || Date.now());
+					const candidate = candidates[i];
+					if (!candidate) {
+						tryLoad(i + 1);
+						return;
+					}
+					const url = appendCacheBuster(candidate, avatarVersion || Date.now());
+					if (!url) { tryLoad(i + 1); return; }
 					avatar.classList.add('has-image');
 					avatarImg.classList.remove('d-none');
 					if (avatarInitial) avatarInitial.classList.add('d-none');
@@ -817,8 +839,6 @@
 					avatarImg.onload = () => { avatarImg.onerror = null; avatarImg.onload = null; };
 					avatarImg.src = url;
 				})(0);
-			} else {
-				clearAvatarPreview();
 			}
 		}
 		if (profileUpdatedEl) {
