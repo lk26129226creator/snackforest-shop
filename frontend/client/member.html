@@ -850,6 +850,19 @@
 		}
 	}
 
+	// 全域觸發 avatar 重新載入的輔助函式。
+	// 如果其他模組需要強制更新會員頭像，可以呼叫 window.loadAvatar()
+	// 範例：
+	// if (typeof loadAvatar === 'function') { loadAvatar(); console.debug('[SF-avatar-debug] loadAvatar() called'); } else { location.reload(); }
+	window.loadAvatar = async function() {
+		try {
+			await loadProfile();
+			try { console.debug('[SF-avatar-debug] loadAvatar() called'); } catch (_) {}
+		} catch (e) {
+			try { console.warn('[SF-avatar-debug] loadAvatar failed', e); } catch (_) {}
+		}
+	};
+
 	function readFileAsBase64(file) {
 		return new Promise((resolve, reject) => {
 			const reader = new FileReader();
@@ -890,8 +903,17 @@
 			if (!res.success) throw new Error(res.error || '上傳頭像失敗');
 			const profile = res.data || {};
 			profile.customerId = cid;
-			applyProfile(profile);
-			showFeedback('頭像已更新完成。', 'success');
+			// 觸發全域的 avatar 重新載入函式（若存在），否則刷新頁面作為 fallback
+			if (typeof window.loadAvatar === 'function') {
+				try {
+					await window.loadAvatar();
+				} catch (_) {
+					try { location.reload(); } catch (__) { window.location.reload(); }
+				}
+				try { showFeedback('頭像已更新完成。', 'success'); } catch (_) {}
+			} else {
+				try { location.reload(); } catch (_) { window.location.reload(); }
+			}
 		} catch (err) {
 			console.error('頭像上傳失敗', err);
 			showFeedback(err.message || '頭像更新失敗，請稍後再試。', 'danger');
