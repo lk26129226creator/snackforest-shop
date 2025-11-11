@@ -2322,6 +2322,29 @@ public class Server {
                     System.err.println(java.time.LocalDateTime.now() + " - CustomerProfileHandler: normalized existing avatar for customer " + id + " -> " + canonicalAvatar);
                 }
 
+                // 如果剛剛上傳成功但 normalizeAvatarFields 未能產生可用的 avatarUrlResolved，
+                // 嘗試直接以 upload 回傳的值建立 resolved URL，避免前端收到 null
+                if (avatarUploaded) {
+                    try {
+                        String existingResolved = optStringOrNull(existing, "avatarUrlResolved");
+                        if (isNullOrEmpty(existingResolved)) {
+                            String resolvedDirect = resolveAvatarReference(uploadedAvatarRaw, exchange);
+                            if (!isNullOrEmpty(resolvedDirect)) {
+                                existing.put("avatarUrlResolved", resolvedDirect);
+                                existing.remove("avatarMissing");
+                            } else {
+                                existing.put("avatarUrlResolved", JSONObject.NULL);
+                                existing.put("avatarMissing", true);
+                            }
+                        }
+                        if (!existing.has("avatarUrl") || existing.isNull("avatarUrl")) {
+                            existing.put("avatarUrl", uploadedAvatarRaw);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("CustomerProfileHandler: post-process avatar resolution failed: " + e.getMessage());
+                    }
+                }
+
                 String currentStoredAvatar = optStringOrNull(existing, "avatarUrl");
 
                 if (previousStoredAvatar != null) {
