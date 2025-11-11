@@ -532,10 +532,59 @@
 		: ((url) => (url ? String(url) : ''));
 	const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
-	const storedCustomerId = localStorage.getItem('customerId');
+	// 儲存的顯示名稱（如果有）
 	const storedCustomerName = localStorage.getItem('customerName') || '';
+
+	// 角色（維持原本邏輯不變）
 	const role = (localStorage.getItem('sf-client-role') || localStorage.getItem('userRole') || 'customer').toLowerCase();
-	const cid = storedCustomerId ? String(storedCustomerId) : null;
+
+	// 偵測 customerId（cid）的乾淨實作：
+	// - 優先從常見 localStorage keys 取得
+	// - 再從 window 全域可能的變數取得
+	// - 再嘗試 URL query (?cid=... 或 ?customerId=...)
+	// 最後將結果設為 window.cid 與 window.SF_CLIENT_ID，並同步 canonical localStorage keys
+	function detectCustomerId() {
+		try {
+			const candidates = [
+				localStorage.getItem('customerId'),
+				localStorage.getItem('sf-client-id'),
+				localStorage.getItem('sf-clientId'),
+				localStorage.getItem('sfClientId'),
+				window.SF_CLIENT_ID,
+				window.sfClientId,
+				window.cid
+			];
+			for (const v of candidates) {
+				if (v != null) {
+					const s = String(v).trim();
+					if (s) return s;
+				}
+			}
+		} catch (_) {
+			// ignore storage access errors
+		}
+		try {
+			const params = new URLSearchParams(window.location.search || '');
+			const q = params.get('cid') || params.get('customerId');
+			if (q && String(q).trim()) return String(q).trim();
+		} catch (_) {}
+		return null;
+	}
+
+	let cid = detectCustomerId();
+	if (cid) {
+		try {
+			// 保持 canonical key，並提供全域可取用的變數
+			localStorage.setItem('customerId', cid);
+			localStorage.setItem('sf-client-id', cid);
+		} catch (_) {}
+		try { window.cid = cid; } catch (_) {}
+		try { window.SF_CLIENT_ID = cid; } catch (_) {}
+	} else {
+		// 確保全域沒有舊的未初始化值
+		window.cid = null;
+        window.SF_CLIENT_ID = null;
+	}
 
 	const feedbackPanel = document.getElementById('profile-feedback');
 	const profileForm = document.getElementById('profile-form');
