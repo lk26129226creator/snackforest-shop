@@ -943,14 +943,22 @@
             bodyEl.classList.remove('client-search-open');
             overlayOpen = false;
             document.removeEventListener('keydown', handleOverlayKeydown, true);
-            if (restoreFocus && input) {
-                setTimeout(() => {
-                    try {
-                        input.focus({ preventScroll: true });
-                    } catch (_) {
-                        input.focus();
-                    }
-                }, 20);
+            // Only restore focus to the top search input when requested AND we are
+            // on a non-mobile viewport. Restoring focus on small viewports will
+            // trigger the input.focus handler which immediately re-opens the
+            // overlay, creating an apparent "cannot close" loop.
+            try {
+                if (restoreFocus && input && window.innerWidth >= BREAKPOINT) {
+                    setTimeout(() => {
+                        try {
+                            input.focus({ preventScroll: true });
+                        } catch (_) {
+                            input.focus();
+                        }
+                    }, 20);
+                }
+            } catch (_) {
+                // ignore focus errors
             }
         }
 
@@ -1261,22 +1269,16 @@
         }
 
         if (overlay && !overlay.dataset.dismissBound) {
-            // 使用事件委派（delegation）來處理關閉/背景點擊，
-            // 可確保即使內部節點結構改變或被子元素覆蓋，仍能正確關閉 overlay。
             overlay.dataset.dismissBound = '1';
-            overlay.addEventListener('click', (event) => {
-                try {
-                    const target = event.target instanceof Element ? event.target : null;
-                    const dismissEl = target ? target.closest('[data-mobile-search-dismiss]') : null;
-                    if (dismissEl) {
-                        event.preventDefault();
-                        // restoreFocus: true 會嘗試把焦點還給桌面輸入框
-                        closeOverlay({ restoreFocus: true });
-                    }
-                } catch (_) {
-                    // swallow
-                }
-            }, true);
+            overlayDismissNodes.forEach((node) => {
+                node.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    // Dismiss via backdrop / close button should not restore
+                    // focus on mobile because that can immediately re-open the overlay
+                    // (input.focus handler opens overlay on small viewports).
+                    closeOverlay({ restoreFocus: false });
+                });
+            });
         }
 
         window.addEventListener('resize', () => {

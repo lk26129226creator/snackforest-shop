@@ -378,8 +378,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     left: 0;
     right: 0;
     bottom: 0;
-    /* 限制最大高度以避免在小螢幕或內容過多時超出 viewport */
-    max-height: calc(100vh - 48px);
+    /* Prevent panel from exceeding viewport height on small devices */
+    max-height: calc(100vh - 72px);
     padding: clamp(18px, 6vw, 32px) clamp(18px, 6vw, 28px);
     padding-bottom: calc(clamp(22px, 7vw, 32px) + env(safe-area-inset-bottom, 0px));
     border-radius: 28px 28px 0 0;
