@@ -2057,7 +2057,25 @@
                             avatarImg.alt = '';
                             return;
                         }
-                        const url = appendCacheBuster(candidates[idx], nextVersion || Date.now());
+                        // 只有在有版本 token（updatedAt / profile version）時才 append cache-buster
+                        let url = candidates[idx];
+                        try {
+                            const storedVersion = (function () {
+                                try {
+                                    return safeTrim(window.localStorage.getItem(PROFILE_VERSION_KEY));
+                                } catch (_) { return ''; }
+                            })();
+                            const token = nextVersion || storedVersion || '';
+                            if (token) {
+                                url = appendCacheBuster(candidates[idx], token);
+                            } else {
+                                // 不要每次用 Date.now()，以避免不同 v= 值導致多個請求
+                                url = candidates[idx];
+                            }
+                        } catch (_) {
+                            url = candidates[idx];
+                        }
+
                         // 若已經是同一個 src，還是更新 alt
                         avatarImg.alt = `${nextName || '會員'}頭像`;
                         if (avatarImg.src === url) return; // already set
@@ -2182,16 +2200,34 @@
             window.addEventListener(PROFILE_UPDATE_EVENT, handleProfileEvent);
         }
 
-        refreshMemberProfile({ force: true });
+        // 如果目前頁面是 member page，該頁面會自行 loadProfile，因此不在這裡強制再次 fetch
+        const isMemberPage = (function () {
+            try {
+                const p = (window.location && window.location.pathname) ? window.location.pathname : '';
+                const tail = p.split('/').pop() || '';
+                return /^(member(?:\.html)?)$/i.test(tail);
+            } catch (_) {
+                return false;
+            }
+        })();
+
+        if (!isMemberPage) {
+            // 預設在其他頁面主動強制一次以確保側欄為最新（首次載入）
+            refreshMemberProfile({ force: true });
+        } else {
+            // member page 會自行向後端查 profile；這裡僅做非強制性的同步嘗試以避免重複請求
+            refreshMemberProfile();
+        }
 
         const handleWindowFocus = () => {
-            refreshMemberProfile({ force: true });
+            // 只做非強制刷新，避免因 focus/visibility 連續觸發而產生重複請求
+            refreshMemberProfile();
         };
 
         window.addEventListener('focus', handleWindowFocus);
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                refreshMemberProfile({ force: true });
+                refreshMemberProfile();
             }
         });
 
