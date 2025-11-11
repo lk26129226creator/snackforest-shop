@@ -429,6 +429,17 @@ public class Server {
             if (publicUrl == null) {
                 publicUrl = "https://" + host + canonicalUri;
             }
+            // Retry a few times to reduce eventual-consistency visibility issues
+            try {
+                int attempts = 0;
+                // small sleep between attempts; if headExists becomes true we proceed
+                while (attempts < 3 && !headExists(publicUrl)) {
+                    attempts++;
+                    try { Thread.sleep(300); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+                }
+            } catch (Exception e) {
+                System.err.println(java.time.LocalDateTime.now() + " - R2 head check retry failed: " + e.getMessage());
+            }
             return new UploadResult(normalizedKey, publicUrl);
         }
 
