@@ -859,14 +859,19 @@
 						console.warn('[SF-avatar-debug] avatar load failed, falling back to default');
 						try {
 							const fallback = resolveAssetUrl('/frontend/images/avatars/default-avatar.png') || resolveAssetUrl('/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png') || '/default-avatar.png';
-							avatarImg.src = safeAppendCacheBuster(fallback, Date.now());
+							const fallbackUrl = safeAppendCacheBuster(fallback, Date.now());
+							if (!avatarImg.src || avatarImg.src !== fallbackUrl) {
+								avatarImg.src = fallbackUrl;
+							}
 						} catch (_) {
 							avatarImg.removeAttribute('src');
 							clearAvatarPreview();
 						}
 					};
 					avatarImg.onload = () => { avatarImg.onerror = null; avatarImg.onload = null; };
-					avatarImg.src = url;
+					if (!avatarImg.src || avatarImg.src !== url) {
+						avatarImg.src = url;
+					}
 				})(0);
 			}
 		}
@@ -930,13 +935,18 @@
 		}
 	}
 
+	let _isLoadingProfile = false;
+	const _apiGetCustomerProfile = (window.api && typeof window.api.getCustomerProfile === 'function') ? window.api.getCustomerProfile.bind(window.api) : null;
+
 	async function loadProfile() {
-		if (!cid || !window.api || typeof window.api.getCustomerProfile !== 'function') {
+		if (!cid || !_apiGetCustomerProfile) {
 			applyProfile({ customerId: cid, displayName: storedCustomerName });
 			return;
 		}
+		if (_isLoadingProfile) return; // prevent re-entrant calls / infinite loops
+		_isLoadingProfile = true;
 		try {
-			const res = await window.api.getCustomerProfile(cid);
+			const res = await _apiGetCustomerProfile(cid);
 			if (!res.success) throw new Error(res.error || '無法取得會員資料');
 			const profile = res.data || {};
 			profile.customerId = cid;
@@ -945,6 +955,9 @@
 		} catch (err) {
 			console.error('載入會員資料失敗', err);
 			showFeedback(err.message || '無法載入會員資料', 'danger');
+		}
+		finally {
+			_isLoadingProfile = false;
 		}
 	}
 

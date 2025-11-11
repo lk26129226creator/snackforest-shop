@@ -525,14 +525,17 @@
         }
 
         let profile = await fetchProfileById(memberId);
-        if (!profile && window.api && typeof window.api.getCustomerProfile === 'function') {
-            try {
-                const fallbackRes = await window.api.getCustomerProfile(memberId);
-                if (fallbackRes && fallbackRes.success) {
-                    profile = fallbackRes.data || null;
+        if (!profile) {
+            const _apiGetCustomerProfile = (window.api && typeof window.api.getCustomerProfile === 'function') ? window.api.getCustomerProfile.bind(window.api) : null;
+            if (_apiGetCustomerProfile) {
+                try {
+                    const fallbackRes = await _apiGetCustomerProfile(memberId);
+                    if (fallbackRes && fallbackRes.success) {
+                        profile = fallbackRes.data || null;
+                    }
+                } catch (e) {
+                    console.warn('Nav fallback getCustomerProfile failed', e);
                 }
-            } catch (_) {
-                // ignore fallback errors
             }
         }
         if (profile && typeof profile === 'object' && !profile.customerId) {
