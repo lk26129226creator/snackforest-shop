@@ -412,11 +412,53 @@
             }
 
             if (heroImageEl) {
-                const src = hero.imageUrlResolved || hero.imageUrl || heroImageEl.getAttribute('data-default-src') || heroImageEl.src;
+                // 候選來源：後端解析過的（優先）、原始、元素的 data-default-src
+                const candidateRaw = hero.imageUrlResolved || hero.imageUrl || heroImageEl.getAttribute('data-default-src') || '';
+                // 本地穩定的 fallback 圖片（repo 內已有 hero 圖檔）
+                const LOCAL_HERO_FALLBACK = '/frontend/images/hero/b8aab28e-afe4-4941-ba77-b57872c49a74.png';
+
+                function looksLikeHtmlUrl(u) {
+                    if (!u) return false;
+                    try {
+                        const s = String(u).trim().toLowerCase();
+                        if (!s) return false;
+                        if (s.startsWith('data:') && s.indexOf('image') >= 0) return false;
+                        if (s.startsWith('data:') && s.indexOf('html') >= 0) return true;
+                        if (/\.html?(?:\?|#|$)/i.test(s)) return true;
+                        if (/\/index\.html(?:\?|#|$)/i.test(s)) return true;
+                        // 如果整個字串看起來像是整頁 URL（沒有圖檔副檔名），則當作可疑
+                        if (!/\.(png|jpe?g|webp|gif|svg)(?:[?#]|$)/i.test(s) && /\/$/.test(s)) return true;
+                        return false;
+                    } catch (_) {
+                        return false;
+                    }
+                }
+
+                let finalSrc = '';
+                if (candidateRaw && !looksLikeHtmlUrl(candidateRaw)) {
+                    try {
+                        finalSrc = normalizeImageUrl(candidateRaw) || '';
+                    } catch (_) {
+                        finalSrc = candidateRaw || '';
+                    }
+                }
+
+                // 若解析後沒有合理的圖片 URL，使用 repo 內的本地 fallback
+                if (!finalSrc || looksLikeHtmlUrl(finalSrc)) {
+                    try {
+                        finalSrc = normalizeImageUrl(LOCAL_HERO_FALLBACK) || LOCAL_HERO_FALLBACK;
+                    } catch (_) {
+                        finalSrc = LOCAL_HERO_FALLBACK;
+                    }
+                }
+
+                // 只有在實際不同時才設定，以避免重複觸發網路請求（以及不必要的 cache-buster 行為）
                 try {
-                    heroImageEl.src = normalizeImageUrl(src);
+                    if (!heroImageEl.src || heroImageEl.src !== finalSrc) {
+                        heroImageEl.src = finalSrc;
+                    }
                 } catch (e) {
-                    heroImageEl.src = src;
+                    try { heroImageEl.src = finalSrc; } catch (_) { /* swallow */ }
                 }
             }
 
