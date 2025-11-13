@@ -12,7 +12,11 @@ WORKDIR /app
 COPY --from=build /app/bin ./bin
 COPY --from=build /app/lib ./lib
 COPY frontend/ ./frontend
-RUN mkdir -p data/uploads/images data/uploads/avatar
+RUN mkdir -p /var/snackforest/data/uploads/images /var/snackforest/data/uploads/avatar || true
+
+# Expose a mount point for persistent data. In production, mount a host path or a named volume
+# to /var/snackforest/data so uploaded files survive container recreation.
+VOLUME ["/var/snackforest/data"]
 
 # Environment variables (can be overridden on Render)
 ENV DB_HOST=localhost \

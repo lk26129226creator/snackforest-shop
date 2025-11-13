@@ -276,18 +276,34 @@ public class Server {
             Paths.get("..", "frontend", "images", "products")
     );
     // 使用者上傳檔案儲存位置，管理端商品/輪播上傳皆寫入此處。
+    /**
+     * 支援透過環境變數指定資料根目錄（方便在主機上掛載持久化路徑）：
+     * - DATA_ROOT: 根 data 目錄（預設 ./data）
+     * - UPLOADS_ROOT: 完整上傳圖片目錄（若指定，將直接使用該路徑，例如 /var/snackforest/data/uploads/images）
+     * - AVATAR_UPLOADS_ROOT: 完整頭像上傳目錄
+     */
+    private static Path envPathOrDefault(String envVar, Path defaultPath) {
+    String v = trimToNull(System.getenv(envVar));
+    if (v != null && !v.isEmpty()) return Paths.get(v);
+    return defaultPath;
+    }
+
     private static final Path UPLOADS_DIR = resolveExistingDirectory(
+        envPathOrDefault("UPLOADS_ROOT", Paths.get("data", "uploads", "images")),
         Paths.get("data", "uploads", "images"),
         Paths.get("..", "data", "uploads", "images")
     );
+
     private static final Path AVATAR_UPLOADS_DIR = resolveExistingDirectory(
+        envPathOrDefault("AVATAR_UPLOADS_ROOT", Paths.get("data", "uploads", "avatar")),
         Paths.get("data", "uploads", "avatar"),
         Paths.get("..", "data", "uploads", "avatar")
     );
+
     // data 目錄根路徑，供其他 handler 讀寫 JSON seed 資料。
     private static final Path DATA_DIR = resolveExistingDirectory(
-            Paths.get("data"),
-            Paths.get("..", "data")
+        envPathOrDefault("DATA_ROOT", Paths.get("data")),
+        Paths.get("..", "data")
     );
     private static final CloudflareR2Client R2_CLIENT = CloudflareR2Client.fromEnvironment();
     private static final String DEFAULT_PLACEHOLDER_IMAGE = "/frontend/images/products/no-image.svg";
