@@ -283,9 +283,10 @@ public class Server {
      * - AVATAR_UPLOADS_ROOT: 完整頭像上傳目錄
      */
     private static Path envPathOrDefault(String envVar, Path defaultPath) {
-    String v = trimToNull(System.getenv(envVar));
-    if (v != null && !v.isEmpty()) return Paths.get(v);
-    return defaultPath;
+        String v = System.getenv(envVar);
+        if (v != null) v = v.trim();
+        if (v != null && !v.isEmpty()) return Paths.get(v);
+        return defaultPath;
     }
 
     private static final Path UPLOADS_DIR = resolveExistingDirectory(
