@@ -607,7 +607,10 @@
             const input = document.getElementById(id);
             if (input) input.value = hero?.[key] || '';
         });
-        site.updateHeroPreview(hero?.imageUrlResolved || hero?.imageUrl || '');
+
+        const rawUrl = hero?.imageUrlResolved || hero?.imageUrl || '';
+        const normalizedUrl = rawUrl ? images.normalizeImageUrl(rawUrl) : '';
+        site.updateHeroPreview(normalizedUrl);
     };
 
     /**
