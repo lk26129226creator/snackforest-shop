@@ -20,7 +20,10 @@ body[data-client-mobile-nav="tabbar"] {
 body {
     --client-sidebar-width: 0px;             /* 行動裝置不預留側欄寬度 */
     padding-top: var(--client-navbar-height);
-    padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px);
+    /* padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px); */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 body.client-search-open {
@@ -48,16 +51,18 @@ body.client-sidebar-expanded {
 
 .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
-    margin: clamp(18px, 5vw, 26px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 60px);
+    margin: clamp(18px, 5vw, 26px) var(--client-main-gutter);
     padding: clamp(18px, 5vw, 26px);
     border-radius: 20px;
     box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+    flex-grow: 1;
 }
 
 body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
-    margin: clamp(18px, 5vw, 26px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 60px);
+    margin: clamp(18px, 5vw, 26px) var(--client-main-gutter);
     padding: clamp(18px, 5vw, 26px);
+    flex-grow: 1;
 }
 
 .client-main > *:first-child {
@@ -66,7 +71,7 @@ body.client-sidebar-overlay .client-main {
 
 .client-footer {
     width: calc(100% - (var(--client-main-gutter) * 2));
-    margin: 0 var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 40px);
+    margin: 28px var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px);
 }
 
 /* --- 3. 導覽列與頂部工具列 --- */
