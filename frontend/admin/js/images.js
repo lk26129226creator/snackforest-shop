@@ -54,14 +54,43 @@
      * @returns {string} 可顯示的圖片連結。
      */
     images.normalizeImageUrl = function (value) {
-        if (!value) return config.IMAGE_PLACEHOLDER_DATAURI;
-        let source = String(value).trim().replace(/["']/g, '');
-        if (source.startsWith('http') || source.startsWith('data:')) return source;
-        if (!source.startsWith('/') && source.toLowerCase().startsWith('frontend/')) {
-            source = `/${source.replace(/^\/+/, '')}`;
+        const API_ORIGIN = (config.API_BASE_URL ? new URL(config.API_BASE_URL).origin : '').replace(/\/$/, '');
+        const FALLBACK_IMAGE = config.IMAGE_PLACEHOLDER_DATAURI;
+
+        if (!value || typeof value !== 'string') {
+            return FALLBACK_IMAGE;
         }
-        const backendOrigin = new URL(config.API_BASE_URL).origin;
-        return source.startsWith('/') ? `${backendOrigin}${source}` : `${backendOrigin}/frontend/images/products/${source}`;
+
+        let path = String(value).trim().replace(/\\/g, '/');
+        if (!path) {
+            return FALLBACK_IMAGE;
+        }
+
+        // Don't process data URIs
+        if (/^data:/i.test(path)) {
+            return path;
+        }
+
+        // Return fallback for placeholder URLs
+        const lowered = path.toLowerCase();
+        if (lowered.includes('placeholder.com') || lowered.includes('dummyimage.com') || path.endsWith('no-image.svg')) {
+            return FALLBACK_IMAGE;
+        }
+
+        let fullUrl;
+
+        // Handle full URLs (http, https, //)
+        if (/^(https?:|\/\/)/i.test(path)) {
+            fullUrl = path;
+        } else {
+            // Handle relative paths
+            path = '/' + path.replace(/^(api\/|\.\/|\/*)/, '');
+            fullUrl = API_ORIGIN + path;
+        }
+
+        // Add cache-busting parameter
+        const separator = fullUrl.includes('?') ? '&' : '?';
+        return `${fullUrl}${separator}t=${Date.now()}`;
     };
 
     /**
