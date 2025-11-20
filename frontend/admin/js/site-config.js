@@ -613,7 +613,15 @@
         };
         Object.entries(map).forEach(([key, id]) => {
             const input = document.getElementById(id);
-            if (input) input.value = hero?.[key] || '';
+            if (!input) return;
+            // 對於 imageUrl 欄位，優先顯示已解析的 URL（imageUrlResolved），
+            // 若沒有則回退到原始 imageUrl。這可讓管理端直接看到可用的公開網址（例如 R2 public URL）。
+            if (key === 'imageUrl') {
+                const resolved = hero?.imageUrlResolved || hero?.imageUrl || '';
+                input.value = resolved;
+            } else {
+                input.value = hero?.[key] || '';
+            }
         });
 
         const rawUrl = hero?.imageUrlResolved || hero?.imageUrl || '';
