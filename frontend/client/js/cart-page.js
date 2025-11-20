@@ -7,7 +7,7 @@
     /** 後端 API 基底網址：若未提供則預設指向本機 8000 port。 */
     const API_BASE = env.API_BASE || 'http://localhost:8000/api';
     const normalizeImageUrl = utils.normalizeImageUrl || (window.normalizeImageUrl || ((u) => u || ''));
-    const fallbackImage = utils.fallbackProductImage || window.SF_FALLBACK_PRODUCT_IMAGE || '/frontend/images/products/no-image.svg';
+    const fallbackImage = utils.fallbackProductImage || window.SF_FALLBACK_PRODUCT_IMAGE || 'https://picsum.photos/320/320?snack';
 
     /**
      * 顯示訂單建立成功的覆蓋式對話框，帶有快捷操作鈕。

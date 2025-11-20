@@ -78,7 +78,7 @@
 
         // Return fallback for placeholder URLs
         const lowered = path.toLowerCase();
-        if (lowered.includes('placeholder.com') || lowered.includes('dummyimage.com') || path.endsWith('no-image.svg')) {
+        if (lowered.includes('placeholder.com') || lowered.includes('dummyimage.com')) {
             return FALLBACK_IMAGE;
         }
 

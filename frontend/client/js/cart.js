@@ -6,7 +6,7 @@
     /** 共用工具庫（若未載入 utils.js，改用全域 fallback）。 */
     const utils = window.SF_UTILS || {};
     const normalizeImageUrl = utils.normalizeImageUrl || (window.normalizeImageUrl || ((u) => u || ''));
-    const fallbackImage = utils.fallbackProductImage || window.SF_FALLBACK_PRODUCT_IMAGE || '/frontend/images/products/no-image.svg';
+    const fallbackImage = utils.fallbackProductImage || window.SF_FALLBACK_PRODUCT_IMAGE || 'https://picsum.photos/320/320?snack';
 
     /**
      * 取得目前購物車內容，解析失敗時回傳空陣列避免流程中斷。

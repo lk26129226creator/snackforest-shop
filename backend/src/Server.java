@@ -315,7 +315,7 @@ public class Server {
         Paths.get("..", "data")
     );
     private static final CloudflareR2Client R2_CLIENT = CloudflareR2Client.fromEnvironment();
-    private static final String DEFAULT_PLACEHOLDER_IMAGE = "/frontend/images/products/no-image.svg";
+    private static final String DEFAULT_PLACEHOLDER_IMAGE = "";
 
     private static Path resolveExistingDirectory(Path... candidates) {
         IOException lastIOException = null;
@@ -1804,7 +1804,9 @@ public class Server {
                                 }
                                 slide.remove("imageMissing");
                             } else {
-                                slide.put("imageUrlResolved", DEFAULT_PLACEHOLDER_IMAGE);
+                                // If resolution fails, do not force a server-side placeholder.
+                                // Leave imageUrlResolved empty and indicate missing so frontend can apply its own fallback or gallery logic.
+                                slide.put("imageUrlResolved", "");
                                 if (raw != null && !raw.isEmpty()) {
                                     slide.put("imageUrlOriginal", raw);
                                 }
@@ -1907,7 +1909,7 @@ public class Server {
                 .put("hero", new JSONObject()
                         .put("title", "探索世界零食的靈感地圖")
                         .put("subtitle", "精挑細選、快速到貨、安心付款。從人氣熱銷到限時新品，一鍵帶你吃遍全球風味。")
-                        .put("imageUrl", "/frontend/images/products/no-image.svg")
+                        .put("imageUrl", "")
                         .put("primaryText", "開始購物")
                         .put("primaryLink", "product.html")
                         .put("secondaryText", "逛逛全部")
