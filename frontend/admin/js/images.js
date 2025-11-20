@@ -11,7 +11,7 @@
      * @param {File} file 使用者選取的檔案。
      * @returns {Promise<string|null>} 成功回傳 imageUrl，失敗回傳 null。
      */
-    images.uploadImage = async function (file) {
+    images.uploadImage = async function (file, options) {
         const apiUrl = config.endpoints.imageUpload;
         const fileName = file?.name || (`upload-${Date.now()}`);
         const contentType = file?.type || 'application/octet-stream';
@@ -20,6 +20,10 @@
                 'Content-Type': contentType,
                 'Slug': encodeURIComponent(fileName)
             };
+            // options.prefix -> send as X-Upload-Prefix to instruct server to store under that prefix (e.g., 'uploads/hero')
+            if (options && options.prefix) {
+                headers['X-Upload-Prefix'] = String(options.prefix);
+            }
             const fetchOptions = {
                 method: 'POST',
                 headers,

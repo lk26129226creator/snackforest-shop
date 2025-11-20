@@ -509,7 +509,7 @@
         if (!file) return;
         site.setBusy('hero', true);
         try {
-            const url = await images.uploadImage(file);
+            const url = await images.uploadImage(file, { prefix: 'uploads/hero' });
             if (!url) throw new Error('未取得圖片網址');
             site.ensureData();
             state.siteConfig.data.hero.imageUrl = url;
@@ -653,7 +653,7 @@
         // 嘗試向後端抓取 hero 圖庫（包含 R2 或後端列舉的結果）
         try {
             const apiBase = (config && config.API_BASE_URL) ? config.API_BASE_URL.replace(/\/$/, '') : '';
-            const resp = await fetch(apiBase + '/api/gallery/hero');
+            const resp = await fetch(apiBase + '/gallery/hero');
             if (resp && resp.ok) {
                 const list = await resp.json();
                 if (Array.isArray(list)) {

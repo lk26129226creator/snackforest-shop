@@ -1447,12 +1447,18 @@ public class Server {
 
                 String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
                 String effectiveContentType = (contentType == null || contentType.isEmpty()) ? "application/octet-stream" : contentType;
-                String storagePath = (R2_CLIENT != null && R2_CLIENT.isConfigured()) ? R2_CLIENT.buildObjectKey(uniqueFilename) : null;
+                // Allow client to request a specific prefix (e.g., uploads/hero)
+                String uploadPrefix = null;
+                String hdr = exchange.getRequestHeaders().getFirst("X-Upload-Prefix");
+                if (hdr == null || hdr.trim().isEmpty()) hdr = exchange.getRequestHeaders().getFirst("x-upload-prefix");
+                if (hdr != null && !hdr.trim().isEmpty()) uploadPrefix = hdr.trim();
+
                 String imageUrl = null;
 
                 if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
                     try {
-                        CloudflareR2Client.UploadResult res = R2_CLIENT.uploadObject(storagePath, fileContent, effectiveContentType);
+                        String objectKey = (uploadPrefix != null && !uploadPrefix.isEmpty()) ? R2_CLIENT.buildObjectKey(uniqueFilename, uploadPrefix) : R2_CLIENT.buildObjectKey(uniqueFilename);
+                        CloudflareR2Client.UploadResult res = R2_CLIENT.uploadObject(objectKey, fileContent, effectiveContentType);
                         imageUrl = res.publicUrl();
                         System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: uploaded to R2 key=" + res.objectKey());
                     } catch (Exception r2Ex) {
@@ -1461,10 +1467,16 @@ public class Server {
                 }
 
                 if (imageUrl == null) {
-                    Files.createDirectories(UPLOADS_DIR);
-                    Path filePath = UPLOADS_DIR.resolve(uniqueFilename);
+                    // If client requested hero prefix, save to HERO_UPLOADS_DIR; otherwise default to UPLOADS_DIR
+                    Path targetDir = (uploadPrefix != null && uploadPrefix.toLowerCase().contains("hero")) ? HERO_UPLOADS_DIR : UPLOADS_DIR;
+                    Files.createDirectories(targetDir);
+                    Path filePath = targetDir.resolve(uniqueFilename);
                     Files.write(filePath, fileContent);
-                    imageUrl = "/uploads/images/" + uniqueFilename;
+                    if (targetDir.equals(HERO_UPLOADS_DIR)) {
+                        imageUrl = "/uploads/hero/" + uniqueFilename;
+                    } else {
+                        imageUrl = "/uploads/images/" + uniqueFilename;
+                    }
                     System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: saved " + filePath.toString() + " -> returning " + imageUrl);
                 }
 
@@ -1657,31 +1669,25 @@ public class Server {
 
                 JSONArray out = new JSONArray();
 
-                // Try R2 first for both hero and images prefixes (merge results)
+                // Try R2 first for the requested prefix (default: uploads/hero)
                 Set<String> seen = new HashSet<>();
-                List<String> prefixesToCheck = new ArrayList<>();
-                prefixesToCheck.add(prefix == null ? "uploads/hero" : prefix);
-                if (!prefixesToCheck.contains("uploads/images")) prefixesToCheck.add("uploads/images");
-
                 if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
-                    for (String pfx : prefixesToCheck) {
-                        try {
-                            List<String> keys = R2_CLIENT.listObjects(pfx);
-                            for (String key : keys) {
-                                if (key == null) continue;
-                                String url = R2_CLIENT.toPublicUrl(key);
-                                if (url != null && !seen.contains(url)) {
-                                    out.put(url);
-                                    seen.add(url);
-                                }
+                    try {
+                        List<String> keys = R2_CLIENT.listObjects(prefix);
+                        for (String key : keys) {
+                            if (key == null) continue;
+                            String url = R2_CLIENT.toPublicUrl(key);
+                            if (url != null && !seen.contains(url)) {
+                                out.put(url);
+                                seen.add(url);
                             }
-                        } catch (Exception e) {
-                            System.err.println(java.time.LocalDateTime.now() + " - HeroGalleryApiHandler R2 list failed for prefix=" + pfx + ": " + e.getMessage());
                         }
+                    } catch (Exception e) {
+                        System.err.println(java.time.LocalDateTime.now() + " - HeroGalleryApiHandler R2 list failed for prefix=" + prefix + ": " + e.getMessage());
                     }
                 }
 
-                // Fallback to local hero/uploads directories if R2 yields nothing or partial
+                // Fallback to local hero uploads directory
                 try {
                     if (Files.exists(HERO_UPLOADS_DIR) && Files.isDirectory(HERO_UPLOADS_DIR)) {
                         try (java.util.stream.Stream<Path> s = Files.list(HERO_UPLOADS_DIR)) {
@@ -1693,18 +1699,6 @@ public class Server {
                     }
                 } catch (Exception e) {
                     System.err.println(java.time.LocalDateTime.now() + " - HeroGalleryApiHandler local hero list failed: " + e.getMessage());
-                }
-                try {
-                    if (Files.exists(UPLOADS_DIR) && Files.isDirectory(UPLOADS_DIR)) {
-                        try (java.util.stream.Stream<Path> s = Files.list(UPLOADS_DIR)) {
-                            s.filter(p -> Files.isRegularFile(p)).forEach(p -> {
-                                String url = "/uploads/images/" + p.getFileName().toString();
-                                if (!seen.contains(url)) { out.put(url); seen.add(url); }
-                            });
-                        }
-                    }
-                } catch (Exception e) {
-                    System.err.println(java.time.LocalDateTime.now() + " - HeroGalleryApiHandler local uploads list failed: " + e.getMessage());
                 }
 
                 sendJsonResponse(exchange, out.toString(), 200);
