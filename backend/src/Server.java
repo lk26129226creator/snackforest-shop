@@ -1663,7 +1663,17 @@ public class Server {
                         List<String> keys = R2_CLIENT.listObjects(prefix);
                         for (String key : keys) {
                             if (key == null) continue;
-                            String url = R2_CLIENT.toPublicUrl(key);
+                            String normalizedKey = key.replace('\\', '/').trim();
+                            if (normalizedKey.isEmpty()) continue;
+                            // skip directory-like keys (ending with '/') or the prefix itself
+                            String pnorm = (prefix == null) ? "" : prefix.replaceAll("^/+", "").replaceAll("/+$", "");
+                            if (normalizedKey.endsWith("/") || normalizedKey.equals(pnorm) || normalizedKey.equals(pnorm + "/")) continue;
+                            // only include likely image files by extension
+                            String lower = normalizedKey.toLowerCase();
+                            if (!(lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp") || lower.endsWith(".gif") || lower.endsWith(".svg"))) {
+                                continue;
+                            }
+                            String url = R2_CLIENT.toPublicUrl(normalizedKey);
                             if (url != null && !seen.contains(url)) {
                                 out.put(url);
                                 seen.add(url);
