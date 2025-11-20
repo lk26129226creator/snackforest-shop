@@ -241,8 +241,22 @@
 
             const heroImageEl = document.getElementById('hero-image');
             if (heroImageEl) {
+                // 優先使用 site-config 裡的 hero 圖片，若沒有則嘗試從 hero 圖庫 (/api/gallery/hero) 取得第一張圖
                 const finalSrc = safeNormalize(getFirstValue(hero, ['imageUrl', 'imageUrlOriginal']), '');
-                if (finalSrc && heroImageEl.src !== finalSrc) heroImageEl.src = finalSrc;
+                if (finalSrc) {
+                    if (heroImageEl.src !== finalSrc) heroImageEl.src = finalSrc;
+                } else {
+                    try {
+                        const gallery = await fetchJSON(`${API_BASE}/gallery/hero`, { cache: 'no-store' });
+                        if (Array.isArray(gallery) && gallery.length > 0) {
+                            const first = safeNormalize(gallery[0], '');
+                            if (first && heroImageEl.src !== first) heroImageEl.src = first;
+                        }
+                    } catch (e) {
+                        // 如果取得圖庫失敗，保持目前 src（可為空或 data-default-src）
+                        console.warn('無法取得 hero 圖庫作為 fallback', e);
+                    }
+                }
             }
 
             const benefits = (cfg?.benefits?.length) ? cfg.benefits : DEFAULT_BENEFITS;
