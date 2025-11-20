@@ -59,12 +59,11 @@ public class Server {
             HttpContext staticCtx = server.createContext("/frontend", new StaticHandler());
             // 靜態資源：根路徑導到前端頁面（例如 /index.html、/cart.html）。
             HttpContext rootCtx = server.createContext("/", new StaticHandler());
-            // 圖片資源：提供預設產品圖片，與 client/js/product-detail.js 連動。
-            HttpContext imagesCtx = server.createContext("/frontend/images/products/", new ImageFileHandler());
-            // 圖片資源：提供管理端上傳的使用者自訂圖片。
-            HttpContext uploadsCtx = server.createContext("/uploads/images/", new UploadsImageFileHandler());
-            HttpContext avatarUploadsCtx = server.createContext("/uploads/avatar/", new AvatarUploadsFileHandler());
-            HttpContext heroUploadsCtx = server.createContext("/uploads/hero/", new HeroUploadsFileHandler());
+            // 統一處理靜態圖片資源
+            HttpContext imagesCtx = server.createContext("/frontend/images/products/", new GenericFileHandler(IMAGES_DIR, null, "Image not found"));
+            HttpContext uploadsCtx = server.createContext("/uploads/images/", new GenericFileHandler(UPLOADS_DIR, "/uploads/images/", "Image not found"));
+            HttpContext avatarUploadsCtx = server.createContext("/uploads/avatar/", new GenericFileHandler(AVATAR_UPLOADS_DIR, "/uploads/avatar/", "Avatar not found"));
+            HttpContext heroUploadsCtx = server.createContext("/uploads/hero/", new GenericFileHandler(HERO_UPLOADS_DIR, "/uploads/hero/", "Hero image not found"));
             // 健康檢查：前端 env.js 或監控工具可呼叫 /ping 檢查伺服器是否存活。
             HttpContext pingCtx = server.createContext("/ping", exchange -> {
                 try {
@@ -994,165 +993,147 @@ public class Server {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
-                // GET：提供管理端訂單列表，POST：由 client/js/cart.js 建立訂單。
-                if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-                    JSONArray ordersArray = new JSONArray();
-                    try (Connection conn = DBConnect.getConnection()) {
-                        String sql = "SELECT o.idOrders, o.idCustomers, o.OrderDate, o.TotalAmount, c.CustomerName, o.ShippingMethod, o.PaymentMethod, o.RecipientName, o.RecipientAddress, o.RecipientPhone FROM orders o JOIN customers c ON o.idCustomers = c.idCustomers ORDER BY o.OrderDate DESC";
-                        String detailSql = "SELECT od.idOrders, od.Quantity, od.PriceAtTimeOfPurchase, p.ProductName FROM order_details od JOIN products p ON od.idProducts = p.idProducts";
-
-                        Map<Integer, JSONObject> ordersMap = new LinkedHashMap<>();
-
-                        try (PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
-                            while (rs.next()) {
-                                JSONObject order = new JSONObject();
-                                order.put("id", rs.getInt("idOrders"));
-                                order.put("orderDate", rs.getTimestamp("OrderDate"));
-                                order.put("totalAmount", rs.getBigDecimal("TotalAmount"));
-                                String customerNameVal = rs.getString("CustomerName");
-                                if (customerNameVal == null) customerNameVal = "";
-                                order.put("customerName", customerNameVal);
-                                try { order.put("customerId", rs.getInt("idCustomers")); } catch (Exception __ignore) {}
-                                order.put("status", JSONObject.NULL);
-                                String ship = rs.getString("ShippingMethod");
-                                order.put("shippingMethod", ship == null ? "" : ship);
-                                String pay = rs.getString("PaymentMethod");
-                                order.put("paymentMethod", pay == null ? "" : pay);
-                                String rName = rs.getString("RecipientName"); if (rName == null) rName = "";
-                                String rAddr = rs.getString("RecipientAddress"); if (rAddr == null) rAddr = "";
-                                String rPhone = rs.getString("RecipientPhone"); if (rPhone == null) rPhone = "";
-                                // 若收件人姓名為空，改採用顧客姓名，以免管理端列表無法辨識訂單。
-                                if (rName.isEmpty()) rName = customerNameVal == null ? "" : customerNameVal;
-                                // 偵錯用途：確認資料庫讀出的收件資訊內容。
-                                System.err.println("OrderHandler - DB values for orderId=" + rs.getInt("idOrders") + ": RecipientName='" + rName + "', RecipientAddress='" + rAddr + "', RecipientPhone='" + rPhone + "'");
-                                order.put("recipientName", rName);
-                                order.put("recipientAddress", rAddr);
-                                order.put("recipientPhone", rPhone);
-                                order.put("details", new JSONArray());
-                                ordersMap.put(order.getInt("id"), order);
-                            }
-                        }
-
-                        try (PreparedStatement detailStmt = conn.prepareStatement(detailSql); ResultSet detailRs = detailStmt.executeQuery()) {
-                            while (detailRs.next()) {
-                                int orderId = detailRs.getInt("idOrders");
-                                if (ordersMap.containsKey(orderId)) {
-                                    JSONObject order = ordersMap.get(orderId);
-                                    JSONArray detailsArray = order.getJSONArray("details");
-                                    JSONObject detail = new JSONObject();
-                                    detail.put("productName", detailRs.getString("ProductName"));
-                                    detail.put("quantity", detailRs.getInt("Quantity"));
-                                    detail.put("priceAtTimeOfPurchase", detailRs.getBigDecimal("PriceAtTimeOfPurchase"));
-                                    detailsArray.put(detail);
-                                }
-                            }
-                        }
-                        ordersArray = new JSONArray(ordersMap.values());
-                        // 部分環境第一次查詢 orders 時收件人欄位可能為空（例如帳號權限、資料庫驅動差異或非預期的 NULL）。
-                        // 為避免管理端列表出現空值，若偵測到任一訂單資料缺漏，就再查詢一次單筆訂單，補齊缺少欄位後再回應。
-                        try (PreparedStatement refillStmt = conn.prepareStatement(
-                                "SELECT RecipientName, RecipientAddress, RecipientPhone FROM orders WHERE idOrders = ?")) {
-                            for (Map.Entry<Integer, JSONObject> e : ordersMap.entrySet()) {
-                                JSONObject ord = e.getValue();
-                                String rn = ord.optString("recipientName", "");
-                                String ra = ord.optString("recipientAddress", "");
-                                String rp = ord.optString("recipientPhone", "");
-                                if ((rn == null || rn.isEmpty()) || (ra == null || ra.isEmpty()) || (rp == null || rp.isEmpty())) {
-                                    try {
-                                        refillStmt.setInt(1, e.getKey());
-                                        try (ResultSet rrs = refillStmt.executeQuery()) {
-                                            if (rrs.next()) {
-                                                String rName2 = rrs.getString("RecipientName"); if (rName2 == null) rName2 = "";
-                                                String rAddr2 = rrs.getString("RecipientAddress"); if (rAddr2 == null) rAddr2 = "";
-                                                String rPhone2 = rrs.getString("RecipientPhone"); if (rPhone2 == null) rPhone2 = "";
-                                                // 只有在原本為空值時才覆寫，避免覆蓋既有的正確資料。
-                                                if (rn == null || rn.isEmpty()) ord.put("recipientName", rName2);
-                                                if (ra == null || ra.isEmpty()) ord.put("recipientAddress", rAddr2);
-                                                if (rp == null || rp.isEmpty()) ord.put("recipientPhone", rPhone2);
-                                                System.err.println("OrderHandler - refill DB values for orderId=" + e.getKey() + ": RecipientName='" + rName2 + "', RecipientAddress='" + rAddr2 + "', RecipientPhone='" + rPhone2 + "'");
-                                            }
-                                        }
-                                    } catch (SQLException ex) {
-                                        System.err.println("OrderHandler - failed to refill recipient fields for orderId=" + e.getKey() + ": " + ex.getMessage());
-                                    }
-                                }
-                            }
-                        } catch (SQLException e) {
-                            // 非致命錯誤：即使補資料失敗仍會回傳現有資訊。
-                            System.err.println("OrderHandler - refill loop failed: " + e.getMessage());
-                        }
-
-                        ordersArray = new JSONArray(ordersMap.values());
-                        sendJsonResponse(exchange, ordersArray.toString(), 200);
-                    } catch (SQLException e) {
-                        sendErrorResponse(exchange, 500, "Failed to retrieve orders", e);
-                    }
-                } else if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                    String body = readRequestBody(exchange, "");
-                    JSONObject req = new JSONObject(body);
-                    try (Connection conn = DBConnect.getConnection()) {
-                        dao.OrderDAO orderDAO = new dao.OrderDAO(conn);
-                        Map<model.Product, Integer> cart = new LinkedHashMap<>();
-                        JSONArray items = req.optJSONArray("items");
-                        if (items == null) {
-                            sendErrorResponse(exchange, 400, "Missing items in order request", null);
-                            return;
-                        }
-                        java.math.BigDecimal computedTotal = java.math.BigDecimal.ZERO;
-                        for (int i = 0; i < items.length(); i++) {
-                            JSONObject it = items.getJSONObject(i);
-                            int productId = it.has("id") ? it.getInt("id") : it.optInt("productId", 0);
-                            if (productId == 0) {
-                                sendErrorResponse(exchange, 400, "Each item must include 'id' or 'productId'", null);
-                                return;
-                            }
-                            int qty = it.has("quantity") ? it.getInt("quantity") : it.optInt("qty", 1);
-                            int price = it.has("price") ? it.getInt("price") : it.optInt("unitPrice", 0);
-                            if (price == 0) {
-                                model.Product dbp = new dao.ProductDAO(conn).findById(productId);
-                                if (dbp == null) {
-                                    sendErrorResponse(exchange, 400, "Product not found: " + productId, null);
-                                    return;
-                                }
-                                price = dbp.getPrice();
-                            }
-                            model.Product p = new model.Product(productId, 0, it.optString("name", ""), price);
-                            cart.put(p, qty);
-                            computedTotal = computedTotal.add(java.math.BigDecimal.valueOf((long)price * qty));
-                        }
-
-                        int customerId = 1;
-                        if (req.has("customerId")) {
-                            customerId = req.getInt("customerId");
-                        }
-
-                        java.math.BigDecimal total = req.has("total") ? java.math.BigDecimal.valueOf(req.getDouble("total")) : computedTotal;
-
-                        String shippingMethod = req.optString("shippingMethod", req.optString("shippingMethodName", ""));
-                        String paymentMethod = req.optString("paymentMethod", req.optString("paymentMethodName", ""));
-                        String recipientName = req.optString("recipientName", req.optString("recipient", ""));
-                        String recipientAddress = req.optString("recipientAddress", req.optString("address", ""));
-                        String recipientPhone = req.optString("recipientPhone", req.optString("phone", ""));
-
-                        model.Order order = new model.Order(customerId, total,
-                            shippingMethod,
-                            paymentMethod,
-                            recipientName,
-                            recipientAddress,
-                            recipientPhone);
-
-                        int orderId = orderDAO.save(order, cart);
-                        JSONObject resp = new JSONObject();
-                        if (orderId > 0) {
-                            resp.put("orderId", orderId);
-                            sendJsonResponse(exchange, resp.toString(), 201);
-                        } else {
-                            sendErrorResponse(exchange, 500, "Failed to create order", null);
-                        }
-                    }
+                String method = exchange.getRequestMethod();
+                switch (method.toUpperCase()) {
+                    case "GET":
+                        handleGet(exchange);
+                        break;
+                    case "POST":
+                        handlePost(exchange);
+                        break;
+                    default:
+                        sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+                        break;
                 }
             } catch (Exception e) {
                 sendErrorResponse(exchange, 500, "An unexpected error occurred in order handling", e);
+            }
+        }
+
+        private void handleGet(HttpExchange exchange) throws IOException, SQLException {
+            try (Connection conn = DBConnect.getConnection()) {
+                String sql = "SELECT o.idOrders, o.idCustomers, o.OrderDate, o.TotalAmount, c.CustomerName, " +
+                             "o.ShippingMethod, o.PaymentMethod, o.RecipientName, o.RecipientAddress, o.RecipientPhone, " +
+                             "od.Quantity, od.PriceAtTimeOfPurchase, p.ProductName " +
+                             "FROM orders o " +
+                             "JOIN customers c ON o.idCustomers = c.idCustomers " +
+                             "LEFT JOIN order_details od ON o.idOrders = od.idOrders " +
+                             "LEFT JOIN products p ON od.idProducts = p.idProducts " +
+                             "ORDER BY o.OrderDate DESC, o.idOrders";
+
+                Map<Integer, JSONObject> ordersMap = new LinkedHashMap<>();
+
+                try (PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int orderId = rs.getInt("idOrders");
+                        JSONObject order = ordersMap.computeIfAbsent(orderId, id -> {
+                            JSONObject newOrder = new JSONObject();
+                            newOrder.put("id", id);
+                            try {
+                                newOrder.put("orderDate", rs.getTimestamp("OrderDate"));
+                                newOrder.put("totalAmount", rs.getBigDecimal("TotalAmount"));
+                                String customerNameVal = rs.getString("CustomerName");
+                                if (customerNameVal == null) customerNameVal = "";
+                                newOrder.put("customerName", customerNameVal);
+                                newOrder.put("customerId", rs.getInt("idCustomers"));
+                                newOrder.put("status", JSONObject.NULL);
+                                String ship = rs.getString("ShippingMethod");
+                                newOrder.put("shippingMethod", ship == null ? "" : ship);
+                                String pay = rs.getString("PaymentMethod");
+                                newOrder.put("paymentMethod", pay == null ? "" : pay);
+                                String rName = rs.getString("RecipientName");
+                                String rAddr = rs.getString("RecipientAddress");
+                                String rPhone = rs.getString("RecipientPhone");
+                                // 若收件人姓名為空，改採用顧客姓名
+                                if (rName == null || rName.isEmpty()) rName = customerNameVal;
+                                newOrder.put("recipientName", rName == null ? "" : rName);
+                                newOrder.put("recipientAddress", rAddr == null ? "" : rAddr);
+                                newOrder.put("recipientPhone", rPhone == null ? "" : rPhone);
+                                newOrder.put("details", new JSONArray());
+                            } catch (SQLException e) {
+                                throw new RuntimeException(e);
+                            }
+                            return newOrder;
+                        });
+
+                        // 如果有訂單明細，則加入
+                        if (rs.getString("ProductName") != null) {
+                            JSONArray detailsArray = order.getJSONArray("details");
+                            JSONObject detail = new JSONObject();
+                            detail.put("productName", rs.getString("ProductName"));
+                            detail.put("quantity", rs.getInt("Quantity"));
+                            detail.put("priceAtTimeOfPurchase", rs.getBigDecimal("PriceAtTimeOfPurchase"));
+                            detailsArray.put(detail);
+                        }
+                    }
+                } catch (RuntimeException e) {
+                    if (e.getCause() instanceof SQLException) throw (SQLException) e.getCause();
+                    else throw e;
+                }
+
+                JSONArray ordersArray = new JSONArray(ordersMap.values());
+                sendJsonResponse(exchange, ordersArray.toString(), 200);
+            }
+        }
+
+        private void handlePost(HttpExchange exchange) throws IOException, SQLException {
+            String body = readRequestBody(exchange, "");
+            JSONObject req = new JSONObject(body);
+            try (Connection conn = DBConnect.getConnection()) {
+                dao.OrderDAO orderDAO = new dao.OrderDAO(conn);
+                Map<model.Product, Integer> cart = new LinkedHashMap<>();
+                JSONArray items = req.optJSONArray("items");
+                if (items == null) {
+                    sendErrorResponse(exchange, 400, "Missing items in order request", null);
+                    return;
+                }
+                java.math.BigDecimal computedTotal = java.math.BigDecimal.ZERO;
+                for (int i = 0; i < items.length(); i++) {
+                    JSONObject it = items.getJSONObject(i);
+                    int productId = it.has("id") ? it.getInt("id") : it.optInt("productId", 0);
+                    if (productId == 0) {
+                        sendErrorResponse(exchange, 400, "Each item must include 'id' or 'productId'", null);
+                        return;
+                    }
+                    int qty = it.has("quantity") ? it.getInt("quantity") : it.optInt("qty", 1);
+                    int price = it.has("price") ? it.getInt("price") : it.optInt("unitPrice", 0);
+                    if (price == 0) {
+                        model.Product dbp = new dao.ProductDAO(conn).findById(productId);
+                        if (dbp == null) {
+                            sendErrorResponse(exchange, 400, "Product not found: " + productId, null);
+                            return;
+                        }
+                        price = dbp.getPrice();
+                    }
+                    model.Product p = new model.Product(productId, 0, it.optString("name", ""), price);
+                    cart.put(p, qty);
+                    computedTotal = computedTotal.add(java.math.BigDecimal.valueOf((long)price * qty));
+                }
+
+                int customerId = 1; // Default customer
+                if (req.has("customerId")) {
+                    customerId = req.getInt("customerId");
+                }
+
+                java.math.BigDecimal total = req.has("total") ? java.math.BigDecimal.valueOf(req.getDouble("total")) : computedTotal;
+
+                String shippingMethod = req.optString("shippingMethod", req.optString("shippingMethodName", ""));
+                String paymentMethod = req.optString("paymentMethod", req.optString("paymentMethodName", ""));
+                String recipientName = req.optString("recipientName", req.optString("recipient", ""));
+                String recipientAddress = req.optString("recipientAddress", req.optString("address", ""));
+                String recipientPhone = req.optString("recipientPhone", req.optString("phone", ""));
+
+                model.Order order = new model.Order(customerId, total,
+                    shippingMethod, paymentMethod, recipientName, recipientAddress, recipientPhone);
+
+                int orderId = orderDAO.save(order, cart);
+                JSONObject resp = new JSONObject();
+                if (orderId > 0) {
+                    resp.put("orderId", orderId);
+                    sendJsonResponse(exchange, resp.toString(), 201);
+                } else {
+                    sendErrorResponse(exchange, 500, "Failed to create order", null);
+                }
             }
         }
     }
@@ -1198,98 +1179,22 @@ public class Server {
             String method = exchange.getRequestMethod();
             try (Connection conn = DBConnect.getConnection()) {
                 dao.ProductDAO productDAO = new dao.ProductDAO(conn);
-
-                if ("GET".equalsIgnoreCase(method)) {
-                    String path = exchange.getRequestURI().getPath();
-                    String[] parts = path.split("/");
-                    // 未指定產品編號時，預設回傳全部商品清單。
-                    if (parts.length <= 3) {
-                        try {
-                            List<model.Product> products = productDAO.findAll();
-                            JSONArray out = new JSONArray();
-                            for (model.Product p : products) {
-                                JSONObject obj = new JSONObject();
-                                obj.put("id", p.getIdProducts());
-                                obj.put("name", p.getProductName());
-                                obj.put("price", p.getPrice());
-                                obj.put("categoryId", p.getCategoriesID());
-                                obj.put("categoryName", p.getCategoryName());
-                                obj.put("introduction", p.getIntroduction() == null ? JSONObject.NULL : p.getIntroduction());
-                                obj.put("origin", p.getOrigin() == null ? JSONObject.NULL : p.getOrigin());
-                                obj.put("productionDate", p.getProductionDate() == null ? JSONObject.NULL : p.getProductionDate());
-                                obj.put("expiryDate", p.getExpiryDate() == null ? JSONObject.NULL : p.getExpiryDate());
-                                List<String> cleaned = cleanImageUrlList(p.getImageUrlList());
-                                JSONArray imgsOut = new JSONArray();
-                                for (String u : cleaned) {
-                                    String nu = normalizeImageUrl(u);
-                                    if (nu != null) imgsOut.put(nu);
-                                }
-                                obj.put("imageUrls", imgsOut);
-                                out.put(obj);
-                            }
-                            sendJsonResponse(exchange, out.toString(), 200);
-                            return;
-                        } catch (Exception e) {
-                            sendErrorResponse(exchange, 500, "Failed to list products", e);
-                            return;
-                        }
-                    }
-                    if (parts.length > 3) {
-                        try {
-                            int id = Integer.parseInt(parts[3]);
-                            model.Product product = productDAO.findById(id);
-                                if (product != null) {
-                                JSONObject jsonObject = new JSONObject();
-                                jsonObject.put("id", product.getIdProducts());
-                                jsonObject.put("name", product.getProductName());
-                                jsonObject.put("price", product.getPrice());
-                                jsonObject.put("categoryId", product.getCategoriesID());
-                                jsonObject.put("categoryName", product.getCategoryName());
-                                    jsonObject.put("introduction", product.getIntroduction() == null ? JSONObject.NULL : product.getIntroduction());
-                                    jsonObject.put("origin", product.getOrigin() == null ? JSONObject.NULL : product.getOrigin());
-                                    jsonObject.put("productionDate", product.getProductionDate() == null ? JSONObject.NULL : product.getProductionDate());
-                                    jsonObject.put("expiryDate", product.getExpiryDate() == null ? JSONObject.NULL : product.getExpiryDate());
-                                List<String> cleaned = cleanImageUrlList(product.getImageUrlList());
-                                JSONArray imgsOut = new JSONArray();
-                                for (String u : cleaned) imgsOut.put(normalizeImageUrl(u));
-                                jsonObject.put("imageUrls", imgsOut);
-                                sendJsonResponse(exchange, jsonObject.toString(), 200);
-                            }
-                        } catch (NumberFormatException e) {
-                            sendErrorResponse(exchange, 400, "Invalid product ID format", e);
-                        }
-                    }
-                } else if ("POST".equalsIgnoreCase(method)) {
-                    String body = readRequestBody(exchange, "");
-                    JSONObject req = new JSONObject(body);
-                    int nextId = productDAO.getNextProductId();
-                    List<String> imageList = toStringList(req.optJSONArray("imageUrls"));
-                    String intro = req.optString("introduction", null);
-                    String origin = req.optString("origin", null);
-                    String productionDate = req.optString("productionDate", null);
-                    String expiryDate = req.optString("expiryDate", null);
-                    model.Product p = new model.Product(nextId, req.getInt("categoryId"), req.getString("name"), req.getInt("price"), null, null, intro, origin, productionDate, expiryDate);
-                    boolean ok = productDAO.save(p, req.getInt("categoryId"), imageList);
-                    if (ok) sendJsonResponse(exchange, new JSONObject().put("id", nextId).toString(), 201);
-                    else sendErrorResponse(exchange, 500, "Failed to create product", null);
-                } else if ("PUT".equalsIgnoreCase(method)) {
-                    String path = exchange.getRequestURI().getPath();
-                    int id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
-                    String body = readRequestBody(exchange, "");
-                    JSONObject req = new JSONObject(body);
-                    List<String> imageList2 = toStringList(req.optJSONArray("imageUrls"));
-                    String intro2 = req.optString("introduction", null);
-                    String origin2 = req.optString("origin", null);
-                    String productionDate2 = req.optString("productionDate", null);
-                    String expiryDate2 = req.optString("expiryDate", null);
-                    boolean ok = productDAO.update(id, req.optString("name", ""), req.optInt("price", 0), req.optInt("categoryId", 0), imageList2, intro2, origin2, productionDate2, expiryDate2);
-                    if (ok) sendNoContent(exchange, 200);
-                } else if ("DELETE".equalsIgnoreCase(method)) {
-                    String path = exchange.getRequestURI().getPath();
-                    int id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
-                    if (productDAO.delete(id)) sendNoContent(exchange, 200);
-                } else {
-                    sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+                switch (method.toUpperCase()) {
+                    case "GET":
+                        handleGet(exchange, productDAO);
+                        break;
+                    case "POST":
+                        handlePost(exchange, productDAO);
+                        break;
+                    case "PUT":
+                        handlePut(exchange, productDAO);
+                        break;
+                    case "DELETE":
+                        handleDelete(exchange, productDAO);
+                        break;
+                    default:
+                        sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+                        break;
                 }
             } catch (Exception e) {
                 if (e instanceof SQLException) {
@@ -1297,7 +1202,121 @@ public class Server {
                     System.err.println("SQL Exception in ProductsHandler: SQLState=" + se.getSQLState() + ", ErrorCode=" + se.getErrorCode() + ", Message=" + se.getMessage());
                     se.printStackTrace();
                 }
-                sendErrorResponse(exchange, 500, "Failed to retrieve products from database", e);
+                sendErrorResponse(exchange, 500, "Failed to process product request", e);
+            }
+        }
+
+        private void handleGet(HttpExchange exchange, dao.ProductDAO productDAO) throws IOException, SQLException {
+            String path = exchange.getRequestURI().getPath();
+            String[] parts = path.split("/");
+            // 處理 /api/products，回傳所有商品
+            if (parts.length <= 3) {
+                List<model.Product> products = productDAO.findAll();
+                JSONArray out = new JSONArray();
+                for (model.Product p : products) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("id", p.getIdProducts());
+                    obj.put("name", p.getProductName());
+                    obj.put("price", p.getPrice());
+                    obj.put("categoryId", p.getCategoriesID());
+                    obj.put("categoryName", p.getCategoryName());
+                    obj.put("introduction", p.getIntroduction() == null ? JSONObject.NULL : p.getIntroduction());
+                    obj.put("origin", p.getOrigin() == null ? JSONObject.NULL : p.getOrigin());
+                    obj.put("productionDate", p.getProductionDate() == null ? JSONObject.NULL : p.getProductionDate());
+                    obj.put("expiryDate", p.getExpiryDate() == null ? JSONObject.NULL : p.getExpiryDate());
+                    List<String> cleaned = cleanImageUrlList(p.getImageUrlList());
+                    JSONArray imgsOut = new JSONArray();
+                    for (String u : cleaned) {
+                        String nu = normalizeImageUrl(u);
+                        if (nu != null) imgsOut.put(nu);
+                    }
+                    obj.put("imageUrls", imgsOut);
+                    out.put(obj);
+                }
+                sendJsonResponse(exchange, out.toString(), 200);
+                return;
+            }
+            // 處理 /api/products/{id}，回傳單一商品
+            if (parts.length > 3) {
+                try {
+                    int id = Integer.parseInt(parts[3]);
+                    model.Product product = productDAO.findById(id);
+                    if (product != null) {
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("id", product.getIdProducts());
+                        jsonObject.put("name", product.getProductName());
+                        jsonObject.put("price", product.getPrice());
+                        jsonObject.put("categoryId", product.getCategoriesID());
+                        jsonObject.put("categoryName", product.getCategoryName());
+                        jsonObject.put("introduction", product.getIntroduction() == null ? JSONObject.NULL : product.getIntroduction());
+                        jsonObject.put("origin", product.getOrigin() == null ? JSONObject.NULL : product.getOrigin());
+                        jsonObject.put("productionDate", product.getProductionDate() == null ? JSONObject.NULL : product.getProductionDate());
+                        jsonObject.put("expiryDate", product.getExpiryDate() == null ? JSONObject.NULL : product.getExpiryDate());
+                        List<String> cleaned = cleanImageUrlList(product.getImageUrlList());
+                        JSONArray imgsOut = new JSONArray();
+                        for (String u : cleaned) imgsOut.put(normalizeImageUrl(u));
+                        jsonObject.put("imageUrls", imgsOut);
+                        sendJsonResponse(exchange, jsonObject.toString(), 200);
+                    } else {
+                        sendErrorResponse(exchange, 404, "Product not found", null);
+                    }
+                } catch (NumberFormatException e) {
+                    sendErrorResponse(exchange, 400, "Invalid product ID format", e);
+                }
+            }
+        }
+
+        private void handlePost(HttpExchange exchange, dao.ProductDAO productDAO) throws IOException, SQLException {
+            String body = readRequestBody(exchange, "");
+            JSONObject req = new JSONObject(body);
+            int nextId = productDAO.getNextProductId();
+            List<String> imageList = toStringList(req.optJSONArray("imageUrls"));
+            String intro = req.optString("introduction", null);
+            String origin = req.optString("origin", null);
+            String productionDate = req.optString("productionDate", null);
+            String expiryDate = req.optString("expiryDate", null);
+            model.Product p = new model.Product(nextId, req.getInt("categoryId"), req.getString("name"), req.getInt("price"), null, null, intro, origin, productionDate, expiryDate);
+            boolean ok = productDAO.save(p, req.getInt("categoryId"), imageList);
+            if (ok) {
+                sendJsonResponse(exchange, new JSONObject().put("id", nextId).toString(), 201);
+            } else {
+                sendErrorResponse(exchange, 500, "Failed to create product", null);
+            }
+        }
+
+        private void handlePut(HttpExchange exchange, dao.ProductDAO productDAO) throws IOException, SQLException {
+            try {
+                String path = exchange.getRequestURI().getPath();
+                int id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
+                String body = readRequestBody(exchange, "");
+                JSONObject req = new JSONObject(body);
+                List<String> imageList = toStringList(req.optJSONArray("imageUrls"));
+                String intro = req.optString("introduction", null);
+                String origin = req.optString("origin", null);
+                String productionDate = req.optString("productionDate", null);
+                String expiryDate = req.optString("expiryDate", null);
+                boolean ok = productDAO.update(id, req.optString("name", ""), req.optInt("price", 0), req.optInt("categoryId", 0), imageList, intro, origin, productionDate, expiryDate);
+                if (ok) {
+                    sendNoContent(exchange, 200);
+                } else {
+                    sendErrorResponse(exchange, 404, "Product not found for update", null);
+                }
+            } catch (NumberFormatException e) {
+                sendErrorResponse(exchange, 400, "Invalid product ID format", e);
+            }
+        }
+
+        private void handleDelete(HttpExchange exchange, dao.ProductDAO productDAO) throws IOException, SQLException {
+            try {
+                String path = exchange.getRequestURI().getPath();
+                int id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
+                if (productDAO.delete(id)) {
+                    sendNoContent(exchange, 200);
+                } else {
+                    sendErrorResponse(exchange, 404, "Product not found for deletion", null);
+                }
+            } catch (NumberFormatException e) {
+                sendErrorResponse(exchange, 400, "Invalid product ID format", e);
             }
         }
     }
@@ -1571,89 +1590,38 @@ public class Server {
     }
 
     /**
-     * 服務舊版產品圖片目錄（frontend/images/products）的靜態檔案。
+     * 通用靜態檔案處理器，可服務指定目錄下的檔案，並支援 R2 重新導向作為備援。
+     * 用於取代 ImageFileHandler, UploadsImageFileHandler, AvatarUploadsFileHandler, HeroUploadsFileHandler。
      */
-    static class ImageFileHandler implements HttpHandler {
+    static class GenericFileHandler implements HttpHandler {
+        private final Path baseDir;
+        private final String urlPrefix;
+        private final String notFoundMessage;
+
+        public GenericFileHandler(Path baseDir, String urlPrefix, String notFoundMessage) {
+            this.baseDir = baseDir;
+            this.urlPrefix = (urlPrefix == null || urlPrefix.isBlank()) ? "" : urlPrefix;
+            this.notFoundMessage = (notFoundMessage == null || notFoundMessage.isBlank()) ? "File not found" : notFoundMessage;
+        }
+
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
                 String uriPath = exchange.getRequestURI().getPath();
                 String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                Path imagePath = IMAGES_DIR.resolve(fileName).normalize();
-                System.err.println(java.time.LocalDateTime.now() + " - ImageFileHandler: Attempting to serve image at path: " + imagePath.toString());
-                System.err.println(java.time.LocalDateTime.now() + " - ImageFileHandler: Files.exists(imagePath): " + Files.exists(imagePath));
-                System.err.println(java.time.LocalDateTime.now() + " - ImageFileHandler: Files.isReadable(imagePath): " + Files.isReadable(imagePath));
 
-                if (!imagePath.startsWith(IMAGES_DIR) || !Files.exists(imagePath) || !Files.isReadable(imagePath)) {
-                    sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
+                if (tryServeLocalFile(exchange, baseDir, fileName)) {
                     return;
                 }
 
-                String contentType = Files.probeContentType(imagePath);
-                if (contentType == null) contentType = "application/octet-stream";
-
-                exchange.getResponseHeaders().set("Content-Type", contentType);
-                exchange.sendResponseHeaders(200, Files.size(imagePath));
-                try (OutputStream os = exchange.getResponseBody()) {
-                    Files.copy(imagePath, os);
+                String r2Ref = this.urlPrefix.isEmpty() ? uriPath : this.urlPrefix + fileName;
+                if (tryRedirectToR2(exchange, uriPath, r2Ref)) {
+                    return;
                 }
+                
+                sendErrorResponse(exchange, 404, notFoundMessage + ": " + fileName, null);
             } catch (Exception e) {
-                sendErrorResponse(exchange, 500, "Error serving image", e);
-            }
-        }
-    }
-
-    // 專門服務 data/uploads/images 目錄下的使用者上傳檔案。
-    /**
-     * 服務使用者上傳的圖片目錄（data/uploads/images）的靜態檔案。
-     */
-    static class UploadsImageFileHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                String uriPath = exchange.getRequestURI().getPath();
-                String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                if (tryServeLocalFile(exchange, UPLOADS_DIR, fileName)) return;
-                if (tryRedirectToR2(exchange, uriPath, "/uploads/images/" + fileName)) return;
-                sendErrorResponse(exchange, 404, "Image not found: " + fileName, null);
-            } catch (Exception e) {
-                sendErrorResponse(exchange, 500, "Error serving upload image", e);
-            }
-        }
-    }
-
-    /**
-     * 服務使用者頭像目錄（data/uploads/avatar）的靜態檔案。
-     */
-    static class AvatarUploadsFileHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                String uriPath = exchange.getRequestURI().getPath();
-                String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                if (tryServeLocalFile(exchange, AVATAR_UPLOADS_DIR, fileName)) return;
-                if (tryRedirectToR2(exchange, uriPath, "/uploads/avatar/" + fileName)) return;
-                sendErrorResponse(exchange, 404, "Avatar not found: " + fileName, null);
-            } catch (Exception e) {
-                sendErrorResponse(exchange, 500, "Error serving avatar image", e);
-            }
-        }
-    }
-
-    /**
-     * 服務使用者頭像目錄（data/uploads/hero）的靜態檔案。
-     */
-    static class HeroUploadsFileHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                String uriPath = exchange.getRequestURI().getPath();
-                String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
-                if (tryServeLocalFile(exchange, HERO_UPLOADS_DIR, fileName)) return;
-                if (tryRedirectToR2(exchange, uriPath, "/uploads/hero/" + fileName)) return;
-                sendErrorResponse(exchange, 404, "Hero image not found: " + fileName, null);
-            } catch (Exception e) {
-                sendErrorResponse(exchange, 500, "Error serving hero image", e);
+                sendErrorResponse(exchange, 500, "Error serving file", e);
             }
         }
     }

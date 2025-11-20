@@ -5,149 +5,124 @@
     const env = window.SF_ENV || {};
     /** API 伺服器的 Origin，若未設定則退回到瀏覽器目前來源。 */
     const API_ORIGIN = env.API_ORIGIN || window.SF_API_ORIGIN || (window.location && window.location.origin) || '';
-    /** 上傳檔案可供瀏覽的 Origin，可獨立於 API 主機。 */
-    const STORAGE_ORIGIN = env.STORAGE_ORIGIN || window.SF_STORAGE_BASE || API_ORIGIN;
-    /** 預設商品佔位圖路徑（相對於專案根目錄）。 */
-    const FALLBACK_PATH = '/frontend/images/products/no-image.svg';
-    /** 依照環境自動套上來源的預設商品圖片絕對網址。 */
-    const FALLBACK_IMAGE = API_ORIGIN ? (API_ORIGIN + FALLBACK_PATH) : FALLBACK_PATH;
+    /** 靜態資源的 Origin，指向 Cloudflare R2 公開網址。 */
+    const STORAGE_ORIGIN = 'https://snackforest-assets.pages.dev';
+    /** 預設商品佔位圖，使用 picsum 作為通用佔位圖服務。 */
+    const FALLBACK_IMAGE = 'https://picsum.photos/320/320?snack';
+
+    /**
+     * Gets the first non-null/undefined value from a list of properties on an object.
+     */
+    function getFirstValue(obj, props) {
+        if (!obj) return;
+        for (const prop of props) {
+            if (obj[prop] != null) return obj[prop];
+        }
+    }
 
     /**
      * 將傳入的圖片路徑轉為可直接使用的絕對網址，並處理可能出錯的案例。
-     * - 支援 data URL / http(s) / protocol-relative / 相對路徑。
-     * - 遇到 placeholder/dummyimage 會改為預設圖，以保持品牌一致性。
-     * - 若為本機開發的 localhost 圖片，會改用 API_ORIGIN 以避免跨來源問題。
-     * @param {string} u 由 API 或使用者輸入的圖片來源字串。
-     * @returns {string} 可直接在 <img> 使用的安全絕對網址。
      */
     function normalizeImageUrl(u) {
         if (u === undefined || u === null) return FALLBACK_IMAGE;
         try {
-            let s = String(u).trim();
+            let s = String(u).trim().replace(/["']/g, '').replace(/\\/g, '/');
             if (!s) return FALLBACK_IMAGE;
-            s = s.replace(/["']/g, '').replace(/\\/g, '/');
 
             if (/^data:/i.test(s)) return s;
             if (/^https?:\/\//i.test(s)) {
                 const lowered = s.toLowerCase();
                 if (lowered.includes('placeholder.com') || lowered.includes('dummyimage.com')) return FALLBACK_IMAGE;
-                // 若是本機的絕對網址（例如 http://127.0.0.1:5501/... 或 http://localhost:5501/...），
-                // 將其改寫為 API_ORIGIN + 路徑，避免跑去 Live Server 取檔導致 404。
-                if (/\/api\/uploads\//i.test(s) || /^api\/uploads\//i.test(s) || /^\.\/api\/uploads\//i.test(s)) {
-                    s = s.replace(/\/api(?=\/uploads\/)/gi, '');
-                    s = s.replace(/^api(?=\/uploads\/)/i, '');
-                    s = s.replace(/^\.\/(?=uploads\/)/i, '/');
-                    s = s.replace(/^\/{2,}(?=uploads\/)/i, '/');
-                }
                 try {
                     const url = new URL(s);
                     const host = (url.hostname || '').toLowerCase();
-                    const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-                    if (isLocal && API_ORIGIN) {
+                    if ((host === 'localhost' || host === '127.0.0.1') && API_ORIGIN) {
                         return API_ORIGIN.replace(/\/$/, '') + url.pathname + url.search + url.hash;
                     }
-                } catch (_) {
-                    // ignore parse errors and fall through to return original s
-                }
+                } catch (_) { /* ignore parse errors */ }
                 return s;
             }
             if (s.startsWith('//')) {
-                const absolute = (window.location && window.location.protocol ? window.location.protocol : 'https:') + s;
-                return absolute.toLowerCase().includes('placeholder.com') || absolute.toLowerCase().includes('dummyimage.com') ? FALLBACK_IMAGE : absolute;
+                const absolute = (window.location?.protocol || 'https:') + s;
+                return absolute.toLowerCase().includes('placeholder.com') ? FALLBACK_IMAGE : absolute;
             }
 
-            if (/^api\/uploads\//i.test(s)) {
-                s = s.replace(/^api(?=\/uploads\/)/i, '');
+            const uploadPath = s.split('uploads/').pop();
+            if (s.includes('uploads/')) {
+                 return `${STORAGE_ORIGIN.replace(/\/$/, '')}/uploads/${uploadPath}`;
             }
-            if (/^\.\/uploads\//i.test(s)) {
-                s = s.replace(/^\.\/(?=uploads\/)/i, '/');
-            }
-            if (/^\/{2,}uploads\//i.test(s)) {
-                s = s.replace(/^\/{2,}(?=uploads\/)/i, '/');
-            }
-
-            if (s.startsWith('/uploads/') || /^uploads\//i.test(s)) {
-                const normalized = s.startsWith('/uploads/') ? s : `/${s.replace(/^uploads\//i, 'uploads/')}`;
-                return STORAGE_ORIGIN ? (STORAGE_ORIGIN.replace(/\/$/, '') + normalized) : normalized;
-            }
-
             if (s.startsWith('/')) {
-                return API_ORIGIN ? (API_ORIGIN.replace(/\/$/, '') + s) : s;
+                return `${API_ORIGIN.replace(/\/$/, '')}${s}`;
             }
-
-            if (s.toLowerCase().startsWith('frontend/')) {
-                const normalized = '/' + s.replace(/^\/+/, '');
-                return API_ORIGIN ? (API_ORIGIN.replace(/\/$/, '') + normalized) : normalized;
-            }
-
-            return API_ORIGIN
-                ? (API_ORIGIN.replace(/\/$/, '') + '/frontend/images/products/' + s)
-                : ('/frontend/images/products/' + s);
+            return s; // Fallback for relative paths or other cases
         } catch (e) {
             return FALLBACK_IMAGE;
         }
     }
 
     /**
+     * Normalizes a product object from the API into a consistent shape.
+     */
+    function normalizeProduct(product) {
+        if (!product) return null;
+        const id = getFirstValue(product, ['id', 'idProducts', 'idProduct', 'id_products']);
+        if (id == null) return null;
+
+        const imageUrls = getFirstValue(product, ['imageUrls', 'ImageUrls']) || [];
+        const singleImage = getFirstValue(product, ['imageUrl', 'image', 'ImageUrl']);
+        const finalImages = ((Array.isArray(imageUrls) && imageUrls.length) ? imageUrls : (singleImage ? [singleImage] : []))
+            .map(normalizeImageUrl).filter(Boolean);
+
+        return {
+            id,
+            name: getFirstValue(product, ['name', 'ProductName', 'productName']) || '未命名商品',
+            price: getFirstValue(product, ['price', 'Price']) ?? 0,
+            categoryName: getFirstValue(product, ['categoryName', 'categoryname']) || '未分類',
+            introduction: getFirstValue(product, ['introduction', 'remark', 'description']) || '',
+            origin: getFirstValue(product, ['origin', 'Origin']),
+            productionDate: getFirstValue(product, ['productionDate', 'ProductionDate']),
+            expiryDate: getFirstValue(product, ['expiryDate', 'ExpiryDate']),
+            imageUrls: finalImages.length ? finalImages : [FALLBACK_IMAGE],
+            imageUrl: finalImages.length ? finalImages[0] : FALLBACK_IMAGE,
+            __raw: product,
+        };
+    }
+
+    /**
      * 去除多餘前綴與查詢字串，將 uploads 相對路徑正規化為穩定格式。
-     * @param {*} value 原始輸入。
-     * @returns {string}
      */
     function sanitizeUploadUrl(value) {
         if (value == null) return '';
         let sanitized = String(value).trim();
         if (!sanitized) return '';
-        sanitized = sanitized.replace(/\/api(?=\/uploads\/)/gi, '');
-        sanitized = sanitized.replace(/^api(?=\/uploads\/)/i, '');
-        sanitized = sanitized.replace(/^\.\/(?=uploads\/)/i, '/');
-        sanitized = sanitized.replace(/^\/{2,}(?=uploads\/)/i, '/');
-        if (!/^https?:\/\//i.test(sanitized)) {
-            const cutQuery = sanitized.indexOf('?');
-            const cutHash = sanitized.indexOf('#');
-            let cutIndex = -1;
-            if (cutQuery >= 0 && cutHash >= 0) cutIndex = Math.min(cutQuery, cutHash);
-            else if (cutQuery >= 0) cutIndex = cutQuery;
-            else if (cutHash >= 0) cutIndex = cutHash;
-            if (cutIndex >= 0) {
-                sanitized = sanitized.slice(0, cutIndex);
-            }
+        sanitized = sanitized.split('?')[0].split('#')[0];
+        const uploadIndex = sanitized.indexOf('uploads/');
+        if (uploadIndex > -1) {
+            return sanitized.substring(uploadIndex);
         }
         return sanitized;
     }
 
     /**
      * 為圖片網址附加 cache-buster 參數，確保最新內容被載入。
-     * @param {string} url 來源網址。
-     * @param {string|number} version 與圖片綁定的版本資訊。
-     * @returns {string}
      */
     function appendCacheBuster(url, version) {
         if (!url) return '';
         const str = String(url);
         const [base, hash] = str.split('#');
-        const queryIndex = base.indexOf('?');
-        let path = base;
-        let params = new URLSearchParams();
-        if (queryIndex >= 0) {
-            path = base.slice(0, queryIndex);
-            params = new URLSearchParams(base.slice(queryIndex + 1));
-        }
-        params.delete('v');
-        const token = safeStr(version).trim() || String(Date.now());
-        params.set('v', token);
+        const [path, query] = base.split('?');
+        const params = new URLSearchParams(query);
+        params.set('v', String(version).trim() || Date.now());
         const finalBase = `${path}?${params.toString()}`;
         return hash ? `${finalBase}#${hash}` : finalBase;
     }
 
     /**
-     * 將數值轉為「NT$」加千分位的字串，保留 fallback 行為避免例外。
-     * @param {*} value 可被轉為數字的輸入。
-     * @returns {string|*}
+     * 將數值轉為「NT$」加千分位的字串。
      */
     function formatPrice(value) {
         try {
-            const num = Number(value || 0);
-            return 'NT$' + num.toLocaleString('zh-TW');
+            return (Number(value || 0)).toLocaleString('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 });
         } catch (e) {
             return value;
         }
@@ -155,30 +130,21 @@
 
     /**
      * 安全轉字串：避免 null/undefined 或字串 'null' 在畫面上產生雜訊。
-     * @param {*} v 任意來源值。
-     * @returns {string}
      */
     function safeStr(v) {
-        if (v === null || v === undefined) return '';
-        if (typeof v === 'string' && v.trim().toLowerCase() === 'null') return '';
+        if (v == null || String(v).trim().toLowerCase() === 'null') return '';
         return String(v);
     }
 
-    // 將工具函式掛到全域，給其他模組（navigation.js 等）呼叫。
+    // 將工具函式掛到全域
     window.SF_UTILS = {
+        getFirstValue,
         normalizeImageUrl,
+        normalizeProduct,
         formatPrice,
         safeStr,
         sanitizeUploadUrl,
         appendCacheBuster,
         fallbackProductImage: FALLBACK_IMAGE
     };
-
-    // 兼容舊版頁面：若全域尚未定義對應函式則補上。
-    if (typeof window.normalizeImageUrl !== 'function') window.normalizeImageUrl = normalizeImageUrl;
-    if (typeof window.formatPrice !== 'function') window.formatPrice = formatPrice;
-    if (typeof window.safeStr !== 'function') window.safeStr = safeStr;
-    if (typeof window.sanitizeUploadUrl !== 'function') window.sanitizeUploadUrl = sanitizeUploadUrl;
-    if (typeof window.appendCacheBuster !== 'function') window.appendCacheBuster = appendCacheBuster;
-    if (typeof window.SF_FALLBACK_PRODUCT_IMAGE === 'undefined') window.SF_FALLBACK_PRODUCT_IMAGE = FALLBACK_IMAGE;
 })();
