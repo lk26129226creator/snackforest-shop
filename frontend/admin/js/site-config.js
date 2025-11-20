@@ -370,6 +370,14 @@
             });
             heroFileInput.addEventListener('change', site.handleHeroFileUpload);
         }
+        const heroChooseBtn = document.getElementById('site-hero-choose');
+        if (heroChooseBtn && !heroChooseBtn.dataset.bound) {
+            heroChooseBtn.dataset.bound = '1';
+            heroChooseBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                site.openHeroGallery();
+            });
+        }
 
         const benefitAddBtn = document.getElementById('site-benefit-add');
         if (benefitAddBtn) {
@@ -628,6 +636,86 @@
             preview.removeAttribute('src');
             preview.style.display = 'none';
         }
+    };
+
+    /**
+     * 開啟 Hero 圖片圖庫彈窗，來源包含：產品圖片、輪播圖片與當前已知圖片集合。
+     * 使用者點擊縮圖即可套用至 Hero 圖片欄位。
+     */
+    site.openHeroGallery = async function () {
+        const modalEl = document.getElementById('heroGalleryModal');
+        const grid = document.getElementById('hero-gallery-grid');
+        if (!modalEl || !grid) return;
+        grid.innerHTML = '';
+
+        // 蒐集候選圖片：產品圖、輪播圖、以及 siteConfig 本身的 imageUrl
+        const candidates = new Set();
+        // 嘗試向後端抓取 hero 圖庫（包含 R2 或後端列舉的結果）
+        try {
+            const apiBase = (config && config.API_BASE_URL) ? config.API_BASE_URL.replace(/\/$/, '') : '';
+            const resp = await fetch(apiBase + '/api/gallery/hero');
+            if (resp && resp.ok) {
+                const list = await resp.json();
+                if (Array.isArray(list)) {
+                    list.forEach((u) => { if (u) candidates.add(String(u).trim()); });
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to fetch hero gallery from server', e);
+        }
+        try {
+            // 產品圖片
+            (state.allProducts || []).forEach((p) => {
+                if (Array.isArray(p.imageUrls)) p.imageUrls.forEach((u) => u && candidates.add(String(u).trim()));
+                if (p.imageUrl) candidates.add(String(p.imageUrl).trim());
+            });
+            // 輪播
+            (state.carousel?.slides || []).forEach((s) => {
+                const u = s?.imageUrlResolved || s?.imageUrl || s?.image;
+                if (u) candidates.add(String(u).trim());
+            });
+            // siteConfig 內目前的 hero 圖
+            const currentHero = state.siteConfig?.data?.hero?.imageUrl || state.siteConfig?.data?.hero?.imageUrlResolved;
+            if (currentHero) candidates.add(String(currentHero).trim());
+        } catch (_) {}
+
+        // 將候選圖片排序並顯示縮圖
+        Array.from(candidates).filter(Boolean).sort().forEach((url) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'card p-1';
+            wrapper.style.width = '120px';
+            wrapper.style.cursor = 'pointer';
+            const img = document.createElement('img');
+            img.src = images.normalizeImageUrl(url);
+            img.alt = '';
+            img.style.width = '100%';
+            img.style.height = '80px';
+            img.style.objectFit = 'cover';
+            wrapper.appendChild(img);
+            wrapper.addEventListener('click', (ev) => {
+                try {
+                    site.ensureData();
+                    state.siteConfig.data.hero = state.siteConfig.data.hero || {};
+                    state.siteConfig.data.hero.imageUrl = url;
+                    state.siteConfig.data.hero.imageUrlResolved = url;
+                    delete state.siteConfig.data.hero.imageUrlOriginal;
+                    delete state.siteConfig.data.hero.imageMissing;
+                    site.applyHeroInputs(state.siteConfig.data.hero);
+                    site.setDirty('hero', true);
+                    // close modal
+                    try { const bs = bootstrap.Modal.getInstance(modalEl); if (bs) bs.hide(); } catch (_) {}
+                } catch (e) {
+                    console.error('選取 hero 圖片錯誤', e);
+                }
+            });
+            grid.appendChild(wrapper);
+        });
+
+        // Show modal
+        try {
+            if (!state.modals.heroGallery) state.modals.heroGallery = new bootstrap.Modal(modalEl);
+            state.modals.heroGallery.show();
+        } catch (e) { console.error('hero gallery modal error', e); }
     };
 
     /**

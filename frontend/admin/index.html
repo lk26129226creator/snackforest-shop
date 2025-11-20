@@ -303,6 +303,7 @@
             <div class="input-group">
               <input id="site-hero-image" class="form-control" placeholder="https:// 或 /frontend/images/...">
               <button id="site-hero-upload" type="button" class="btn btn-outline-secondary">上傳圖片</button>
+              <button id="site-hero-choose" type="button" class="btn btn-outline-secondary" title="從圖庫選擇圖片">從圖庫選擇</button>
             </div>
             <input type="file" id="site-hero-image-file" class="d-none" accept="image/*">
             <div class="mt-3 text-center">
@@ -397,6 +398,25 @@
     </div>
   </div>
   </main>
+</div>
+<!-- Hero 圖庫選擇 Modal -->
+<div class="modal fade" id="heroGalleryModal" tabindex="-1" aria-labelledby="heroGalleryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="heroGalleryModalLabel">從圖庫選擇 Hero 圖片</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="hero-gallery-grid" class="d-flex flex-wrap gap-2" style="max-height:60vh; overflow:auto;">
+          <!-- dynamic thumbnails -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Edit Product Modal：商品編輯彈窗（由 Bootstrap modal 控制） -->

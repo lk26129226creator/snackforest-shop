@@ -64,6 +64,7 @@ public class Server {
             // 圖片資源：提供管理端上傳的使用者自訂圖片。
             HttpContext uploadsCtx = server.createContext("/uploads/images/", new UploadsImageFileHandler());
             HttpContext avatarUploadsCtx = server.createContext("/uploads/avatar/", new AvatarUploadsFileHandler());
+            HttpContext heroUploadsCtx = server.createContext("/uploads/hero/", new HeroUploadsFileHandler());
             // 健康檢查：前端 env.js 或監控工具可呼叫 /ping 檢查伺服器是否存活。
             HttpContext pingCtx = server.createContext("/ping", exchange -> {
                 try {
@@ -92,6 +93,8 @@ public class Server {
             HttpContext uploadCtx = server.createContext("/api/upload/image", new ImageUploadHandler());
             // API: 圖片刪除，與 admin/js/images.js 清理功能對應。
             HttpContext deleteCtx = server.createContext("/api/upload/image/delete", new ImageDeleteHandler());
+            // API: 英雄圖庫列舉（支援列出 R2 或本機 hero 上傳目錄）
+            HttpContext heroGalleryCtx = server.createContext("/api/gallery/hero", new HeroGalleryApiHandler());
             // API: 首頁輪播設定，供 admin/js/carousel.js 管理輪播資料。
             HttpContext carouselCtx = server.createContext("/api/carousel", new CarouselHandler());
             // API: 網站設定，對應 admin/js/site-config.js 控制基本資訊。
@@ -100,7 +103,7 @@ public class Server {
             HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
 
             // 彙總所有 Context，統一加入 CORS Filter 以支援跨來源的前端 fetch。
-            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, customerProfileCtx};
+            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, heroUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, heroGalleryCtx, customerProfileCtx};
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
@@ -301,6 +304,12 @@ public class Server {
         Paths.get("..", "data", "uploads", "avatar")
     );
 
+    private static final Path HERO_UPLOADS_DIR = resolveExistingDirectory(
+        envPathOrDefault("HERO_UPLOADS_ROOT", Paths.get("data", "uploads", "hero")),
+        Paths.get("data", "uploads", "hero"),
+        Paths.get("..", "data", "uploads", "hero")
+    );
+
     // data 目錄根路徑，供其他 handler 讀寫 JSON seed 資料。
     private static final Path DATA_DIR = resolveExistingDirectory(
         envPathOrDefault("DATA_ROOT", Paths.get("data")),
@@ -465,6 +474,71 @@ public class Server {
             String key = extractObjectKey(reference);
             if (key == null || key.isEmpty()) return false;
             return deleteObject(key);
+        }
+
+        /**
+         * 列舉指定前綴下的物件清單（使用 S3 ListObjectsV2），回傳 object keys。
+         */
+        List<String> listObjects(String prefix) throws Exception {
+            if (!isConfigured()) throw new IllegalStateException("Cloudflare R2 client is not configured");
+            String normalizedPrefix = normalizePathPrefix(prefix == null ? "" : prefix);
+            ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+            String amzDate = AMZ_DATE_TIME.format(now);
+            String dateStamp = amzDate.substring(0, 8);
+
+            String canonicalUri = "/" + bucket + "/";
+            String query = "list-type=2";
+            if (normalizedPrefix != null && !normalizedPrefix.isEmpty()) {
+                query += "&prefix=" + URLEncoder.encode(normalizedPrefix, "UTF-8");
+            }
+
+            String payloadHash = sha256Hex(new byte[0]);
+            String canonicalHeaders =
+                    "host:" + host + "\n" +
+                    "x-amz-content-sha256:" + payloadHash + "\n" +
+                    "x-amz-date:" + amzDate + "\n";
+            String signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+            String canonicalRequest = "GET\n" + canonicalUri + "\n" + query + "\n" + canonicalHeaders + "\n" + signedHeaders + "\n" + payloadHash;
+
+            String credentialScope = dateStamp + "/" + REGION + "/" + SERVICE + "/aws4_request";
+            String stringToSign = "AWS4-HMAC-SHA256\n" + amzDate + "\n" + credentialScope + "\n" + sha256Hex(canonicalRequest.getBytes(StandardCharsets.UTF_8));
+            byte[] signingKey = signingKey(secretAccessKey, dateStamp, REGION, SERVICE);
+            String signature = bytesToHex(hmacSha256(signingKey, stringToSign));
+
+            String authorization = "AWS4-HMAC-SHA256 Credential=" + accessKeyId + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
+
+            URL url = new URL("https://" + host + canonicalUri + "?" + query);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(15_000);
+            conn.setReadTimeout(30_000);
+            conn.setRequestProperty("x-amz-date", amzDate);
+            conn.setRequestProperty("x-amz-content-sha256", payloadHash);
+            conn.setRequestProperty("Authorization", authorization);
+
+            int status = conn.getResponseCode();
+            if (status < 200 || status >= 300) {
+                String errorBody = readStream(conn.getErrorStream());
+                throw new IOException("R2 listObjects failed with status " + status + ": " + errorBody);
+            }
+
+            String xml = readStream(conn.getInputStream());
+            List<String> keys = new ArrayList<>();
+            if (xml != null && !xml.isEmpty()) {
+                try {
+                    javax.xml.parsers.DocumentBuilderFactory dbf = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+                    javax.xml.parsers.DocumentBuilder db = dbf.newDocumentBuilder();
+                    org.w3c.dom.Document doc = db.parse(new java.io.ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+                    org.w3c.dom.NodeList nl = doc.getElementsByTagName("Key");
+                    for (int i = 0; i < nl.getLength(); i++) {
+                        String k = nl.item(i).getTextContent();
+                        if (k != null && !k.trim().isEmpty()) keys.add(k.trim());
+                    }
+                } catch (Exception e) {
+                    throw new IOException("Failed to parse R2 listObjects response: " + e.getMessage(), e);
+                }
+            }
+            return keys;
         }
 
         String toPublicUrl(String pathOrUrl) {
@@ -1531,6 +1605,111 @@ public class Server {
                 sendErrorResponse(exchange, 404, "Avatar not found: " + fileName, null);
             } catch (Exception e) {
                 sendErrorResponse(exchange, 500, "Error serving avatar image", e);
+            }
+        }
+    }
+
+    /**
+     * 服務使用者頭像目錄（data/uploads/hero）的靜態檔案。
+     */
+    static class HeroUploadsFileHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                String uriPath = exchange.getRequestURI().getPath();
+                String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
+                if (tryServeLocalFile(exchange, HERO_UPLOADS_DIR, fileName)) return;
+                if (tryRedirectToR2(exchange, uriPath, "/uploads/hero/" + fileName)) return;
+                sendErrorResponse(exchange, 404, "Hero image not found: " + fileName, null);
+            } catch (Exception e) {
+                sendErrorResponse(exchange, 500, "Error serving hero image", e);
+            }
+        }
+    }
+
+    /**
+     * API: 列舉 hero 圖庫（支援從 R2 或本機 hero 目錄取得檔案清單）。
+     * GET /api/gallery/hero?prefix=uploads/hero
+     */
+    static class HeroGalleryApiHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+                return;
+            }
+            try {
+                String prefix = "uploads/hero";
+                String q = exchange.getRequestURI().getQuery();
+                if (q != null && !q.isEmpty()) {
+                    String[] parts = q.split("&");
+                    for (String p : parts) {
+                        int eq = p.indexOf('=');
+                        if (eq > 0) {
+                            String k = p.substring(0, eq);
+                            String v = p.substring(eq + 1);
+                            if ("prefix".equalsIgnoreCase(k)) {
+                                prefix = java.net.URLDecoder.decode(v, "UTF-8");
+                            }
+                        }
+                    }
+                }
+
+                JSONArray out = new JSONArray();
+
+                // Try R2 first for both hero and images prefixes (merge results)
+                Set<String> seen = new HashSet<>();
+                List<String> prefixesToCheck = new ArrayList<>();
+                prefixesToCheck.add(prefix == null ? "uploads/hero" : prefix);
+                if (!prefixesToCheck.contains("uploads/images")) prefixesToCheck.add("uploads/images");
+
+                if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                    for (String pfx : prefixesToCheck) {
+                        try {
+                            List<String> keys = R2_CLIENT.listObjects(pfx);
+                            for (String key : keys) {
+                                if (key == null) continue;
+                                String url = R2_CLIENT.toPublicUrl(key);
+                                if (url != null && !seen.contains(url)) {
+                                    out.put(url);
+                                    seen.add(url);
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.err.println(java.time.LocalDateTime.now() + " - HeroGalleryApiHandler R2 list failed for prefix=" + pfx + ": " + e.getMessage());
+                        }
+                    }
+                }
+
+                // Fallback to local hero/uploads directories if R2 yields nothing or partial
+                try {
+                    if (Files.exists(HERO_UPLOADS_DIR) && Files.isDirectory(HERO_UPLOADS_DIR)) {
+                        try (java.util.stream.Stream<Path> s = Files.list(HERO_UPLOADS_DIR)) {
+                            s.filter(p -> Files.isRegularFile(p)).forEach(p -> {
+                                String url = "/uploads/hero/" + p.getFileName().toString();
+                                if (!seen.contains(url)) { out.put(url); seen.add(url); }
+                            });
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println(java.time.LocalDateTime.now() + " - HeroGalleryApiHandler local hero list failed: " + e.getMessage());
+                }
+                try {
+                    if (Files.exists(UPLOADS_DIR) && Files.isDirectory(UPLOADS_DIR)) {
+                        try (java.util.stream.Stream<Path> s = Files.list(UPLOADS_DIR)) {
+                            s.filter(p -> Files.isRegularFile(p)).forEach(p -> {
+                                String url = "/uploads/images/" + p.getFileName().toString();
+                                if (!seen.contains(url)) { out.put(url); seen.add(url); }
+                            });
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println(java.time.LocalDateTime.now() + " - HeroGalleryApiHandler local uploads list failed: " + e.getMessage());
+                }
+
+                sendJsonResponse(exchange, out.toString(), 200);
+            } catch (Exception e) {
+                sendErrorResponse(exchange, 500, "Failed to list hero gallery", e);
             }
         }
     }

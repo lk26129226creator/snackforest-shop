@@ -21,6 +21,12 @@
     })();
 
     config.API_BASE_URL = `${API_ORIGIN}/api`;
+
+    // *** 請將此處更換為您自己的 Cloudflare R2 公開網址，並確保它指向 assets 的根目錄 ***
+    // 例如：https://pub-xxx.r2.dev/snackforest-assets
+    // 圖片路徑將由 images.normalizeImageUrl 處理；不要在此處寫死 hero 圖片清單。
+    config.CLOUDFLARE_IMAGE_BASE_URL = 'https://pub-389415b030a946b29415698e56034b32.r2.dev/snackforest-assets';
+
     // API 路徑集中於 config.endpoints，方便其他模組復用。
     config.endpoints = {
         product: `${config.API_BASE_URL}/products`,

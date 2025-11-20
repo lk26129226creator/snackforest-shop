@@ -54,6 +54,7 @@
      * @returns {string} 可顯示的圖片連結。
      */
     images.normalizeImageUrl = function (value) {
+        const IMAGE_BASE = (config.CLOUDFLARE_IMAGE_BASE_URL || '').replace(/\/$/, '');
         const API_ORIGIN = (config.API_BASE_URL ? new URL(config.API_BASE_URL).origin : '').replace(/\/$/, '');
         const FALLBACK_IMAGE = config.IMAGE_PLACEHOLDER_DATAURI;
 
@@ -82,7 +83,12 @@
         // Handle full URLs (http, https, //)
         if (/^(https?:|\/\/)/i.test(path)) {
             fullUrl = path;
-        } else {
+        } else if (IMAGE_BASE) {
+            // 如果有設定 Cloudflare URL，優先使用
+            path = path.replace(/^(api\/|\.\/|\/*)/, '');
+            fullUrl = `${IMAGE_BASE}/${path}`;
+        }
+        else {
             // Handle relative paths
             path = '/' + path.replace(/^(api\/|\.\/|\/*)/, '');
             fullUrl = API_ORIGIN + path;
