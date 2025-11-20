@@ -268,7 +268,7 @@ public class Snackforest {
         System.out.println("\n====== 後台管理系統 ======");
         System.out.println("1. 管理客戶資料");
         System.out.println("2. 管理商品資料");
-        System.out.out.println("3. 查詢訂單資料");
+        System.out.println("3. 查詢訂單資料");
         System.out.println("4. 管理貨運方式");
         System.out.println("5. 管理付款方式");
         System.out.println("6. 登出");

@@ -143,4 +143,35 @@ public class ProductDAO {
         }
         return null;
     }
+
+    /**
+     * 依分類 ID 查詢該分類下的所有商品
+     */
+    public List<Product> findByCategoryId(int categoryId) throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.idProducts, p.CategoriesID, p.ProductName, p.Price, c.categoryname, p.ImageUrl, p.Introduction, p.Origin, p.ProductionDate, p.ExpiryDate " +
+                "FROM products p " +
+                "LEFT JOIN category c ON p.CategoriesID = c.idcategories " +
+                "WHERE p.CategoriesID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, categoryId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(new Product(
+                            rs.getInt("idProducts"),
+                            rs.getInt("CategoriesID"),
+                            rs.getString("ProductName"),
+                            rs.getInt("Price"),
+                            rs.getString("categoryname"),
+                            rs.getString("ImageUrl"),
+                            rs.getString("Introduction"),
+                            rs.getString("Origin"),
+                            rs.getString("ProductionDate"),
+                            rs.getString("ExpiryDate")
+                    ));
+                }
+            }
+        }
+        return products;
+    }
 }
