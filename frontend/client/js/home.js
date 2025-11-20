@@ -25,13 +25,8 @@
             return candidate;
         }
     })();
-    const CAROUSEL_FALLBACK_IMAGE = (() => {
-        try {
-            return normalizeImageUrl('/frontend/images/products/no-image.svg');
-        } catch (_) {
-            return '/frontend/images/products/no-image.svg';
-        }
-    })();
+    // Use the centralized fallback product image to avoid hardcoded paths
+    const CAROUSEL_FALLBACK_IMAGE = FALLBACK_PRODUCT_IMAGE;
     const CAROUSEL_CACHE_KEY = 'sf_carousel_slides_v2';
     const LEGACY_CAROUSEL_CACHE_KEY = 'sf_carousel_slides';
     const CAROUSEL_DEFAULT_LINK = 'product.html';

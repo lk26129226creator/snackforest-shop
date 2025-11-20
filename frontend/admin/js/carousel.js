@@ -296,7 +296,7 @@
                 item.innerHTML = `
                     <div class="row g-3 align-items-center">
                         <div class="col-md-3 text-center">
-                            <img src="${escapeAttr(previewSrc)}" alt="預覽" class="img-fluid rounded border" data-role="carousel-preview" onerror="this.onerror=null;this.src='/frontend/images/products/no-image.svg'">
+                            <img src="${escapeAttr(previewSrc)}" alt="預覽" class="img-fluid rounded border" data-role="carousel-preview" onerror="this.onerror=null;this.src='${escapeAttr(config.IMAGE_PLACEHOLDER_DATAURI)}'">
                             <div class="text-muted small mt-2">第 ${idx + 1} 張</div>
                         </div>
                         <div class="col-md-6">

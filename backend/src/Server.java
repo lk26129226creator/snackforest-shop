@@ -772,6 +772,7 @@ public class Server {
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
         final String productsPrefix = "/frontend/images/products/";
         final String uploadsPrefix = "/uploads/images/";
+        final String heroPrefix = "/uploads/hero/";
         final String avatarPrefix = "/uploads/avatar/";
         // 若已是帶有既有前綴的絕對路徑且檔案存在，直接回傳原始值。
         if (trimmed.startsWith(productsPrefix)) {
@@ -791,6 +792,24 @@ public class Server {
                 String avatarRemote = R2_CLIENT.toPublicUrl(avatarPrefix + filename);
                 if (avatarRemote != null && CloudflareR2Client.headExists(avatarRemote)) return avatarRemote;
                 String remote = R2_CLIENT.toPublicUrl(trimmed);
+                if (remote != null && CloudflareR2Client.headExists(remote)) return remote;
+            }
+        }
+
+        // 支援 /uploads/hero/ 前綴（Hero 專用上傳目錄）
+        if (trimmed.startsWith(heroPrefix)) {
+            String filename = trimmed.substring(heroPrefix.length());
+            Path candidate = HERO_UPLOADS_DIR.resolve(filename).normalize();
+            if (candidate.startsWith(HERO_UPLOADS_DIR) && Files.exists(candidate) && Files.isRegularFile(candidate)) return trimmed;
+            // 若 hero 目錄下找不到，再檢查 common uploads 與 avatar
+            Path uploadsCandidate = UPLOADS_DIR.resolve(filename).normalize();
+            if (uploadsCandidate.startsWith(UPLOADS_DIR) && Files.exists(uploadsCandidate) && Files.isRegularFile(uploadsCandidate)) return uploadsPrefix + filename;
+            Path avatarCandidate = AVATAR_UPLOADS_DIR.resolve(filename).normalize();
+            if (avatarCandidate.startsWith(AVATAR_UPLOADS_DIR) && Files.exists(avatarCandidate) && Files.isRegularFile(avatarCandidate)) return avatarPrefix + filename;
+            if (R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                String remoteHero = R2_CLIENT.toPublicUrl(heroPrefix + filename);
+                if (remoteHero != null && CloudflareR2Client.headExists(remoteHero)) return remoteHero;
+                String remote = R2_CLIENT.toPublicUrl(uploadsPrefix + filename);
                 if (remote != null && CloudflareR2Client.headExists(remote)) return remote;
             }
         }
