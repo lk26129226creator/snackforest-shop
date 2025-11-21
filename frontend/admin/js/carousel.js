@@ -441,7 +441,7 @@
                 button.disabled = true;
                 button.textContent = '上傳中...';
             }
-            const url = await images.uploadImage(file);
+            const url = await images.uploadImage(file, { prefix: 'uploads/Carousel' });
             if (!url) throw new Error('未取得圖片網址');
             const slides = carousel.getSlidesClone();
             if (!slides[idx]) slides[idx] = { imageUrl: '', imageUrlResolved: '', imageUrlOriginal: '', title: '', text: '', link: '' };

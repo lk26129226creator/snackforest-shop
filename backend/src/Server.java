@@ -61,7 +61,7 @@ public class Server {
             HttpContext rootCtx = server.createContext("/", new StaticHandler());
             // 統一處理靜態圖片資源
             HttpContext imagesCtx = server.createContext("/frontend/images/products/", new GenericFileHandler(IMAGES_DIR, null, "Image not found"));
-            HttpContext uploadsCtx = server.createContext("/uploads/images/", new GenericFileHandler(UPLOADS_DIR, "/uploads/images/", "Image not found"));
+            HttpContext uploadsCtx = server.createContext("/uploads/Carousel/", new GenericFileHandler(UPLOADS_DIR, "/uploads/Carousel/", "Image not found"));
             HttpContext avatarUploadsCtx = server.createContext("/uploads/avatar/", new GenericFileHandler(AVATAR_UPLOADS_DIR, "/uploads/avatar/", "Avatar not found"));
             HttpContext heroUploadsCtx = server.createContext("/uploads/hero/", new GenericFileHandler(HERO_UPLOADS_DIR, "/uploads/hero/", "Hero image not found"));
             // 健康檢查：前端 env.js 或監控工具可呼叫 /ping 檢查伺服器是否存活。
@@ -292,9 +292,9 @@ public class Server {
     }
 
     private static final Path UPLOADS_DIR = resolveExistingDirectory(
-        envPathOrDefault("UPLOADS_ROOT", Paths.get("data", "uploads", "images")),
-        Paths.get("data", "uploads", "images"),
-        Paths.get("..", "data", "uploads", "images")
+        envPathOrDefault("UPLOADS_ROOT", Paths.get("data", "uploads", "Carousel")),
+        Paths.get("data", "uploads", "Carousel"),
+        Paths.get("..", "data", "uploads", "Carousel")
     );
 
     private static final Path AVATAR_UPLOADS_DIR = resolveExistingDirectory(
@@ -378,7 +378,7 @@ public class Server {
             String publicBaseUrl = trimToNull(System.getenv("R2_PUBLIC_BASE_URL"));
             String pathPrefix = trimToNull(System.getenv("R2_PATH_PREFIX"));
             if (pathPrefix == null || pathPrefix.isEmpty()) {
-                pathPrefix = "uploads/images";
+                pathPrefix = "uploads/Carousel";
             }
             CloudflareR2Client client = new CloudflareR2Client(accountId, accessKeyId, secretAccessKey, bucket, publicBaseUrl, pathPrefix);
             System.err.println(java.time.LocalDateTime.now() + " - Cloudflare R2 configured with bucket=" + bucket + " prefix=" + client.pathPrefix + " publicBase=" + client.publicBaseUrl);
@@ -770,7 +770,7 @@ public class Server {
         if (trimmed.isEmpty()) return null;
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
         final String productsPrefix = "/frontend/images/products/";
-        final String uploadsPrefix = "/uploads/images/";
+        final String uploadsPrefix = "/uploads/Carousel/";
         final String heroPrefix = "/uploads/hero/";
         final String avatarPrefix = "/uploads/avatar/";
         // 若已是帶有既有前綴的絕對路徑且檔案存在，直接回傳原始值。
@@ -1513,7 +1513,7 @@ public class Server {
                     if (targetDir.equals(HERO_UPLOADS_DIR)) {
                         imageUrl = "/uploads/hero/" + uniqueFilename;
                     } else {
-                        imageUrl = "/uploads/images/" + uniqueFilename;
+                        imageUrl = "/uploads/Carousel/" + uniqueFilename;
                     }
                     System.err.println(java.time.LocalDateTime.now() + " - ImageUploadHandler: saved " + filePath.toString() + " -> returning " + imageUrl);
                 }
@@ -1750,10 +1750,10 @@ public class Server {
                 int idx = uriPath.lastIndexOf('/') + 1;
                 if (idx > 0 && idx < uriPath.length()) fallbackName = uriPath.substring(idx);
                 if (fallbackName != null && !fallbackName.isEmpty()) {
-                    if (tryServeLocalFile(exchange, UPLOADS_DIR, fallbackName)) return;
-                    if (tryServeLocalFile(exchange, AVATAR_UPLOADS_DIR, fallbackName)) return;
-                    if (tryRedirectToR2(exchange,
-                            "/uploads/images/" + fallbackName,
+                        if (tryServeLocalFile(exchange, UPLOADS_DIR, fallbackName)) return;
+                        if (tryServeLocalFile(exchange, AVATAR_UPLOADS_DIR, fallbackName)) return;
+                        if (tryRedirectToR2(exchange,
+                            "/uploads/Carousel/" + fallbackName,
                             "/uploads/avatar/" + fallbackName)) {
                         return;
                     }
@@ -2161,7 +2161,7 @@ public class Server {
             private static String relocateAvatarPathIfAvailable(String value) {
                 if (value == null) return null;
                 String trimmed = value.trim().replace('\\', '/');
-                final String legacyPrefix = "/uploads/images/";
+                final String legacyPrefix = "/uploads/Carousel/";
                 final String avatarPrefix = "/uploads/avatar/";
                 if (!trimmed.startsWith(legacyPrefix)) return trimmed;
                 String filename = trimmed.substring(legacyPrefix.length());

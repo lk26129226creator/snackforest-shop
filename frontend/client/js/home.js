@@ -149,7 +149,7 @@
     }
 
     async function loadCarouselSlides() {
-        const fromBackend = sanitizeCarouselSlides(await fetchJSON(`${API_BASE}/carousel`, { cache: 'no-store' }));
+        let fromBackend = sanitizeCarouselSlides(await fetchJSON(`${API_BASE}/carousel`, { cache: 'no-store' }));
         if (fromBackend.length) return fromBackend;
 
         // If backend returned no slides, attempt to fetch images directly from gallery uploads/Carousel
