@@ -99,7 +99,7 @@
         const name = getFirstValue(category, ['name', 'categoryname']) || '分類';
         const href = `product.html?category=${encodeURIComponent(name)}`;
         return `
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-6 col-lg-4">
                 <div class="category-card" role="button" tabindex="0" aria-label="${name}分類" data-href="${href}">
                     <div class="icon"><i class="fa-solid ${resolveCategoryIcon(name)}" aria-hidden="true"></i></div>
                     <div class="name">${name}</div>
@@ -371,7 +371,7 @@
             grid.innerHTML = productsToRender.map(meta => {
                 const href = `product.html?id=${encodeURIComponent(meta.id)}`;
                 return `
-                    <div class="col-6 col-md-4 col-lg-3">
+                    <div class="col-6 col-md-6 col-lg-4">
                         <div class="card featured-card">
                             <a href="${href}" class="d-block">
                                 <img src="${meta.imageUrl}" alt="${meta.name}" class="card-img-top">
