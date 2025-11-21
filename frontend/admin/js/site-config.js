@@ -625,8 +625,35 @@
         });
 
         const rawUrl = hero?.imageUrlResolved || hero?.imageUrl || '';
-        const normalizedUrl = rawUrl ? images.normalizeImageUrl(rawUrl) : '';
+        let normalizedUrl = rawUrl ? images.normalizeImageUrl(rawUrl) : '';
         site.updateHeroPreview(normalizedUrl);
+
+        // 如果沒有已解析的圖片 URL，背景嘗試從後端 hero 圖庫取得第一張圖片並更新輸入欄與預覽。
+        if (!normalizedUrl) {
+            try {
+                const apiBase = (config && config.API_BASE_URL) ? config.API_BASE_URL.replace(/\/$/, '') : '';
+                fetch(apiBase + '/gallery/hero').then(async (resp) => {
+                    if (!resp || !resp.ok) return;
+                    const list = await resp.json().catch(() => []);
+                    if (Array.isArray(list) && list.length > 0) {
+                        const first = String(list[0] || '').trim();
+                        if (first) {
+                            const resolved = images.normalizeImageUrl(first);
+                            // 更新輸入欄與 preview
+                            const input = document.getElementById('site-hero-image');
+                            if (input) input.value = resolved;
+                            site.updateHeroPreview(resolved);
+                            // 同步回 state，讓後續儲存會包含此值
+                            site.ensureData();
+                            state.siteConfig.data.hero = state.siteConfig.data.hero || {};
+                            state.siteConfig.data.hero.imageUrl = first;
+                            state.siteConfig.data.hero.imageUrlResolved = resolved;
+                            site.setDirty('hero', true);
+                        }
+                    }
+                }).catch(() => {});
+            } catch (_) {}
+        }
     };
 
     /**
