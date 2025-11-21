@@ -99,7 +99,7 @@
         const name = getFirstValue(category, ['name', 'categoryname']) || '分類';
         const href = `product.html?category=${encodeURIComponent(name)}`;
         return `
-            <div class="col-6 col-md-6 col-lg-4">
+            <div class="col-6 col-md-4 col-lg">
                 <div class="category-card" role="button" tabindex="0" aria-label="${name}分類" data-href="${href}">
                     <div class="icon"><i class="fa-solid ${resolveCategoryIcon(name)}" aria-hidden="true"></i></div>
                     <div class="name">${name}</div>
@@ -327,9 +327,9 @@
             });
         } else {
             await renderGrid(grid, {
-                className: 'row g-3 home-categories-grid category-grid',
+                className: 'row g-3 home-categories-grid category-grid row-cols-lg-5',
                 fetchUrl: `${API_BASE}/categories`,
-                processItems: items => items.slice(0, 8),
+                processItems: items => items.slice(0, 5),
                 renderItem: renderCategoryItem,
                 emptyMessage: '目前沒有分類資料',
                 errorMessage: '無法載入分類',
@@ -371,7 +371,7 @@
             grid.innerHTML = productsToRender.map(meta => {
                 const href = `product.html?id=${encodeURIComponent(meta.id)}`;
                 return `
-                    <div class="col-6 col-md-6 col-lg-4">
+                    <div class="col-6 col-md-4 col-lg-3">
                         <div class="card featured-card">
                             <a href="${href}" class="d-block">
                                 <img src="${meta.imageUrl}" alt="${meta.name}" class="card-img-top">
