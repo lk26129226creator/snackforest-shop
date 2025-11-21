@@ -656,35 +656,43 @@
         if (!modalEl || !grid) return;
         grid.innerHTML = '';
 
-        // 蒐集候選圖片：產品圖、輪播圖、以及 siteConfig 本身的 imageUrl
-        const candidates = new Set();
         // 嘗試向後端抓取 hero 圖庫（包含 R2 或後端列舉的結果）
+        let galleryList = [];
         try {
             const apiBase = (config && config.API_BASE_URL) ? config.API_BASE_URL.replace(/\/$/, '') : '';
             const resp = await fetch(apiBase + '/gallery/hero');
             if (resp && resp.ok) {
                 const list = await resp.json();
                 if (Array.isArray(list)) {
-                    list.forEach((u) => { if (u) candidates.add(String(u).trim()); });
+                    galleryList = list.map((u) => String(u || '').trim()).filter(Boolean);
                 }
             }
         } catch (e) {
             console.warn('Failed to fetch hero gallery from server', e);
         }
+
+        // 蒐集候選圖片：若後端圖庫有內容，僅顯示圖庫內容（優先呈現 R2 圖片）；否則回退到產品圖片、輪播與 siteConfig 的集合。
+        const candidates = new Set();
+        if (galleryList.length > 0) {
+            galleryList.forEach((u) => candidates.add(u));
+        }
         try {
-            // 產品圖片
-            (state.allProducts || []).forEach((p) => {
-                if (Array.isArray(p.imageUrls)) p.imageUrls.forEach((u) => u && candidates.add(String(u).trim()));
-                if (p.imageUrl) candidates.add(String(p.imageUrl).trim());
-            });
-            // 輪播
-            (state.carousel?.slides || []).forEach((s) => {
-                const u = s?.imageUrlResolved || s?.imageUrl || s?.image;
-                if (u) candidates.add(String(u).trim());
-            });
-            // siteConfig 內目前的 hero 圖
-            const currentHero = state.siteConfig?.data?.hero?.imageUrl || state.siteConfig?.data?.hero?.imageUrlResolved;
-            if (currentHero) candidates.add(String(currentHero).trim());
+            // 如果後端圖庫沒有圖片，再從本地來源補充候選圖片
+            if (galleryList.length === 0) {
+                // 產品圖片
+                (state.allProducts || []).forEach((p) => {
+                    if (Array.isArray(p.imageUrls)) p.imageUrls.forEach((u) => u && candidates.add(String(u).trim()));
+                    if (p.imageUrl) candidates.add(String(p.imageUrl).trim());
+                });
+                // 輪播
+                (state.carousel?.slides || []).forEach((s) => {
+                    const u = s?.imageUrlResolved || s?.imageUrl || s?.image;
+                    if (u) candidates.add(String(u).trim());
+                });
+                // siteConfig 內目前的 hero 圖
+                const currentHero = state.siteConfig?.data?.hero?.imageUrl || state.siteConfig?.data?.hero?.imageUrlResolved;
+                if (currentHero) candidates.add(String(currentHero).trim());
+            }
         } catch (_) {}
 
         // 將候選圖片排序並顯示縮圖
