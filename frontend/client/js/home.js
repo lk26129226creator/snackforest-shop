@@ -152,6 +152,16 @@
         const fromBackend = sanitizeCarouselSlides(await fetchJSON(`${API_BASE}/carousel`, { cache: 'no-store' }));
         if (fromBackend.length) return fromBackend;
 
+        // If backend returned no slides, attempt to fetch images directly from gallery uploads/Carousel
+        try {
+            const gallery = await fetchJSON(`${API_BASE}/gallery/hero?prefix=${encodeURIComponent('uploads/Carousel')}`, { cache: 'no-store' });
+            if (Array.isArray(gallery) && gallery.length > 0) {
+                const slides = gallery.map((u) => ({ imageUrl: u, imageUrlResolved: u, title: '', text: '', link: '' }));
+                const s = sanitizeCarouselSlides(slides);
+                if (s.length) return s;
+            }
+        } catch (e) { /* ignore gallery fetch errors */ }
+
         try {
             const fromCache = sanitizeCarouselSlides(JSON.parse(localStorage.getItem(CAROUSEL_CACHE_KEY) || '[]'));
             if (fromCache.length) return fromCache;

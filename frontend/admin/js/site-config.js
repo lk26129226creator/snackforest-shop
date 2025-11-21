@@ -677,17 +677,21 @@
      * 開啟 Hero 圖片圖庫彈窗，來源包含：產品圖片、輪播圖片與當前已知圖片集合。
      * 使用者點擊縮圖即可套用至 Hero 圖片欄位。
      */
-    site.openHeroGallery = async function () {
+    // openHeroGallery(opts?)
+    // opts: { prefix?: string, onSelect?: function(url) }
+    site.openHeroGallery = async function (opts) {
+        opts = opts || {};
         const modalEl = document.getElementById('heroGalleryModal');
         const grid = document.getElementById('hero-gallery-grid');
         if (!modalEl || !grid) return;
         grid.innerHTML = '';
 
-        // 嘗試向後端抓取 hero 圖庫（包含 R2 或後端列舉的結果）
+        // 嘗試向後端抓取 hero 圖庫（包含 R2 或後端列舉的結果），支援 prefix 參數覆寫
         let galleryList = [];
         try {
             const apiBase = (config && config.API_BASE_URL) ? config.API_BASE_URL.replace(/\/$/, '') : '';
-            const resp = await fetch(apiBase + '/gallery/hero');
+            const prefix = opts.prefix ? ('?prefix=' + encodeURIComponent(opts.prefix)) : '';
+            const resp = await fetch(apiBase + '/gallery/hero' + prefix);
             if (resp && resp.ok) {
                 const list = await resp.json();
                 if (Array.isArray(list)) {
@@ -737,6 +741,13 @@
             wrapper.appendChild(img);
             wrapper.addEventListener('click', (ev) => {
                 try {
+                    // If caller provided onSelect callback, call it with chosen URL and close modal.
+                    if (opts && typeof opts.onSelect === 'function') {
+                        try { opts.onSelect(url); } catch (e) { console.error('gallery onSelect callback error', e); }
+                        try { const bs = bootstrap.Modal.getInstance(modalEl); if (bs) bs.hide(); } catch (_) {}
+                        return;
+                    }
+                    // Default behavior: apply selected image to site hero
                     site.ensureData();
                     state.siteConfig.data.hero = state.siteConfig.data.hero || {};
                     state.siteConfig.data.hero.imageUrl = url;

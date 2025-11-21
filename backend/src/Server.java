@@ -1829,6 +1829,46 @@ public class Server {
                         System.err.println("CarouselHandler: failed to normalize carousel data: " + parseEx.getMessage());
                     }
                     if (normalizedSuccessfully) {
+                        // 如果已解析的輪播資料沒有任何可用的圖片，嘗試從 R2 的 uploads/Carousel 前綴取得圖片作為 fallback
+                        boolean hasImage = false;
+                        for (int i = 0; i < normalized.length(); i++) {
+                            JSONObject s = normalized.optJSONObject(i);
+                            if (s != null) {
+                                String resolved = s.optString("imageUrlResolved", "");
+                                if (resolved != null && !resolved.trim().isEmpty()) { hasImage = true; break; }
+                            }
+                        }
+                        if (!hasImage && R2_CLIENT != null && R2_CLIENT.isConfigured()) {
+                            try {
+                                List<String> keys = R2_CLIENT.listObjects("uploads/Carousel");
+                                JSONArray gallerySlides = new JSONArray();
+                                Set<String> seen = new HashSet<>();
+                                for (String key : keys) {
+                                    if (key == null) continue;
+                                    String nk = key.replace('\\', '/').trim();
+                                    if (nk.isEmpty()) continue;
+                                    if (nk.endsWith("/")) continue;
+                                    String lower = nk.toLowerCase();
+                                    if (!(lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp") || lower.endsWith(".gif") || lower.endsWith(".svg"))) continue;
+                                    String url = R2_CLIENT.toPublicUrl(nk);
+                                    if (url == null || seen.contains(url)) continue;
+                                    JSONObject slide = new JSONObject();
+                                    slide.put("imageUrlResolved", url);
+                                    slide.put("imageUrl", JSONObject.NULL);
+                                    slide.put("title", "");
+                                    slide.put("text", "");
+                                    slide.put("link", "");
+                                    gallerySlides.put(slide);
+                                    seen.add(url);
+                                }
+                                if (gallerySlides.length() > 0) {
+                                    sendJsonResponse(exchange, gallerySlides.toString(), 200);
+                                    return;
+                                }
+                            } catch (Exception e) {
+                                System.err.println(java.time.LocalDateTime.now() + " - CarouselHandler R2 fallback failed: " + e.getMessage());
+                            }
+                        }
                         sendJsonResponse(exchange, normalized.toString(), 200);
                     } else {
                         sendJsonResponse(exchange, json, 200);

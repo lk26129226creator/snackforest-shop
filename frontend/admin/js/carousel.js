@@ -4,6 +4,7 @@
 (function (window) {
     const Admin = window.SFAdmin || (window.SFAdmin = {});
     const { config, state, images } = Admin;
+    const site = Admin.site || {};
     const { escapeAttr, deepClone } = Admin.utils;
     const carousel = Admin.carousel || {};
     const LEGACY_KEYS = Array.isArray(config.CAROUSEL_LEGACY_KEYS) ? config.CAROUSEL_LEGACY_KEYS : [];
@@ -306,8 +307,9 @@
                             </div>
                             <div class="mb-2">
                                 <button type="button" class="btn btn-sm btn-secondary" data-action="upload" data-index="${idx}">上傳圖片</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-action="from-gallery" data-index="${idx}">從圖庫選取</button>
                                 <input type="file" accept="image/*" class="d-none" data-file-index="${idx}">
-                                <small class="text-muted ms-2">可直接上傳本機圖片，系統會自動取得 URL</small>
+                                <small class="text-muted ms-2">可直接上傳或從圖庫選取圖片</small>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label mb-1">標題（可選）</label>
@@ -384,6 +386,25 @@
             const list = document.getElementById('carousel-editor-list');
             const input = list?.querySelector(`input[type="file"][data-file-index="${idx}"]`);
             if (input) input.click();
+            return;
+        }
+        if (action === 'from-gallery') {
+            try {
+                // open gallery modal, restrict to uploads/Carousel and apply selected image to this slide
+                site.openHeroGallery({ prefix: 'uploads/Carousel', onSelect: function (url) {
+                    try {
+                        const slides = carousel.getSlidesClone();
+                        if (!slides[idx]) slides[idx] = { imageUrl: '', imageUrlResolved: '', imageUrlOriginal: '', title: '', text: '', link: '' };
+                        slides[idx].imageUrl = url;
+                        slides[idx].imageUrlResolved = url;
+                        slides[idx].imageUrlOriginal = url;
+                        delete slides[idx].imageMissing;
+                        state.carousel.slides = slides;
+                        carousel.setDirty(true);
+                        carousel.renderEditor(slides);
+                    } catch (e) { console.error('apply gallery image to slide error', e); }
+                } });
+            } catch (e) { console.error('open gallery for carousel failed', e); }
             return;
         }
         event.preventDefault();
