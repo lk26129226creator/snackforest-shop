@@ -1,0 +1,546 @@
+/* DELETED: duplicate admin stylesheet.
+    All active admin styles live in `frontend/admin/css/admin.css`.
+    The file was requested removed; its contents have been cleared.
+*/
+
+/* 側欄分組：垂直排列每組項目。 */
+.admin-sidebar-section{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+/* 收合後改為置中排列每組項目。 */
+body.admin-sidebar-collapsed .admin-sidebar-section{
+    align-items: center;
+}
+
+/* 收合狀態：改為垂直排列圖示與文字。 */
+body.admin-sidebar-collapsed .admin-sidebar-link{
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 0 14px;
+    text-align: center;
+    min-height: 88px;
+}
+
+/* 收合時放大圖示，維持辨識度。 */
+body.admin-sidebar-collapsed .admin-sidebar-link .admin-sidebar-icon{
+    font-size: 1.32rem;
+    margin: 0;
+}
+
+/* 側欄底部操作區：加上分隔線與上內距。 */
+.admin-sidebar-actions{
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid rgba(226,232,240,0.75);
+}
+
+/* 收合狀態：移除底部操作列左右內距。 */
+body.admin-sidebar-collapsed .admin-sidebar-actions{
+    padding-inline: 0;
+}
+
+/* 側欄圖示：預設尺寸與顏色。 */
+.admin-sidebar-link .admin-sidebar-icon{
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    color: #475569;
+}
+
+/* 側邊欄文字：展開時顯示完整標籤。 */
+.admin-sidebar-text{
+    display: block;
+    white-space: nowrap;
+    transition: opacity .2s ease, transform .2s ease;
+    color: #475569;
+}
+
+/* 收合狀態：縮小文字並保持可讀。 */
+body.admin-sidebar-collapsed .admin-sidebar-text{
+    opacity: 1;
+    transform: none;
+    pointer-events: none;
+    white-space: normal;
+    width: 100%;
+    margin: 0;
+    overflow: visible;
+    font-size: .72rem;
+    line-height: 1.15;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+/* 展開狀態：恢復標準字級並左對齊。 */
+body.admin-sidebar-expanded .admin-sidebar-text{
+    opacity: 1;
+    transform: translateX(0);
+    font-size: .95rem;
+    white-space: nowrap;
+    text-align: left;
+    width: auto;
+}
+
+
+/* 展開狀態：側欄項目增加左右內距。 */
+body.admin-sidebar-expanded:not(.admin-sidebar-overlay) .admin-sidebar-link{
+    padding: 11px 18px;
+}
+
+/* 展開狀態：底部操作列同步對齊左右間距。 */
+body.admin-sidebar-expanded:not(.admin-sidebar-overlay) .admin-sidebar-actions{
+    padding-inline: 18px;
+}
+
+
+/* 啟用項目文字：使用品牌藍色呼應狀態。 */
+.admin-sidebar-link.active .admin-sidebar-text{ color: #0d6efd; }
+
+/* 側欄滑過：以淡藍底與位移提供回饋。 */
+.admin-sidebar-link:hover,
+.admin-sidebar-link:focus{
+    background: rgba(37,99,235,0.12);
+    color: #0f172a;
+    transform: translateX(2px);
+}
+
+/* 收合時移除位移效果，避免版面晃動。 */
+body.admin-sidebar-collapsed .admin-sidebar-link:hover,
+body.admin-sidebar-collapsed .admin-sidebar-link:focus{
+    transform: none;
+    background: rgba(37,99,235,0.12);
+}
+
+/* 收合狀態的滑過文字仍沿用品牌色。 */
+body.admin-sidebar-collapsed .admin-sidebar-link:hover .admin-sidebar-text,
+body.admin-sidebar-collapsed .admin-sidebar-link:focus .admin-sidebar-text{
+    color: #0d6efd;
+}
+
+/* 滑過或聚焦時同步高亮圖示。 */
+.admin-sidebar-link:hover .admin-sidebar-icon,
+.admin-sidebar-link:focus .admin-sidebar-icon{
+    color: #0d6efd;
+}
+
+/* 側邊欄當前頁面：以色塊與描邊突顯。 */
+.admin-sidebar-link.active{
+    background: rgba(13,110,253,0.16);
+    color: #0d6efd;
+    box-shadow: inset 0 0 0 1px rgba(13,110,253,0.28);
+}
+
+body.admin-sidebar-collapsed .admin-sidebar-link.active{
+    background: rgba(37,99,235,0.16);
+    box-shadow: none;
+}
+
+/* 收合狀態仍套用品牌色文字。 */
+body.admin-sidebar-collapsed .admin-sidebar-link.active .admin-sidebar-text{
+    color: #0d6efd;
+}
+
+/* 當前頁面圖示同步使用品牌色。 */
+.admin-sidebar-link.active .admin-sidebar-icon{ color: #0d6efd; }
+
+/* 可鍵盤操作的選項聚焦外框。 */
+.admin-sidebar-link:focus-visible{
+    outline: 2px solid rgba(13,110,253,0.45);
+    outline-offset: 2px;
+}
+
+/* 側欄遮罩：行動滑出選單的背景遮罩與模糊。 */
+.admin-sidebar-backdrop{
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.35);
+    backdrop-filter: blur(2px);
+    z-index: 1080;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+}
+
+/* 僅在覆蓋模式時啟用遮罩互動。 */
+body.admin-sidebar-overlay .admin-sidebar-backdrop{
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 商品圖預覽 Modal：設定內部間距與背景。 */
+#imageViewModal .modal-body{ padding: 0; background: #fff; }
+
+/* Modal 對話窗：設定寬度以顯示大尺寸圖片。 */
+#imageViewModal .modal-dialog{ max-width: 920px; margin: 1.2rem auto; }
+/* Modal 內容容器：維持白底與圓角。 */
+#imageViewModal .modal-content{ background: #fff; border-radius: 6px; overflow: visible; }
+
+/* Viewer 外層：主圖與縮圖容器並排呈現。 */
+#imageViewModal .image-viewer .iv-wrapper{ display:flex; align-items:stretch; min-height:48vh; max-width:820px; margin: 0 auto; }
+/* Viewer 背景：統一白底避免色塊干擾。 */
+#imageViewModal .image-viewer{ background: #fff; }
+/* 主圖區：填滿剩餘空間並垂直置中。 */
+#imageViewModal .image-viewer .iv-main{ flex: 1 1 auto; display:flex; align-items:stretch; justify-content:center; background: #fff; flex-direction:column; }
+/* 主圖外框：限制高度並維持圖片置中。 */
+#imageViewModal .image-viewer .iv-main-img-wrap{ width:100%; max-height:60vh; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#fff; padding-bottom:8px; position:relative; }
+/* 主圖：等比例縮放不裁切。 */
+#imageViewModal .image-viewer .iv-main img{ width:100%; height:auto; max-height:60vh; object-fit:contain; display:block; background:#fff; }
+/* 側邊縮圖欄：固定寬度並垂直置放。 */
+#imageViewModal .image-viewer .iv-sidebar{ width: 90px; background: transparent; border-left: 0; padding: 12px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+/* 控制列：預留上下間距給操作按鈕。 */
+#imageViewModal .image-viewer .iv-controls{ margin-top:4px; }
+/* 縮圖外殼：結合箭頭與縮圖列置中顯示。 */
+#imageViewModal .iv-thumbs-wrapper{ display:flex; align-items:center; gap:8px; position:relative; margin: 0 auto; }
+
+/* 縮圖列：置中顯示並保留水平間距。 */
+#imageViewModal .image-viewer .iv-thumbs{ margin-top:8px; width:100%; display:flex; justify-content:center; overflow:hidden; padding:6px 12px; gap:8px; }
+/* 縮圖滾動條：調整高度以符合元件比例。 */
+#imageViewModal .image-viewer .iv-thumbs::-webkit-scrollbar{ height:8px; }
+
+/* 單張縮圖：預設隱藏等待腳本顯示。 */
+#imageViewModal .image-viewer .iv-thumbs .iv-thumb{ display:none; width:72px; height:72px; border-radius:6px; overflow:hidden; cursor:pointer; border:2px solid transparent; flex: 0 0 auto; }
+/* 縮圖內的圖片：完整填滿並維持 cover。 */
+#imageViewModal .image-viewer .iv-thumbs .iv-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+/* .visible 狀態：顯示於縮圖列上。 */
+#imageViewModal .image-viewer .iv-thumbs .iv-thumb.visible{ display:inline-block; }
+/* .active 狀態：使用主題描邊凸顯。 */
+#imageViewModal .image-viewer .iv-thumbs .iv-thumb.active{ border-color: var(--accent); }
+
+/* 縮圖導覽箭頭：固定於列表兩側並採用淺灰底。 */
+#imageViewModal .iv-thumbs-wrapper .thumb-nav{
+    width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center;
+    border-radius:50%; position:relative; transform:none !important; z-index:10;
+    background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    transition: none !important; cursor: pointer; border: 1px solid rgba(0,0,0,0.04);
+}
+/* 導覽箭頭內的圖示避免攔截滑鼠事件。 */
+#imageViewModal .iv-thumbs-wrapper .thumb-nav svg,
+#imageViewModal .iv-thumbs-wrapper .thumb-nav i{ pointer-events:none; }
+
+/* 導覽箭頭滑過：以灰階提示可互動狀態。 */
+#imageViewModal .iv-thumbs-wrapper .thumb-nav:hover{
+    background: #efefef !important; color: #222 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.04) !important; transform: none !important;
+}
+
+/* 導覽箭頭停用：降低透明度並關閉互動。 */
+#imageViewModal .thumb-nav.disabled,
+#imageViewModal .thumb-nav:disabled{ opacity: 0.45; pointer-events: none; }
+
+/* 移除 hover 與 active 的位移，避免畫面跳動。 */
+#imageViewModal .thumb-nav:hover,
+#imageViewModal .thumb-nav:active{ transform:none !important; }
+
+/* 商品圖片檢視器在小螢幕改為縱向排列。 */
+@media (max-width: 900px){
+    .image-viewer .iv-wrapper{ flex-direction:column; }
+    .image-viewer .iv-sidebar{ width:100%; flex-direction:row; gap:8px; padding:8px; overflow:auto; order:2; }
+    .image-viewer .iv-thumbs{ flex-direction:row; height:72px; overflow-x:auto; }
+    .image-viewer .iv-thumbs .iv-thumb{ width:72px; height:72px; }
+}
+
+/* 響應式調整：991px 以下側欄改為滑出式並縮小間距。 */
+@media (max-width: 991.98px){
+    body .main-content{
+        margin: 24px 16px 32px;
+        margin-left: 16px;
+        width: calc(100% - 32px);
+        padding: 20px;
+        border-radius: 16px;
+        box-shadow: 0 14px 30px rgba(15,23,42,0.08);
+    }
+    .admin-profile-card{ padding: 1.25rem; }
+    .navbar-hamburger{ width: 36px; height: 36px; }
+    .navbar-hamburger span{ width: 18px; }
+    .admin-sidebar{
+        top: 0;
+        transform: translateX(-100%);
+        width: min(82vw, var(--admin-sidebar-width-expanded));
+    }
+    body.admin-sidebar-expanded .admin-sidebar{ transform: translateX(0); }
+    .admin-quick-link{ min-height: unset; }
+    .image-preview-item{ width: 72px; height: 72px; }
+}
+
+/* 768px 以下：快捷區網格縮為較窄欄寬。 */
+@media (max-width: 768px){
+    .admin-quick-grid{ grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+
+/* 540px 以下：縮小表格內圖片與按鈕。 */
+@media (max-width: 540px){
+    .table-product-img{ width: 56px; height: 40px; }
+    .table .btn{ font-size: .8rem; padding: .25rem .45rem; }
+}
+
+/* 表格儲存格：統一垂直置中。 */
+.table td,
+.table th{ vertical-align: middle; }
+
+/* 檔案上傳欄位：顯示可點擊游標。 */
+input[type="file"]{ cursor: pointer; }
+
+/* 表格滑過：淡藍底協助追蹤資料列。 */
+.table-hover tbody tr:hover{ background: rgba(13,110,253,0.03); }
+
+/* 精選商品列表項目：拖拉時有背景與陰影過渡。 */
+#site-featured-list .featured-row-item{ transition: background-color 0.18s ease, box-shadow 0.18s ease; }
+/* 被點選的精選項目使用抓取游標。 */
+#site-featured-list .featured-selected-item{ cursor: grab; }
+/* 拖曳進行中轉換為 grabbing 游標。 */
+#site-featured-list .featured-selected-item:active{ cursor: grabbing; }
+/* 正在拖曳的項目：降低不透明度並帶陰影。 */
+#site-featured-list .featured-dragging{ opacity: 0.65; cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.16); }
+/* 被指派為放置目標時加上藍色描邊。 */
+#site-featured-list .featured-drop-target{ border-color: var(--accent); box-shadow: 0 0 0 2px rgba(13,110,253,0.25); }
+/* 精選項目的操作按鈕群保持單行排列。 */
+#site-featured-list .featured-row-item .btn-group{ flex-wrap: nowrap; }
+
+/* 站台設定列表：限制高度並保留捲動。 */
+#site-benefit-list,
+#site-featured-list{
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 6px;
+    position: relative;
+    scrollbar-gutter: stable both-edges;
+}
+
+/* 站台優勢卡片：白底搭配細緣。 */
+.site-benefit-item{
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.85rem;
+    padding: 18px;
+    box-shadow: none;
+}
+
+/* 站台優勢網格：定義欄位比例。 */
+.site-benefit-grid{
+    display: grid;
+    grid-template-columns: minmax(140px, 0.9fr) minmax(180px, 1fr) minmax(220px, 1.2fr) auto;
+    gap: 16px 20px;
+    align-items: start;
+}
+
+/* 優勢欄位標籤與輸入框高度。 */
+.site-benefit-field .form-label{ font-weight: 600; }
+.site-benefit-field .form-control{ min-height: 40px; }
+
+/* 優勢操作列：靠右排列操作按鈕。 */
+.site-benefit-actions{
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: nowrap;
+    grid-column: 4 / 5;
+}
+
+/* 操作按鈕：保持緊湊寬度避免換行。 */
+.site-benefit-actions .btn{ white-space: nowrap; min-width: 58px; }
+
+/* 1200px 以下：改為兩欄排版。 */
+@media (max-width: 1200px){
+    .site-benefit-grid{ grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+    .site-benefit-actions{ grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+/* 768px 以下：單欄排版並允許換行。 */
+@media (max-width: 768px){
+    .site-benefit-grid{ grid-template-columns: minmax(220px, 1fr); }
+    .site-benefit-actions{ flex-wrap: wrap; }
+}
+
+/* 精選列表滾動條：穩定保留間距。 */
+.site-featured-scroll{ scrollbar-gutter: stable both-edges; }
+
+/* 精選商品選擇器：固定在頂部方便操作。 */
+.site-featured-selector{
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #fff;
+    border-radius: 0.85rem;
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+}
+
+/* 精選商品選擇器：提升下拉選單高度。 */
+.site-featured-selector .form-select{ min-height: 42px; }
+
+/* 精選商品卡片：維持白底與圓角。 */
+.site-featured-item{ border-radius: 0.85rem; border: 1px solid #e5e7eb; box-shadow: none; }
+
+/* 精選商品按鈕群組：避免自動換行。 */
+.site-featured-item .btn-group .btn{ white-space: nowrap; }
+
+/* 精選商品空狀態：增加垂直留白。 */
+.site-featured-empty{ padding: 12px 2px; }
+
+/* 預覽站台頁尾文案的樣式，與前台色系同步。 */
+.site-footer-preview{
+    background: #1f2937;
+    color: #f8fafc;
+    border-radius: 0.85rem;
+    padding: 18px 20px;
+    min-height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 600;
+    line-height: 1.6;
+}
+
+/* 頁尾預覽灰階樣式：提供未設定時的提示顏色。 */
+.site-footer-preview.text-muted{
+    background: #e9ecef;
+    color: #6c757d !important;
+    font-weight: 500;
+}
+
+/* 共用版塊：從全域樣式拆出，提供表單、表格一致外觀。 */
+.admin-form-section{
+    background-color: var(--card-bg);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+/* 表格外層：套用圓角與陰影保持一致感。 */
+.table-responsive{
+    background-color: var(--card-bg);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+/* 表格主體：沿用共用邊框色系。 */
+.table{
+    border-color: var(--border-color);
+}
+
+/* 表頭與列滑過的基底樣式已移至 `frontend/css/shared.css`，請於該檔檢視/編輯。 */
+
+/* 表格操作按鈕：規則已移至 `frontend/css/shared.css`，請改以共用樣式為準 */
+
+/* 表格內縮圖：固定尺寸並維持圓角。 */
+.table-product-img{
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+}
+
+/* 商品圖片預覽區：彈性排列上傳的縮圖。 */
+.image-preview-container{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* 單張縮圖容器：保留 relative 以供刪除按鈕定位。 */
+.image-preview-item{
+    position: relative;
+    width: 100px;
+    height: 100px;
+}
+/* 縮圖圖片：填滿容器並沿用圓角與陰影。 */
+.image-preview-item img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+/* 商品介紹文字：維持閱讀行距並移除背景。 */
+.product-intro{
+    color: var(--text-color);
+    background: transparent;
+    line-height: 1.8;
+}
+
+/* 商品詳情側欄卡片：展示分類、庫存等摘要。 */
+#product-meta-card{
+    border-radius: calc(var(--border-radius) - 0.15rem);
+    background: #ffffff;
+    padding: 0.6rem 0.9rem;
+    box-shadow: 0 14px 36px rgba(11,22,15,0.07);
+    border: 1px solid rgba(74,124,89,0.08);
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+/* 商品資訊列表：排列多個 meta-item，維持留白。 */
+#product-metadata{
+    border-radius: 0.5rem;
+    background: transparent;
+    padding: 0.6rem 0.9rem;
+    color: #495057;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    align-items: flex-start;
+    font-size: 1rem;
+}
+
+/* 個別資訊列：使用左側色條區隔類型。 */
+#product-metadata .meta-item{
+    background: rgba(255,255,255,0.92);
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.6rem;
+    color: #2f4530;
+    box-shadow: 0 6px 18px rgba(13,24,10,0.04);
+    font-size: 1rem;
+    width: 100%;
+    border-left: 4px solid rgba(74,124,89,0.06);
+}
+
+/* 商品詳情標題：統一標題與子標題尺寸。 */
+#product-detail-container h1,
+#product-detail-container .h3{
+    font-size: 1.6rem;
+    line-height: 1.05;
+    margin-bottom: 0.35rem;
+}
+
+/* 商品介紹容器：限制寬度避免文字過長。 */
+#product-introduction-wrapper{ max-width: 100%; }
+
+/* 平板以下：側欄留白與內距調整，維持可讀性。 */
+@media (max-width: 768px){
+    #product-meta-card{ padding: 0.4rem; }
+    #product-metadata{ padding-left: 0.9rem; gap: 0.6rem; font-size: 0.96rem; }
+    #product-meta-card::before{ left: 10px; top: 10px; bottom: 10px; }
+}
+
+/* 桌面尺寸：放大標題、內文與側欄資訊。 */
+@media (min-width: 992px){
+    #product-detail-container h1,
+    #product-detail-container .h3{ font-size: 2rem; }
+    .product-intro{
+        font-size: 1.08rem;
+        font-weight: 400;
+        max-width: 1100px;
+    }
+    #product-metadata{ font-size: 1.02rem; }
+    #product-meta-card{ padding: 0.7rem 1rem; }
+    #product-introduction-wrapper{ margin-left: 0; }
+}
+
+/* 超寬螢幕：再放大標題與介紹文字，填滿視覺空間。 */
+@media (min-width: 1200px){
+    #product-detail-container h1,
+    #product-detail-container .h3{ font-size: 2.2rem; }
+    .product-intro{ font-size: 1.12rem; max-width: 1300px; }
+}
+
+/* 最終覆寫：保持資訊列表字級與顏色一致。 */
+#product-metadata{ font-size: 0.95rem; color: #495057; }
