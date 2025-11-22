@@ -315,7 +315,6 @@ public class Server {
         Paths.get("..", "data")
     );
     private static final CloudflareR2Client R2_CLIENT = CloudflareR2Client.fromEnvironment();
-    private static final String DEFAULT_PLACEHOLDER_IMAGE = "";
 
     private static Path resolveExistingDirectory(Path... candidates) {
         IOException lastIOException = null;
@@ -428,7 +427,7 @@ public class Server {
 
             String authorization = "AWS4-HMAC-SHA256 Credential=" + accessKeyId + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
 
-            URL url = new URL("https://" + host + canonicalUri);
+            URL url = java.net.URI.create("https://" + host + canonicalUri).toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("PUT");
             conn.setDoOutput(true);
@@ -506,7 +505,7 @@ public class Server {
 
             String authorization = "AWS4-HMAC-SHA256 Credential=" + accessKeyId + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
 
-            URL url = new URL("https://" + host + canonicalUri + "?" + query);
+            URL url = java.net.URI.create("https://" + host + canonicalUri + "?" + query).toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(15_000);
@@ -583,7 +582,7 @@ public class Server {
 
             String authorization = "AWS4-HMAC-SHA256 Credential=" + accessKeyId + "/" + credentialScope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
 
-            URL url = new URL("https://" + host + canonicalUri);
+            URL url = java.net.URI.create("https://" + host + canonicalUri).toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("DELETE");
             conn.setConnectTimeout(10_000);
@@ -707,7 +706,7 @@ public class Server {
         static boolean headExists(String url) {
             if (url == null || url.trim().isEmpty()) return false;
             try {
-                URL target = new URL(url);
+                URL target = java.net.URI.create(url).toURL();
                 HttpURLConnection conn = (HttpURLConnection) target.openConnection();
                 conn.setRequestMethod("HEAD");
                 conn.setConnectTimeout(5000);

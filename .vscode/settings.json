@@ -1,8 +1,7 @@
 {
     "java.project.referencedLibraries": [
-        "lib/**/*.jar",
-        "backend/lib/mysql-connector-j-9.3.0.jar",
-        "backend/lib/json-20230618.jar"
+        "c:\\java專案\\snackforest-shop\\backend\\lib\\json-20230618.jar",
+        "c:\\java專案\\snackforest-shop\\backend\\lib\\mysql-connector-j-9.3.0.jar"
     ],
     "liveServer.settings.port": 5501
     ,
@@ -13,5 +12,8 @@
         "**/data/uploads/**",
         "**/frontend/images/**",
         "**/frontend/images/products/**"
+    ],
+    "java.project.sourcePaths": [
+        "backend\\src"
     ]
 }
