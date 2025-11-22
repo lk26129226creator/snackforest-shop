@@ -1031,7 +1031,7 @@
             card.dataset.index = String(index);
             card.innerHTML = `
                 <div class="card-body d-flex flex-wrap align-items-center gap-3">
-                    <img src="${escapeAttr(imageUrl)}" alt="${escapeAttr(title || '')}" class="rounded" style="width:72px;height:72px;object-fit:cover;">
+                    <img src="${escapeAttr(imageUrl)}" alt="${escapeAttr(title || '')}" class="rounded sf-thumb">
                     <div class="flex-grow-1">
                         <div class="fw-semibold">${escapeAttr(title || '')}</div>
                         ${price ? `<div class="text-muted small">${escapeAttr(price)}</div>` : ''}

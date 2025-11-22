@@ -1,0 +1,72 @@
+/* Styles for js-api pages (api.html & api-demo.html) extracted from inline <style> blocks */
+
+/* Reset and base */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.45;
+}
+
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* Header */
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; text-align: center; }
+.header h1 { font-size: 2.5em; margin-bottom: 10px; }
+.header p { font-size: 1.1em; opacity: 0.9; }
+
+/* Sections */
+.api-section, .demo-section { background: white; border-radius: 10px; padding: 25px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.demo-section { border-radius: 8px; }
+.api-section h2, .demo-section h2 { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+
+.api-controls { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+
+.input-group { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
+.input-group label { min-width: 100px; font-weight: 500; }
+.input-group input, .input-group select, .input-group textarea { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+.input-group textarea { min-height: 80px; resize: vertical; }
+
+.response-container { margin-top: 20px; }
+.response-header { background: #f8f9fa; padding: 10px 15px; border-radius: 5px 5px 0 0; border: 1px solid #dee2e6; font-weight: 500; }
+.response-body { background: #fff; border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 5px 5px; padding: 15px; max-height: 400px; overflow-y: auto; }
+/* `.response-json` moved to `frontend/client/css/shared.css` */
+
+.status-success { color: #28a745; font-weight: bold; }
+.status-error { color: #dc3545; font-weight: bold; }
+/* `.loading` moved to `frontend/client/css/shared.css` */
+
+.table-container { overflow-x: auto; margin-top: 15px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
+th { background-color: #f8f9fa; font-weight: 600; color: #495057; }
+tr:hover { background-color: #f5f5f5; }
+
+.endpoint-url { font-family: monospace; background: #f8f9fa; padding: 5px 10px; border-radius: 3px; color: #495057; }
+
+.connection-status { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; margin-left: 10px; }
+.status-online { background: #d4edda; color: #155724; }
+.status-offline { background: #f8d7da; color: #721c24; }
+
+.quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px; }
+.quick-action-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s ease; }
+.quick-action-card:hover { transform: translateY(-2px); }
+.quick-action-card h3 { margin-bottom: 10px; color: #333; }
+.quick-action-card p { color: #666; margin-bottom: 15px; }
+
+.code-example { font-family: monospace; white-space: pre-wrap; word-wrap: break-word; }
+
+.api-table, .api-table th, .api-table td { border-collapse: collapse; }
+.api-table th, .api-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+.api-table th { background: #f8f9fa; font-weight: 600; }
+.api-table tr:hover { background: #f5f5f5; }
+
+.demo-card { background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; }
+.demo-card h4 { margin: 0 0 10px 0; color: #333; }
+
+.code-example { background: #2d3748; color: #e2e8f0; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 13px; overflow-x: auto; margin: 10px 0; }
+
+/* small helpers: `.loading` moved to frontend/client/css/shared.css */
+
+/* end of api css */

@@ -141,16 +141,16 @@
         const toastBody = document.querySelector('#liveToast .toast-body');
         if (toastBody) {
             const resolvedImg = normalizeImageUrl(imageUrl) || fallbackImage;
-            const thumb = resolvedImg ? `<img src="${resolvedImg}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:6px;margin-right:10px;">` : '';
+            const thumb = resolvedImg ? `<img src="${resolvedImg}" alt="" class="sf-thumb-sm">` : '';
             const safeName = String(name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             toastBody.innerHTML = `
                 <div class="toast-item d-flex align-items-center">
                     ${thumb}
-                    <div style="flex:1;min-width:0;">
-                        <div class="toast-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safeName}</div>
-                        <div class="toast-sub text-muted" style="font-size:0.85rem;">已加入購物車</div>
+                    <div class="sf-truncate">
+                        <div class="toast-name sf-ellipsis">${safeName}</div>
+                        <div class="toast-sub text-muted sf-small-text">已加入購物車</div>
                     </div>
-                    <div style="margin-left:12px;">
+                    <div class="sf-ml-12">
                         <span class="toast-qty badge bg-success">x${quantity}</span>
                     </div>
                 </div>

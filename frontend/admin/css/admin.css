@@ -1,6 +1,7 @@
 /* SnackForest 管理端專用樣式 */
 /* 對應頁面：frontend/admin/index.html 與相關腳本模組。 */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap');
+@import url('./shared.css');
 
 :root{
     /* 管理端專用樣式變數：側邊欄寬度、背景色與按鈕主題。 */
@@ -232,26 +233,9 @@ h1, h2, h3, h4, h5, h6{
 .nav-link:hover,
 .nav-link.active{ color: #e9ecef !important; }
 
-/* 按鈕共用：新增商品、儲存設定等操作按鈕。 */
-.btn{
-    border-radius: var(--border-radius);
-    font-weight: 500;
-    padding: 0.6rem 1.2rem;
-    transition: all 0.3s ease;
-}
-
-/* 主要按鈕：採用品牌強調色並移除邊框。 */
-.btn-primary{
-    background-color: var(--accent);
-    border: none;
-}
-
-/* 主要按鈕滑過：稍微提亮並給予陰影回饋。 */
-.btn-primary:hover{
-    background-color: var(--secondary-color);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-}
+/* 共用按鈕基底已抽出至 `./shared.css`，此處僅保留 admin 特有覆寫。
+    請參考：`./shared.css`。
+*/
 
 /* 表單：商品、訂單、站台設定的欄位外觀。 */
 .form-control,
@@ -267,29 +251,15 @@ h1, h2, h3, h4, h5, h6{
     box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.2);
 }
 
-/* 管理端資訊卡：統計、表格、設定區塊容器。 */
-.card{
-    border: none;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    background-color: var(--card-bg);
-    transition: all 0.3s ease;
-}
-
-/* 卡片滑過：僅調整陰影，避免位移造成浮動感。 */
-.card:hover{
-    transform: none;
-    box-shadow: var(--shadow-hover);
-}
+/* 管理端資訊卡的樣式（共用基底卡片樣式已移至 `./shared.css`）。 */
 /* 桌面模式展開側邊欄 (由 admin.js 切換)。 */
 body.admin-sidebar-expanded:not(.admin-sidebar-overlay){
     --admin-sidebar-width: var(--admin-sidebar-width-expanded);
 }
 
 /* 行動版覆蓋側欄模式。 */
-body.admin-sidebar-overlay{
-    --admin-sidebar-width: 0px;
-}
+/* 表頭/列滑過的基底樣式已移至 `./shared.css`，請於該檔檢視/編輯。 */
+/* 列表內操作按鈕 (編輯、刪除) 規則已移至 `./shared.css` */
 
 /* 再次定義導覽列層級以確保壓過其他元素。 */
 .navbar{
@@ -844,7 +814,7 @@ body.admin-sidebar-overlay .admin-sidebar-backdrop{
 /* 小螢幕下調整商品表格布局 */
 @media (max-width: 540px){
     .table-product-img{ width: 56px; height: 40px; }
-    .table .btn{ font-size: .8rem; padding: .25rem .45rem; }
+    /* moved to `./shared.css` */
 }
 
 /* 優化表格儲存格的間距 */
@@ -992,25 +962,9 @@ input[type="file"]{ cursor: pointer; }
     border-color: var(--border-color);
 }
 
-/* 表頭欄位：統一底色與粗體字重。 */
-.table thead th{
-    background-color: #f8f9fa;
-    color: var(--text-color);
-    font-weight: 600;
-    border-bottom-width: 2px;
-}
+/* 表頭/列滑過的基底樣式已移至 `./shared.css`，請於該檔檢視/編輯。 */
 
-/* 資料列滑過：以淡灰底凸顯所在列。 */
-.table tbody tr:hover{
-    background-color: #f1f3f5;
-}
-
-/* 列表內操作按鈕 (編輯、刪除)。 */
-.table-actions .btn{
-    margin-right: 0.5rem;
-    padding: 0.3rem 0.6rem;
-    font-size: 0.875rem;
-}
+/* 列表內操作按鈕 (編輯、刪除) 規則已移至 `./shared.css` */
 
 /* 商品列表縮圖。 */
 .table-product-img{

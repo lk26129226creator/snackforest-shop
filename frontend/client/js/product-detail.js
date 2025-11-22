@@ -64,11 +64,11 @@
         galleryCol.innerHTML = `
             <img id="main-product-image" src="${product.imageUrl}" class="img-fluid rounded shadow-lg mb-3" alt="${product.name}">
             <div class="thumbs-wrapper d-flex align-items-center ${product.imageUrls.length <= 4 ? 'justify-content-center' : ''}">
-                <button class="btn btn-outline-secondary thumb-nav me-2" id="thumb-prev" style="display:none;">◀</button>
+                <button class="btn btn-outline-secondary thumb-nav me-2 sf-hidden" id="thumb-prev">◀</button>
                 <div id="product-thumbs" class="thumbs-container d-flex gap-2">
                     ${product.imageUrls.map(src => `<img src="${src}" class="product-thumb img-thumbnail" alt="縮圖">`).join('')}
                 </div>
-                <button class="btn btn-outline-secondary thumb-nav ms-2" id="thumb-next" style="display:none;">▶</button>
+                <button class="btn btn-outline-secondary thumb-nav ms-2 sf-hidden" id="thumb-next">▶</button>
             </div>`;
 
         // --- Render Info ---
@@ -80,7 +80,7 @@
             
             ${metaItems.length ? `
             <div class="card mb-4 p-3">
-                <div class="text-muted" style="font-size:0.95rem;">
+                <div class="text-muted sf-small-text">
                     ${metaItems.map(item => `<div>${item.label}：${item.value}</div>`).join('')}
                 </div>
             </div>` : ''}
@@ -88,7 +88,7 @@
             <div class="card p-3">
                 <div class="mb-3">
                     <label class="form-label">數量</label>
-                    <div class="input-group" style="width:170px;">
+                    <div class="input-group sf-input-group-170">
                         <button class="btn btn-outline-secondary" id="dec-qty">-</button>
                         <input type="number" id="qty" class="form-control text-center" value="1" min="1">
                         <button class="btn btn-outline-secondary" id="inc-qty">+</button>
@@ -100,7 +100,7 @@
         // --- Render Introduction ---
         container.querySelector('#intro-col').innerHTML = `
             <h3 class="h5 mb-2">商品介紹</h3>
-            <div class="product-intro text-secondary" style="white-space: pre-wrap;">${product.introduction}</div>`;
+            <div class="product-intro text-secondary sf-prewrap">${product.introduction}</div>`;
 
         // --- Bind Events ---
         bindGalleryEvents(container, product);

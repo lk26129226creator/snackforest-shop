@@ -1,0 +1,164 @@
+/* 共用樣式檔（Shared）
+   - 放置跨 client 與 admin 都會用到的基底元件樣式
+   - 變數（:root）仍保留在各自的樣式檔以避免破壞載入順序
+*/
+
+/* 按鈕基底 */
+.btn {
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    padding: 0.6rem 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(180deg, var(--primary-500), var(--primary-600));
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(180deg, var(--secondary-color), var(--primary-600));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.btn:focus-visible,
+.btn-primary:focus-visible {
+    outline: 3px solid var(--ring-color);
+    outline-offset: 2px;
+}
+
+/* 卡片基底 */
+.card {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    background-color: var(--card-bg);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* 購物車右側結帳摘要（如有）可依需要覆寫 */
+.summary-card.card { box-shadow: var(--shadow); border-radius: var(--border-radius); transition: none; }
+
+@media (min-width: 992px) {
+    .summary-card.card {
+        position: sticky;
+        top: 96px; /* sit under navbar */
+        align-self: start;
+    }
+}
+
+/* 全站卡片 hover 效果（可由頁面覆寫以禁用位移）*/
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+}
+
+/* 登入卡片或特例：頁面可覆寫為不位移 */
+.login-card.card:hover { transform: none !important; box-shadow: var(--shadow) !important; }
+
+/* 注意：shared.css 假設每個入口頁已定義必要的 CSS 變數（:root）。 */
+
+/* 按鈕變體：供 demo 與其他頁面重複使用的色票（可由頁面層級變數覆寫） */
+.btn-success {
+    background: var(--btn-success-bg, #28a745);
+    color: var(--btn-success-color, #ffffff);
+}
+.btn-success:hover { background: var(--btn-success-bg-hover, #218838); }
+
+.btn-warning {
+    background: var(--btn-warning-bg, #ffc107);
+    color: var(--btn-warning-color, #212529);
+}
+.btn-warning:hover { background: var(--btn-warning-bg-hover, #e0a800); }
+
+.btn-danger {
+    background: var(--btn-danger-bg, #dc3545);
+    color: var(--btn-danger-color, #ffffff);
+}
+.btn-danger:hover { background: var(--btn-danger-bg-hover, #c82333); }
+
+/* 小尺寸按鈕 */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* 常用表格與列表上的操作按鈕（跨 admin/client 共用） */
+.table-actions .btn {
+    margin-right: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.875rem;
+}
+
+/* 表格內緊湊按鈕（小尺寸） */
+.table .btn {
+    font-size: .8rem;
+    padding: .25rem .45rem;
+}
+
+/* 表格標頭與列滑過（跨 admin/client 共用） */
+.table thead th {
+    background-color: #f8f9fa;
+    color: var(--text-color);
+    font-weight: 600;
+    border-bottom-width: 2px;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f5;
+}
+
+/* API/工具頁面常用：JSON 顯示區與載入提示（response / loading） */
+.response-json {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 13px;
+    line-height: 1.4;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+}
+
+/* -----------------------------
+   Utility classes extracted from inline styles
+   Use these to replace common style="..." occurrences
+   ----------------------------- */
+.sf-thumb{ width:72px; height:72px; object-fit:cover; border-radius:6px; margin-right:10px; }
+.sf-thumb-sm{ width:44px; height:44px; object-fit:cover; border-radius:6px; margin-right:10px; }
+.sf-hero-preview{ max-height:220px; object-fit:cover; display:none; }
+.sf-hero-gallery{ max-height:60vh; overflow:auto; }
+.sf-toast{ z-index: 11; }
+.sf-popover{ display:none; z-index:2000; }
+.sf-popover--content{ max-height:calc(100vh - 160px); overflow:auto; }
+.sf-input-qty{ width:72px; }
+.sf-input-group-160{ width:160px; display:inline-flex; vertical-align:middle; }
+.sf-input-group-170{ width:170px; display:inline-flex; vertical-align:middle; }
+.sf-prewrap{ white-space: pre-wrap; }
+.sf-ellipsis{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sf-small-text{ font-size:0.85rem; }
+.sf-ml-12{ margin-left:12px; }
+.sf-hidden{ display:none !important; }
+
+.sf-truncate{ flex:1; min-width:0; }
+
+/* Skeleton helpers (common sizes found in member page) */
+.skel-h18-w220{ height:18px; width:220px; border-radius:4px; }
+.skel-h12-w160{ height:12px; width:160px; border-radius:4px; }
+.skel-h64{ height:64px; border-radius:8px; }
+
+/* Small form inputs used in demos */
+.sf-demo-input{ margin:5px; padding:8px; }
+/* demo panel helper */
+.sf-demo-panel{ display:none; margin-top:15px; padding:15px; background:#f8f9fa; border-radius:5px; }

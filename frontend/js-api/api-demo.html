@@ -4,146 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API 工具演示</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        
-        .demo-section {
-            background: white;
-            margin: 20px 0;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .demo-section h2 {
-            color: #333;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
-        }
-        
-        .btn {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-            font-size: 14px;
-        }
-        
-        .btn:hover {
-            background: #0056b3;
-        }
-        
-        .btn-success { background: #28a745; }
-        .btn-success:hover { background: #1e7e34; }
-        
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #bd2130; }
-        
-        .btn-sm {
-            padding: 5px 10px;
-            font-size: 12px;
-        }
-        
-        .api-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        
-        .api-table th,
-        .api-table td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: left;
-        }
-        
-        .api-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-        }
-        
-        .api-table tr:hover {
-            background: #f5f5f5;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-            font-style: italic;
-        }
-        
-        .status-success {
-            color: #28a745;
-            font-weight: bold;
-        }
-        
-        .status-error {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        
-        .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 5px;
-        }
-        
-        .response-json {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 13px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .quick-demo {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        
-        .demo-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            text-align: center;
-        }
-        
-        .demo-card h4 {
-            margin: 0 0 10px 0;
-            color: #333;
-        }
-        
-        .code-example {
-            background: #2d3748;
-            color: #e2e8f0;
-            padding: 15px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 13px;
-            overflow-x: auto;
-            margin: 10px 0;
-        }
-    </style>
+    <link rel="stylesheet" href="../client/css/shared.css">
+    <link rel="stylesheet" href="/frontend/js-api/css/api.css">
 </head>
 <body>
     <h1>🛠️ SnackForest API 工具演示</h1>
@@ -180,11 +42,11 @@
         <div id="products-container"></div>
         
         <!-- 新增商品演示 -->
-        <div id="add-product-demo" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+        <div id="add-product-demo" class="sf-demo-panel">
             <h4>新增商品演示</h4>
-            <input type="text" id="demo-product-name" placeholder="商品名稱" style="margin: 5px; padding: 8px;">
-            <input type="number" id="demo-product-price" placeholder="價格" style="margin: 5px; padding: 8px;">
-            <input type="number" id="demo-product-category" placeholder="分類ID" style="margin: 5px; padding: 8px;">
+            <input type="text" id="demo-product-name" placeholder="商品名稱" class="sf-demo-input">
+            <input type="number" id="demo-product-price" placeholder="價格" class="sf-demo-input">
+            <input type="number" id="demo-product-category" placeholder="分類ID" class="sf-demo-input">
             <button class="btn btn-success" onclick="addProductDemo()">新增</button>
             <button class="btn" onclick="document.getElementById('add-product-demo').style.display='none'">取消</button>
         </div>
