@@ -8,6 +8,7 @@ SnackForest - 全局樣式表 (顏色已還原)
 /* 採用 Poppins 與 Noto Sans TC 字體，並設定客戶端通用的主題色與陰影。 */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap');
 @import url('./shared.css');
+@import url('./_tokens.css');
 
 :root {
     --primary-color: #4a7c59;      /* 原始主題綠 */
@@ -791,6 +792,40 @@ h1, h2, h3, h4, h5, h6 {
 .client-member-btn:focus-visible {
     transform: translateY(-1px);
     box-shadow: 0 10px 24px rgba(15,23,16,0.14);
+}
+
+/* Buttons: adopt design tokens and provide reusable button styles */
+.btn-success,
+.btn-primary {
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+    color: var(--color-surface-1) !important;
+    border: none !important;
+    border-radius: var(--btn-radius) !important;
+    padding: var(--btn-padding-y) var(--btn-padding-x) !important;
+    font-weight: 600;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.btn-success:hover,
+.btn-primary:hover,
+.btn-success:focus,
+.btn-primary:focus {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-2);
+}
+
+.btn-ghost {
+    background: transparent !important;
+    color: var(--color-primary-600) !important;
+    border: 1px solid rgba(74,124,89,0.12) !important;
+    border-radius: var(--btn-radius) !important;
+    padding: var(--btn-padding-y) var(--btn-padding-x) !important;
+}
+
+.btn-link {
+    background: transparent !important;
+    color: var(--color-primary-600) !important;
+    border: none !important;
+    padding: 0 !important;
 }
 
 .client-nav-cart {
