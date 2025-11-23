@@ -813,6 +813,49 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: var(--shadow-1);
 }
 
+/* Card internals: spacing and typographic rhythm */
+.card .card-body,
+.sf-card .card-body,
+.member-card .card-body,
+.summary-card .card-body {
+    padding: calc(var(--space-md)) !important;
+}
+.card .card-title,
+.sf-card .card-title,
+.member-card .card-title,
+.summary-card .card-title {
+    margin-bottom: var(--space-sm);
+    font-weight: 700;
+    color: var(--color-primary-600);
+}
+.card .card-subtitle,
+.sf-card .card-subtitle {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* Forms: unify control appearance and focus state for accessibility */
+.form-control {
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid rgba(0,0,0,0.08) !important;
+    padding: 10px 12px !important;
+    box-shadow: none !important;
+}
+.form-control:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 4px rgba(74,124,89,0.12) !important;
+    border-color: var(--color-primary-600) !important;
+}
+
+/* Accessibility: clear focus-visible style for interactive controls */
+:focus-visible {
+    outline: 3px solid rgba(74,124,89,0.16);
+    outline-offset: 2px;
+}
+
+/* Small utility for consistent gutters inside cards */
+.card-foot { padding-top: var(--space-sm); }
+
 /* Mobile adjustments: slightly larger tap targets and condensed spacing */
 @media (max-width: 991.98px) {
     :root {
