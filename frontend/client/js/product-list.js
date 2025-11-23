@@ -169,7 +169,7 @@
             const imageUrl = normalizeImageUrl(p.imageUrl);
             return `
             <div class="product-card card">
-                <a href="product.html?id=${p.id}" class="text-decoration-none text-dark d-flex flex-column h-100">
+                <a href="?id=${p.id}" class="text-decoration-none text-dark d-flex flex-column h-100 product-link">
                     <div class="product-image-wrapper"><img src="${imageUrl}" class="product-card-img" alt="${p.name}"></div>
                     <div class="card-body">
                         <h5 class="card-title">${p.name}</h5>
@@ -182,8 +182,29 @@
             </div>`;
         }).join('');
 
+        // Attach behavior: bind popover and intercept product link clicks for SPA navigation
         list.querySelectorAll('.product-card').forEach(card => {
             if (popover?.bindProductCard) popover.bindProductCard(card);
+        });
+
+        // SPA: intercept product links to avoid full page reload and use history API
+        list.querySelectorAll('.product-link').forEach(a => {
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                try {
+                    const href = a.getAttribute('href') || '';
+                    const url = new URL(href, window.location.href);
+                    // push search param (e.g. ?id=123) and trigger detail init
+                    history.pushState({}, '', url.search);
+                    toggleSectionsByQueryParam(new URLSearchParams(url.search));
+                    if (typeof window.initProductDetail === 'function') {
+                        window.initProductDetail();
+                    }
+                } catch (err) {
+                    // fallback to normal navigation if anything fails
+                    window.location.href = a.href;
+                }
+            });
         });
     }
 

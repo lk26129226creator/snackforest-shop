@@ -16,6 +16,24 @@
     border: 1px solid rgba(0,0,0,0.06);
 }
 
+/* Outline variants: use forest-green accents and fill on hover */
+.btn-outline-secondary,
+.btn-outline-light,
+.btn-outline-primary {
+    color: var(--primary-600);
+    background: transparent;
+    border-color: rgba(74,124,89,0.18);
+}
+.btn-outline-secondary:hover,
+.btn-outline-light:hover,
+.btn-outline-primary:hover {
+    color: #fff;
+    background: linear-gradient(180deg, var(--primary-500), var(--primary-600));
+    border-color: transparent;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
 .btn-primary:hover {
     background: linear-gradient(180deg, var(--secondary-color), var(--primary-600));
     transform: translateY(-2px);
@@ -49,20 +67,28 @@
     }
 }
 
-/* 全站卡片 hover 效果（可由頁面覆寫以禁用位移）*/
+/* 全站卡片 hover 行為：預設不位移，僅對商品卡片保留輕微浮動 */
 .card:hover {
-    transform: translateY(-5px);
+    transform: none;
+    box-shadow: var(--shadow);
+}
+
+/* 商品卡片例外（admin 介面若有相同類別亦會套用） */
+.product-card:hover,
+.mobile-product-card:hover,
+.featured-card:hover {
+    transform: translateY(-3px);
     box-shadow: var(--shadow-hover);
 }
 
-/* 登入卡片或特例：頁面可覆寫為不位移 */
+/* 登入卡片或特例：顯式保持不位移 */
 .login-card.card:hover { transform: none !important; box-shadow: var(--shadow) !important; }
 
 /* 注意：shared.css 假設每個入口頁已定義必要的 CSS 變數（:root）。 */
 
 /* 按鈕變體：供 demo 與其他頁面重複使用的色票（可由頁面層級變數覆寫） */
 .btn-success {
-    background: var(--btn-success-bg, #28a745);
+    background: var(--btn-success-bg, var(--primary-500));
     color: var(--btn-success-color, #ffffff);
 }
 .btn-success:hover { background: var(--btn-success-bg-hover, #218838); }

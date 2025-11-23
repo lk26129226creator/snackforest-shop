@@ -98,12 +98,12 @@ body.admin-sidebar-expanded:not(.admin-sidebar-overlay) .admin-sidebar-actions{
 
 
 /* 啟用項目文字：使用品牌藍色呼應狀態。 */
-.admin-sidebar-link.active .admin-sidebar-text{ color: #0d6efd; }
+.admin-sidebar-link.active .admin-sidebar-text{ color: var(--primary-color); }
 
 /* 側欄滑過：以淡藍底與位移提供回饋。 */
 .admin-sidebar-link:hover,
 .admin-sidebar-link:focus{
-    background: rgba(37,99,235,0.12);
+    background: rgba(74,124,89,0.08);
     color: #0f172a;
     transform: translateX(2px);
 }
@@ -112,44 +112,44 @@ body.admin-sidebar-expanded:not(.admin-sidebar-overlay) .admin-sidebar-actions{
 body.admin-sidebar-collapsed .admin-sidebar-link:hover,
 body.admin-sidebar-collapsed .admin-sidebar-link:focus{
     transform: none;
-    background: rgba(37,99,235,0.12);
+    background: rgba(74,124,89,0.08);
 }
 
 /* 收合狀態的滑過文字仍沿用品牌色。 */
 body.admin-sidebar-collapsed .admin-sidebar-link:hover .admin-sidebar-text,
 body.admin-sidebar-collapsed .admin-sidebar-link:focus .admin-sidebar-text{
-    color: #0d6efd;
+    color: var(--primary-color);
 }
 
 /* 滑過或聚焦時同步高亮圖示。 */
 .admin-sidebar-link:hover .admin-sidebar-icon,
 .admin-sidebar-link:focus .admin-sidebar-icon{
-    color: #0d6efd;
+    color: var(--primary-color);
 }
 
 /* 側邊欄當前頁面：以色塊與描邊突顯。 */
 .admin-sidebar-link.active{
-    background: rgba(13,110,253,0.16);
-    color: #0d6efd;
-    box-shadow: inset 0 0 0 1px rgba(13,110,253,0.28);
+    background: rgba(74,124,89,0.12);
+    color: var(--primary-color);
+    box-shadow: inset 0 0 0 1px rgba(74,124,89,0.28);
 }
 
 body.admin-sidebar-collapsed .admin-sidebar-link.active{
-    background: rgba(37,99,235,0.16);
+    background: rgba(74,124,89,0.12);
     box-shadow: none;
 }
 
 /* 收合狀態仍套用品牌色文字。 */
 body.admin-sidebar-collapsed .admin-sidebar-link.active .admin-sidebar-text{
-    color: #0d6efd;
+    color: var(--primary-color);
 }
 
 /* 當前頁面圖示同步使用品牌色。 */
-.admin-sidebar-link.active .admin-sidebar-icon{ color: #0d6efd; }
+.admin-sidebar-link.active .admin-sidebar-icon{ color: var(--primary-color); }
 
 /* 可鍵盤操作的選項聚焦外框。 */
 .admin-sidebar-link:focus-visible{
-    outline: 2px solid rgba(13,110,253,0.45);
+    outline: 2px solid rgba(74,124,89,0.45);
     outline-offset: 2px;
 }
 

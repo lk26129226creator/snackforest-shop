@@ -77,7 +77,7 @@ body.client-sidebar-overlay .client-main {
 /* --- 3. 導覽列與頂部工具列 --- */
 .navbar {
     min-height: var(--client-navbar-height);
-    padding: 12px 0 14px;
+    padding: 8px 0 8px; /* 減少上下內距讓頂部不那麼擠 */
 }
 
 .navbar .container-fluid {
@@ -701,6 +701,17 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
 .home-hero .d-flex.gap-2.flex-wrap .btn {
     width: 100%;
+}
+
+/* Mobile-specific: 移除主內容底部額外空間，避免滾動到最下方時出現頁腳下方空白 */
+@media (max-width: 767.98px) {
+    .client-main {
+        margin-bottom: 0; /* 取消桌面的底部預留 */
+    }
+    .site-footer {
+        margin-top: 0; /* 緊貼內容底部 */
+        padding-bottom: calc(env(safe-area-inset-bottom, 0) + 16px); /* 支援 iOS 安全區域 */
+    }
 }
 
 .home-carousel-wrapper {

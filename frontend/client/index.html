@@ -168,9 +168,6 @@
                     <a id="hero-cta-primary" href="product.html" class="btn btn-success btn-cta btn-lg">
                         <i class="fa-solid fa-bag-shopping me-2"></i><span>開始購物</span>
                     </a>
-                    <a id="hero-cta-secondary" href="product.html?category=all" class="btn btn-outline-light btn-lg">
-                        <i class="fa-regular fa-compass me-2"></i><span>逛逛全部</span>
-                    </a>
                 </div>
             </div>
             <div class="col-xxl-5 text-center hero-media">
@@ -226,7 +223,7 @@
         <section class="mb-5">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2 class="h4 m-0">依分類逛逛</h2>
-                <a class="btn btn-sm btn-outline-secondary" href="product.html">全部商品</a>
+                <a class="btn btn-sm btn-outline-secondary" href="#product">全部商品</a>
             </div>
             <div id="home-categories-grid" class="category-grid"></div>
         </section>
@@ -235,9 +232,223 @@
         <section class="featured-section mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2 class="h4 section-title m-0">精選商品</h2>
-                <a class="btn btn-sm btn-outline-secondary" href="product.html">更多</a>
+                <a class="btn btn-sm btn-outline-secondary" href="#product">更多</a>
             </div>
             <div id="home-featured-grid" class="product-grid"></div>
+        </section>
+
+        <!-- 專屬頁面區塊（整合 product / cart / member） -->
+        <section id="product-page" class="sf-hidden">
+            <!-- Listing Section -->
+            <section id="listing-section">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select id="categoryFilter" class="form-select">
+                            <option value="all">所有類別</option>
+                        </select>
+                    </div>
+                    <div class="col-md-9">
+                        <input type="text" id="searchInput" class="form-control" placeholder="搜尋商品...">
+                    </div>
+                </div>
+                <div id="product-list" class="product-grid"></div>
+                <div id="pagination" class="d-flex justify-content-center mt-4"></div>
+            </section>
+
+            <!-- Detail Section (hidden by default; shown when ?id= exists) -->
+            <section id="detail-section" class="sf-hidden">
+                <div id="product-detail-container"></div>
+            </section>
+        </section>
+
+        <section id="cart-section" class="sf-hidden">
+            <div class="pt-4">
+                <h1 class="mb-4">我的購物車</h1>
+            </div>
+
+            <div class="row g-5">
+                <div class="col-lg-8" id="cart-items-container">
+                    <!-- Cart items will be rendered here by cart.js -->
+                </div>
+                <div class="col-lg-4">
+                    <div class="summary-card card">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">訂單摘要</h5>
+                            <div id="cart-summary-container">
+                                <!-- Summary will be rendered here -->
+                            </div>
+                            <hr>
+                            <form id="checkout-form">
+                                <h6 class="mb-3">運送與付款</h6>
+                                <div class="mb-3">
+                                    <label for="shipping-method" class="form-label">運送方式</label>
+                                    <select id="shipping-method" class="form-select" required></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="payment-method" class="form-label">付款方式</label>
+                                    <select id="payment-method" class="form-select" required></select>
+                                </div>
+                                <hr>
+                                <h6 class="mb-3">收件人資訊</h6>
+                                <div class="mb-3">
+                                    <label for="recipient-name" class="form-label">姓名</label>
+                                    <input type="text" id="recipient-name" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="recipient-address" class="form-label">地址</label>
+                                    <input type="text" id="recipient-address" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="recipient-phone" class="form-label">電話</label>
+                                    <input type="tel" id="recipient-phone" class="form-control" required>
+                                </div>
+                                <div class="d-grid mt-4">
+                                    <button type="submit" class="btn btn-primary btn-lg" id="checkout-btn">確認結帳</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="member-section" class="sf-hidden">
+            <div class="mb-4">
+                <h1 class="h2 mb-1">會員中心</h1>
+                <p class="text-muted mb-0">管理您的會員資料、頭像與歷史訂單紀錄。</p>
+            </div>
+
+            <ul class="nav nav-tabs member-tabs" id="member-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-panel" type="button" role="tab" aria-controls="profile-panel" aria-selected="true">會員資料</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-panel" type="button" role="tab" aria-controls="orders-panel" aria-selected="false">訂單紀錄</button>
+                </li>
+            </ul>
+
+            <div class="tab-content py-4">
+                <div class="tab-pane fade show active" id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
+                    <div class="row g-4 align-items-start">
+                        <div class="col-lg-4">
+                            <div class="card h-100 member-card">
+                                <div class="card-body text-center">
+                                    <div id="profile-avatar" class="member-avatar mb-3" role="button" tabindex="0" aria-label="點擊更新會員頭像">
+                                        <span id="profile-avatar-initial" class="initial">M</span>
+                                        <img id="profile-avatar-img" src="" alt="會員頭像" class="d-none">
+                                    </div>
+                                    <input type="file" id="avatar-file" accept="image/*" class="visually-hidden">
+                                    <p class="small text-muted mb-0">點擊上方頭像即可選擇新的圖片</p>
+                                    <div class="small text-muted mt-3" id="profile-updated"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-8">
+                            <div id="profile-feedback" class="alert d-none" role="alert"></div>
+                            <div class="card member-card">
+                                <div class="card-body">
+                                    <form id="profile-form" class="needs-validation" novalidate>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="profile-name" class="form-label">顯示名稱</label>
+                                                <input type="text" id="profile-name" class="form-control" placeholder="請輸入顯示名稱">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="profile-id" class="form-label">會員編號</label>
+                                                <input type="text" id="profile-id" class="form-control" placeholder="尚未登入" readonly disabled>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="profile-email" class="form-label">電子郵件</label>
+                                                <input type="email" id="profile-email" class="form-control" placeholder="name@example.com">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="profile-phone" class="form-label">聯絡電話</label>
+                                                <input type="tel" id="profile-phone" class="form-control" placeholder="09xx-xxx-xxx">
+                                            </div>
+                                            <div class="col-12">
+                                                <label for="profile-address" class="form-label">聯絡地址</label>
+                                                <textarea id="profile-address" class="form-control" rows="2" placeholder="完整收貨地址"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-2 mt-4">
+                                            <button type="button" class="btn btn-outline-secondary" id="profile-reset">還原</button>
+                                            <button type="submit" class="btn btn-primary" id="profile-save">儲存變更</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="orders-panel" role="tabpanel" aria-labelledby="orders-tab">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-xl-3 col-md-4">
+                                    <label class="form-label" for="filter-keyword">關鍵字</label>
+                                    <input type="text" id="filter-keyword" class="form-control" placeholder="訂單編號或商品名稱">
+                                </div>
+                                <div class="col-xl-3 col-md-4">
+                                    <label class="form-label" for="filter-status">訂單狀態</label>
+                                    <select id="filter-status" class="form-select">
+                                        <option value="">全部狀態</option>
+                                        <option value="processing">處理中</option>
+                                        <option value="shipped">已出貨</option>
+                                        <option value="completed">已完成</option>
+                                    </select>
+                                </div>
+                                <div class="col-xl-3 col-md-4">
+                                    <label class="form-label" for="filter-range">時間範圍</label>
+                                    <select id="filter-range" class="form-select">
+                                        <option value="">全部期間</option>
+                                        <option value="30">最近 30 天</option>
+                                        <option value="90">最近 90 天</option>
+                                        <option value="180">最近 180 天</option>
+                                    </select>
+                                </div>
+                                <div class="col-xl-3 col-12 text-xl-end">
+                                    <button class="btn btn-outline-secondary" type="button" id="btn-refresh">
+                                        <i class="fa-solid fa-rotate"></i> 重新整理
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4">
+                            <div class="card h-100 member-card">
+                                <div class="card-body">
+                                    <div class="text-muted small mb-1">訂單總數</div>
+                                    <div class="h3 mb-0" id="stat-orders-count">0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 member-card">
+                                <div class="card-body">
+                                    <div class="text-muted small mb-1">累計消費</div>
+                                    <div class="h3 mb-0" id="stat-total-amount">NT$0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 member-card">
+                                <div class="card-body">
+                                    <div class="text-muted small mb-1">最近訂單</div>
+                                    <div class="h3 mb-0 fs-5" id="stat-last-order">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="orders-container" class="orders-list d-flex flex-column gap-3"></div>
+                    <div class="d-grid mt-4">
+                        <button class="btn btn-outline-primary d-none" id="btn-show-more" type="button">顯示更多訂單</button>
+                    </div>
+                </div>
+            </div>
         </section>
 </main>
 
@@ -254,6 +465,8 @@
 <script src="js/navigation.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/session.js"></script>
+<script src="/frontend/js-api/api-manager.js"></script>
+<script src="js/member.js"></script>
 <script src="js/cart.js"></script>
 <script src="js/popover.js"></script>
 <script src="js/product-list.js"></script>
@@ -261,6 +474,63 @@
 <script src="js/cart-page.js"></script>
 <script src="js/home.js"></script>
 <script src="js/init.js"></script>
+
+<script>
+// 簡易 SPA 路由：依據 hash 或 search 顯示對應區塊，並呼叫各頁初始化器
+(function(){
+    function showSection(name){
+        const main = document.getElementById('main-content');
+        if(!main) return;
+        const productPage = document.getElementById('product-page');
+        const cartSection = document.getElementById('cart-section');
+        const memberSection = document.getElementById('member-section');
+
+        // hide page-specific sections by default
+        if(productPage) productPage.style.display = 'none';
+        if(cartSection) cartSection.style.display = 'none';
+        if(memberSection) memberSection.style.display = 'none';
+
+        // show requested
+        if(name === 'product'){
+            if(productPage) productPage.style.display = 'block';
+            // init product list / detail
+            if(typeof window.fetchProductsAndRender === 'function') window.fetchProductsAndRender();
+            if(new URLSearchParams(location.search).has('id')){
+                if(typeof window.initProductDetail === 'function') window.initProductDetail();
+            }
+        } else if(name === 'cart'){
+            if(cartSection) cartSection.style.display = 'block';
+            if(typeof window.initCartPage === 'function') window.initCartPage();
+        } else if(name === 'member'){
+            if(memberSection) memberSection.style.display = 'block';
+            // member.js exposes loadProfile via window.loadAvatar / loadProfile; call loadProfile if exists
+            if(typeof window.loadAvatar === 'function') {
+                try { window.loadAvatar(); } catch(_){}
+            }
+        } else {
+            // default: home (do nothing because home sections are visible by default)
+            // ensure home sections are visible by clearing inline display on main children
+            Array.from(main.children).forEach(c => {
+                if(c.id === 'product-page' || c.id === 'cart-section' || c.id === 'member-section') return;
+                c.style.display = '';
+            });
+        }
+    }
+
+    function router(){
+        const hash = (location.hash || '').replace('#','');
+        if(hash === 'product') return showSection('product');
+        if(hash === 'cart') return showSection('cart');
+        if(hash === 'member') return showSection('member');
+        if(new URLSearchParams(location.search).has('id')) return showSection('product');
+        return showSection('home');
+    }
+
+    window.addEventListener('popstate', router);
+    window.addEventListener('hashchange', router);
+    document.addEventListener('DOMContentLoaded', router, { once: true });
+})();
+</script>
 
 <div id="liveToast" class="toast-container position-fixed bottom-0 end-0 p-3 sf-toast">
     <div class="toast" role="alert" aria-live="assertive" aria-atomic="true">
