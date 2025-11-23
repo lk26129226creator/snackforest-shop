@@ -1,0 +1,52 @@
+:root {
+    /* Colors */
+    --color-primary-700: #234a2b; /* deep */
+    --color-primary-600: #2f5f3a;
+    --color-primary-500: #3d6d47; /* main */
+    --color-primary-400: #4a7c59;
+    --color-accent: #a3b18a;
+    --color-muted: #5b6470;
+    --color-surface-1: #ffffff;
+    --color-surface-2: #fbfdfb;
+
+    /* Text */
+    --text-default: #333333;
+    --text-muted: #6c757d;
+
+    /* Spacing scale */
+    --space-xxs: 4px;
+    --space-xs: 8px;
+    --space-sm: 12px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-xxl: 48px;
+
+    /* Radii */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+
+    /* Shadows */
+    --shadow-1: 0 6px 18px rgba(0,0,0,0.06);
+    --shadow-2: 0 14px 34px rgba(58,107,71,0.12);
+
+    /* Typography */
+    --font-family-sans: 'Poppins', 'Noto Sans TC', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    --font-size-base: 16px;
+    --font-size-sm: 14px;
+    --font-size-lg: 18px;
+
+    /* Buttons */
+    --btn-radius: 999px;
+    --btn-padding-y: 10px;
+    --btn-padding-x: 18px;
+
+    /* Transitions */
+    --transition-fast: 0.12s ease;
+    --transition-med: 0.2s ease;
+}
+
+/* Utility helpers (minimal) */
+.u-hidden { display: none !important; }
+.u-center { display:flex; align-items:center; justify-content:center; }
