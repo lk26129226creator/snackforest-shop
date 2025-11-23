@@ -601,6 +601,9 @@ h1, h2, h3, h4, h5, h6 {
 /* Navbar-specific: 使用白色框架的按鈕樣式（適用於頂部導覽列）
    - 預設為透明背景、白色文字與白色邊框（截圖風格）
    - hover / focus 時填滿白色，文字變為主題綠，提供明顯互動反饋 */
+/* Topbar / navbar buttons: use tokens and lighter specificity
+   Keep them visually white-on-green header but rely on tokens so we can
+   control variants more easily. Panels (cart/support) are fixed separately. */
 .navbar .btn,
 .navbar .btn-outline-light,
 .navbar .btn-outline-secondary,
@@ -608,10 +611,12 @@ h1, h2, h3, h4, h5, h6 {
 .client-support-btn,
 .client-nav-cart > button,
 .client-member-btn {
-    background: transparent !important;
-    color: #fff !important;
-    border: 1px solid rgba(255,255,255,0.9) !important;
-    box-shadow: none !important;
+    background: transparent;
+    color: var(--color-surface-1);
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: none;
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--btn-radius);
 }
 
 .navbar .btn:hover,
@@ -791,7 +796,31 @@ h1, h2, h3, h4, h5, h6 {
 .client-member-btn:hover,
 .client-member-btn:focus-visible {
     transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(15,23,16,0.14);
+    box-shadow: var(--shadow-1);
+}
+
+/* -- Card component (consolidate card styles) -- */
+.sf-card {
+    background: var(--color-surface-1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-1);
+    overflow: hidden;
+}
+.card, .member-card, .summary-card {
+    /* Use sf-card as base; keep existing card markup intact */
+    background: var(--color-surface-1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-1);
+}
+
+/* Mobile adjustments: slightly larger tap targets and condensed spacing */
+@media (max-width: 991.98px) {
+    :root {
+        --btn-padding-y: 12px;
+        --btn-padding-x: 16px;
+    }
+    .client-main { padding: 16px !important; }
+    .home-hero { padding: 20px !important; }
 }
 
 /* Buttons: adopt design tokens and provide reusable button styles */
