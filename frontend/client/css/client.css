@@ -866,6 +866,61 @@ h1, h2, h3, h4, h5, h6 {
     .home-hero { padding: 20px !important; }
 }
 
+/* Homepage: hero improvements for better contrast and hierarchy */
+.home-hero {
+    background: linear-gradient(135deg, var(--color-primary-700) 0%, #0f2230 60%);
+    color: var(--color-surface-1);
+    border-radius: 12px;
+    padding: clamp(28px, 4vw, 48px);
+    box-shadow: var(--shadow-2);
+}
+.home-hero .hero-title {
+    color: var(--color-primary-400);
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    line-height: 1.05;
+}
+.home-hero .hero-sub {
+    color: rgba(255,255,255,0.9);
+    opacity: 0.95;
+}
+.btn-cta {
+    border-radius: var(--btn-radius);
+    padding: calc(var(--btn-padding-y) + 2px) calc(var(--btn-padding-x) + 6px);
+    box-shadow: 0 10px 30px rgba(30,70,40,0.12);
+}
+
+/* Product grid and product card styling */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-lg);
+}
+.product-grid .product-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-1);
+    box-shadow: var(--shadow-1);
+}
+.product-card .product-thumb {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 8px;
+}
+.product-card .product-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-default);
+}
+.product-card .product-meta {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
 /* Buttons: adopt design tokens and provide reusable button styles */
 .btn-success,
 .btn-primary {
