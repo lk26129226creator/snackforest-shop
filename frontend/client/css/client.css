@@ -911,10 +911,23 @@ h1, h2, h3, h4, h5, h6 {
    that unintentionally affects buttons inside dropdown panels (cart/support).
    Keep this minimal: explicitly style buttons/links inside the panels so
    they remain readable on white backgrounds. */
-.client-nav-cart-panel .btn {
+.client-nav-cart-panel .btn:not(.btn-link) {
+    /* keep solid, action-oriented buttons (e.g. 前往結帳) with green background */
     background: var(--primary-600) !important;
     color: #fff !important;
     border: none !important;
+}
+.client-nav-cart-panel .btn-link {
+    /* '查看全部' should be plain text (no background) and use theme green */
+    background: transparent !important;
+    color: var(--primary-600) !important;
+    border: none !important;
+    padding: 0 !important;
+}
+.client-nav-cart-panel .btn-link:hover,
+.client-nav-cart-panel .btn-link:focus {
+    text-decoration: underline;
+    background: transparent !important;
 }
 .client-support-panel .client-support-link {
     background: transparent !important;
@@ -1105,6 +1118,25 @@ body.client-sidebar-overlay {
     box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
     transition: none;
     will-change: auto;
+}
+
+/* Desktop: remove the outer white 'card' wrapper so pages are full-bleed
+   The site previously wrapped main content in a rounded white box with
+   shadow; for desktop pages we want no frame. Keep mobile/overlay styles
+   unchanged. */
+@media (min-width: 992px) {
+    .client-main {
+        background: transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        padding: 24px 0 !important; /* keep some vertical spacing, remove interior card padding */
+    }
+    body.client-sidebar-overlay .client-main {
+        background: transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        padding: 16px 0 !important;
+    }
 }
 
 body.client-sidebar-overlay .client-main {
