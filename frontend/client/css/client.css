@@ -906,6 +906,24 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 14px;
 }
 
+/* Fix: restore visible styles for buttons/links inside white panels
+   The global `.navbar .btn` rule makes buttons transparent/white in the topbar;
+   that unintentionally affects buttons inside dropdown panels (cart/support).
+   Keep this minimal: explicitly style buttons/links inside the panels so
+   they remain readable on white backgrounds. */
+.client-nav-cart-panel .btn {
+    background: var(--primary-600) !important;
+    color: #fff !important;
+    border: none !important;
+}
+.client-support-panel .client-support-link {
+    background: transparent !important;
+    color: var(--primary-600) !important;
+}
+.client-support-panel .client-support-link:hover,
+.client-support-panel .client-support-link:focus {
+    background: rgba(74,124,89,0.08) !important;
+}
 .client-support {
     position: relative;
 }
