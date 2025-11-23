@@ -1112,10 +1112,8 @@ body.client-sidebar-overlay {
         var(--client-main-gutter),
         calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
     );
-    padding: 32px;
-    border-radius: 24px;
-    background: #ffffff;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+    /* Removed card-style (background, radius, shadow, padding)
+       to keep main layout clean and full-bleed. */
     transition: none;
     will-change: auto;
 }
@@ -1143,9 +1141,7 @@ body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
     margin: calc(var(--client-navbar-height) + 20px) var(--client-main-gutter) 56px;
     margin-left: var(--client-main-gutter);
-    padding: 24px;
-    border-radius: 18px;
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    /* overlay keeps layout but not framed card styling */
 }
 
 .client-footer {
