@@ -398,47 +398,6 @@ body.order-success-active {
     font-size: .95rem;
 }
 
-/* ------------------------------------------------------------------
-   Guest Login Modal - 強制使用黑色字體以覆蓋 Bootstrap 的白色樣式
-   針對 #guestLoginModal 的標題、標籤、輸入、按鈕與 placeholder 做明確覆寫
-   ------------------------------------------------------------------ */
-#guestLoginModal .modal-content,
-#guestLoginModal .modal-header,
-#guestLoginModal .modal-body,
-#guestLoginModal .modal-footer,
-#guestLoginModal .modal-title,
-#guestLoginModal label,
-#guestLoginModal .form-label,
-#guestLoginModal .form-check-label,
-#guestLoginModal .form-control,
-#guestLoginModal p,
-#guestLoginModal small,
-#guestLoginModal .btn {
-    color: #0b0b0b !important;
-}
-
-#guestLoginModal .form-control::placeholder {
-    color: #6b6b6b !important;
-    opacity: 1 !important;
-}
-
-#guestLoginModal .modal-content {
-    background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%) !important;
-}
-
-#guestLoginModal .btn-close {
-    color: #2f4858 !important;
-    opacity: 1 !important;
-}
-
-/* 小調整：讓表單欄位文字預設為黑色（有時 bootstrap 會把 input text 設為白色於深色 modal） */
-#guestLoginModal .form-control {
-    color: #0b0b0b !important;
-    background-color: #fff !important;
-    border-color: rgba(0,0,0,0.06) !important;
-}
-
-
 /* 首頁分類網格：client/index.html 的 .category-grid。 */
 .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
 .category-card { background:#fff; border-radius: .75rem; padding: 18px; text-align:center; cursor:pointer; box-shadow: 0 6px 18px rgba(0,0,0,.06); transition: transform .18s ease, box-shadow .18s ease; }
@@ -1023,35 +982,43 @@ h1, h2, h3, h4, h5, h6 {
 /* Guest inline login modal tweaks */
 #guestLoginModal .modal-dialog { max-width: 420px; }
 #guestLoginModal .modal-content {
-    border-radius: 12px !important;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 18px 50px rgba(8,24,16,0.28) !important;
-    border: none !important;
+    box-shadow: 0 18px 50px rgba(8,24,16,0.18);
+    border: none;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfff9 100%);
+    color: var(--text-color);
 }
 #guestLoginModal .modal-header {
-    background: linear-gradient(90deg,var(--primary-600),var(--primary-500)) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-    padding: 1rem 1.25rem !important;
+    background: #fbfff9;
+    color: var(--text-color);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    padding: 1rem 1.25rem;
 }
-#guestLoginModal .modal-title { color: #ffffff !important; font-weight: 700; letter-spacing: 0.2px; }
-#guestLoginModal .modal-body { background: #f6fbf6; padding: 1.15rem 1.25rem; }
+#guestLoginModal .modal-title { color: var(--primary-600); font-weight: 700; letter-spacing: 0.2px; }
+#guestLoginModal .modal-body { background: transparent; padding: 1.25rem; color: var(--text-color); }
 #guestLoginModal .form-floating .form-control {
     border-radius: 10px;
     padding: 0.9rem 0.85rem;
-    border: 1px solid rgba(12,20,12,0.06);
+    border: 1px solid rgba(12,20,12,0.08);
     box-shadow: none;
+    color: #111;
+    background: #fff;
 }
-#guestLoginModal .form-floating label { padding-left: 0.25rem; }
-#guestLoginModal .form-check { margin-left: 4px; }
+#guestLoginModal .form-floating label { color: #5b6470; padding-left: 0.25rem; }
+#guestLoginModal .form-control::placeholder { color: rgba(0,0,0,0.35); }
+#guestLoginModal .form-check label { color: var(--muted-text); }
 #guestLoginModal .modal-footer { background: transparent; padding: 0.75rem 1.25rem 1rem; }
 #guestLoginModal .btn-success {
     border-radius: 999px;
     padding: 0.55rem 1.1rem;
     box-shadow: 0 8px 20px rgba(31,44,36,0.12);
+    background: linear-gradient(135deg,var(--primary-500),var(--primary-600));
+    color: #fff;
+    border: none;
 }
-#guestLoginModal .btn-link { color: rgba(12,20,12,0.7); }
-#guestLoginModal .alert { margin-bottom: 0.5rem; }
+#guestLoginModal .btn-link { color: var(--muted-text); }
+#guestLoginModal .alert { margin-bottom: 0.5rem; color: var(--primary-700); background: rgba(255,235,235,0.95); border-radius: 8px; padding: 10px; }
 
 /* slightly darker backdrop for modal */
 .modal-backdrop.show { background-color: rgba(10,20,12,0.5); }
@@ -1062,11 +1029,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Prevent layout shift when modal opens by reserving scrollbar gutter */
-html, body {
-    scrollbar-gutter: stable both-edges;
-}
-    z-index: 55;
-}
+html, body { scrollbar-gutter: stable both-edges; }
 
 .client-support-panel h6 {
     font-size: 0.95rem;
