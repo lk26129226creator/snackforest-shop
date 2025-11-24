@@ -28,7 +28,7 @@
                 <label for="reg-email">電子郵件</label>
             </div>
             <div class="mb-3 form-floating">
-                <input type="password" id="reg-password" class="form-control" placeholder="密碼" required>
+                <input type="password" id="reg-password" class="form-control" placeholder="密碼" required autocomplete="new-password">
                 <label for="reg-password">密碼</label>
             </div>
             <div class="mb-3 form-floating">
@@ -89,9 +89,16 @@ document.getElementById('registerForm').addEventListener('submit', async functio
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify(payload)
         });
-        const data = await (res.ok ? res.json() : res.json().catch(()=>({success:false, message:'註冊失敗'})));
+        let data = null;
+        try {
+            data = await res.json();
+        } catch (e) {
+            console.error('Failed to parse JSON response from /customers', e);
+        }
+
         if (!res.ok || !data || data.success === false) {
-            const msg = data && data.message ? data.message : '註冊失敗，請稍後再試';
+            const msg = (data && (data.message || data.error || data.detail)) ? (data.message || data.error || data.detail) : '註冊失敗，請稍後再試';
+            console.error('Register failed:', res.status, data);
             fb.className = 'alert alert-danger'; fb.textContent = msg; return;
         }
 
