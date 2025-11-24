@@ -25,7 +25,8 @@ SnackForest - 全局樣式表 (顏色已還原)
     --client-sidebar-width-expanded: 312px; /* 客戶端側欄展開寬度 */
     --client-navbar-height: 88px;           /* 導覽列高度 (同步頂端固定列)，調整為較寬的上下間距 */
     --client-main-max-width: 1240px;        /* 主內容區最大寬度 */
-    --client-main-gutter: 48px;             /* 主內容左右邊距 */
+    --client-main-max-width: 1400px;        /* 主內容區最大寬度 (wider) */
+    --client-main-gutter: 20px;             /* 主內容左右邊距 (narrower gutters) */
     /* 質感升級：擴充色票與陰影層級 */
     --primary-700: #234a2b;
     --primary-600: #2f5f3a;
@@ -55,7 +56,7 @@ body {
     font-family: var(--font-sans-serif);
     color: var(--text-color);
     line-height: 1.7;
-    padding-top: calc(var(--client-navbar-height) + 24px); /* 為固定導覽列預留空間 */
+    padding-top: calc(var(--client-navbar-height) + 12px); /* 減少上方留白 */
     overflow-x: hidden;
 }
 
@@ -937,6 +938,30 @@ h1, h2, h3, h4, h5, h6 {
 .client-support-panel .client-support-link:focus {
     background: rgba(74,124,89,0.08) !important;
 }
+
+/* Guest entry button (member page) */
+.guest-entry-btn {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 2400;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+    color: #fff;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 999px;
+    box-shadow: 0 10px 28px rgba(15,23,16,0.14);
+    font-weight: 600;
+    cursor: pointer;
+}
+.guest-entry-btn:hover,
+.guest-entry-btn:focus {
+    transform: translateY(-2px);
+}
+
+@media (max-width: 575.98px) {
+    .guest-entry-btn { right: 12px; bottom: 12px; padding: 9px 12px; font-size: 0.95rem; }
+}
 .client-support {
     position: relative;
 }
@@ -1099,8 +1124,8 @@ body.client-sidebar-overlay {
 .client-main {
     width: var(--client-main-width);
     max-width: 100%;
-    margin-top: calc(var(--client-navbar-height) + 24px);
-    margin-bottom: 64px;
+    margin-top: calc(var(--client-navbar-height) + 12px);
+    margin-bottom: 32px;
     margin-left: calc(
         var(--client-sidebar-width)
         + max(
@@ -1112,8 +1137,8 @@ body.client-sidebar-overlay {
         var(--client-main-gutter),
         calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
     );
-    /* Removed card-style (background, radius, shadow, padding)
-       to keep main layout clean and full-bleed. */
+    /* Layout adjustments: reduce vertical padding and keep full-bleed */
+    padding: 12px 0;
     transition: none;
     will-change: auto;
 }
