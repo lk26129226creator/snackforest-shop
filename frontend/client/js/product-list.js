@@ -56,7 +56,19 @@
         const { listingSection, detailSection } = state.elements;
         if (listingSection) listingSection.style.display = hasId ? 'none' : 'block';
         if (detailSection) detailSection.style.display = hasId ? 'block' : 'none';
-        document.title = hasId ? '商品詳情 - SnackForest' : '商品列表 - SnackForest';
+        // Only change the document title when on the standalone product page or viewing a product detail.
+        // Avoid overriding the homepage title when this module is loaded as part of the home page.
+        try {
+            const pathname = (window.location && window.location.pathname) ? String(window.location.pathname).toLowerCase() : '';
+            const isProductHtml = pathname.endsWith('/product.html') || pathname.endsWith('product.html');
+            if (hasId) {
+                document.title = '商品詳情 - SnackForest';
+            } else if (isProductHtml) {
+                document.title = '商品列表 - SnackForest';
+            }
+        } catch (_) {
+            // ignore
+        }
     }
 
     async function loadProducts() {
