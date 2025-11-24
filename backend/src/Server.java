@@ -88,8 +88,6 @@ public class Server {
             HttpContext payCtx = server.createContext("/api/paymentmethod", new PaymentMethodHandler());
             // API: 登入驗證，對應 client/js/auth-guard.js 與 admin/js/auth 模組。
             HttpContext loginCtx = server.createContext("/api/login", new LoginHandler());
-            // API: 取得 customers schema 的 debug 端點（臨時，用於排查資料庫 schema 問題）
-            HttpContext customersSchemaCtx = server.createContext("/api/debug/schema/customers", new CustomersSchemaHandler());
             // API: 顧客註冊（前端 register.html 會 POST /api/customers）
             HttpContext customersCtx = server.createContext("/api/customers", new CustomersHandler());
             // API: 圖片上傳，同步管理端商品與輪播管理上傳需求。
@@ -106,7 +104,7 @@ public class Server {
             HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
 
             // 彙總所有 Context，統一加入 CORS Filter 以支援跨來源的前端 fetch。
-            HttpContext[] allContexts = {productsCtx, dbDebugCtx, customersSchemaCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, heroUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, customersCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, heroGalleryCtx, customerProfileCtx};
+            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, heroUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, customersCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, heroGalleryCtx, customerProfileCtx};
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
@@ -1176,49 +1174,7 @@ public class Server {
     /**
      * 臨時的 customers schema 檢視端點，回傳 DESCRIBE 與 SHOW CREATE TABLE 的結果（僅供除錯，部署後可移除）。
      */
-    static class CustomersSchemaHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-                sendErrorResponse(exchange, 405, "Method Not Allowed", null);
-                return;
-            }
-            JSONObject resp = new JSONObject();
-            try (Connection conn = DBConnect.getConnection()) {
-                // DESCRIBE customers
-                try (PreparedStatement desc = conn.prepareStatement("DESCRIBE customers"); ResultSet rs = desc.executeQuery()) {
-                    JSONArray cols = new JSONArray();
-                    while (rs.next()) {
-                        JSONObject c = new JSONObject();
-                        c.put("Field", rs.getString("Field"));
-                        c.put("Type", rs.getString("Type"));
-                        c.put("Null", rs.getString("Null"));
-                        c.put("Key", rs.getString("Key"));
-                        c.put("Default", rs.getString("Default"));
-                        c.put("Extra", rs.getString("Extra"));
-                        cols.put(c);
-                    }
-                    resp.put("describe", cols);
-                }
-
-                // SHOW CREATE TABLE customers
-                try (PreparedStatement sct = conn.prepareStatement("SHOW CREATE TABLE customers"); ResultSet r2 = sct.executeQuery()) {
-                    if (r2.next()) {
-                        String create = r2.getString(2);
-                        resp.put("createTable", create);
-                    }
-                }
-
-                resp.put("status", "ok");
-                sendJsonResponse(exchange, resp.toString(), 200);
-            } catch (Exception e) {
-                resp.put("status", "error");
-                resp.put("message", e.getMessage());
-                e.printStackTrace();
-                try { sendJsonResponse(exchange, resp.toString(), 500); } catch (IOException ioe) { ioe.printStackTrace(); }
-            }
-        }
-    }
+    
 
     /**
      * 商品 CRUD API 處理器（/api/products），依 HTTP 方法對應查詢、新增、更新與刪除。
@@ -1527,26 +1483,19 @@ public class Server {
                         // 不要因為 pre-check 失敗就停止註冊流程；繼續嘗試建立帳號，接著由後續的 INSERT 去處理可能的錯誤
                     }
 
-                    // 計算下一個 id（現行設計未使用 AUTO_INCREMENT）
-                    int newId = 1;
-                    try (Statement s = conn.createStatement(); ResultSet rs = s.executeQuery("SELECT COALESCE(MAX(idCustomers),0) + 1 FROM customers")) {
-                        if (rs.next()) newId = rs.getInt(1);
-                    }
-
-                    // 使用 DAO.save 建立新使用者（注意：CustomerDAO.save 會對傳入的 password 做雜湊）
+                    // 使用 DAO.save 建立新使用者（DAO 會處理 insert 或 update，且在 insert 時回填自動產生的 id）
                     dao.CustomerDAO customerDAO = new dao.CustomerDAO(conn);
-                    model.Customer newCustomer = new model.Customer(newId, name, email, password, "");
-                    System.err.println("[DEBUG] Creating customer id=" + newId + " name=" + name + " account=" + email);
+                    model.Customer newCustomer = new model.Customer(0, name, email, password, "");
+                    System.err.println("[DEBUG] Creating customer (no-id) name=" + name + " account=" + email);
                     try {
                         boolean ok = customerDAO.save(newCustomer);
-                        System.err.println("[DEBUG] customerDAO.save returned: " + ok);
+                        System.err.println("[DEBUG] customerDAO.save returned: " + ok + " newId=" + newCustomer.getId());
                         if (!ok) {
                             System.err.println("[ERROR] customerDAO.save failed to create customer record");
                             sendErrorResponse(exchange, 500, "Failed to create customer", null);
                             return;
                         }
                     } catch (java.sql.SQLException sqlEx) {
-                        // 檢查是否為重複鍵或資料完整性違規（MySQL error code 1062 / SQLState 開頭為 23）
                         int errCode = sqlEx.getErrorCode();
                         String sqlState = sqlEx.getSQLState();
                         System.err.println("[ERROR] SQLException during customer save: code=" + errCode + " state=" + sqlState + " msg=" + sqlEx.getMessage());
@@ -1558,12 +1507,29 @@ public class Server {
                         return;
                     }
 
+                    // 嘗試取得新建立的 id；若 DAO 未回填，回退到以 Account 查詢（最後手段）
+                    int createdId = newCustomer.getId();
+                    if (createdId <= 0) {
+                        try (PreparedStatement getId = conn.prepareStatement("SELECT idCustomers FROM customers WHERE LOWER(Account)=LOWER(?) LIMIT 1")) {
+                            getId.setString(1, email);
+                            try (ResultSet grs = getId.executeQuery()) {
+                                if (grs.next()) createdId = grs.getInt(1);
+                            }
+                        } catch (SQLException ex) {
+                            System.err.println("[WARN] Failed to lookup created customer id by account: " + ex.getMessage());
+                        }
+                    }
+                    if (createdId <= 0) {
+                        sendErrorResponse(exchange, 500, "Failed to determine created customer id", null);
+                        return;
+                    }
+
                     // DAO.save 只會寫入 id, CustomerName, Account, PasswordHash, Salt；補寫 Email/Phone/Address/UpdatedAt
                     try (PreparedStatement ps = conn.prepareStatement("UPDATE customers SET Email=?, Phone=?, Address=?, UpdatedAt=NOW() WHERE idCustomers=?")) {
                         ps.setString(1, email);
                         ps.setString(2, phone);
                         ps.setString(3, address);
-                        ps.setInt(4, newId);
+                        ps.setInt(4, createdId);
                         ps.executeUpdate();
                     } catch (Exception ex) {
                         // 非致命：已建立帳號，但無法更新額外欄位
@@ -1572,7 +1538,7 @@ public class Server {
 
                     JSONObject resp = new JSONObject();
                     resp.put("success", true);
-                    resp.put("customerId", newId);
+                    resp.put("customerId", createdId);
                     resp.put("customerName", name);
                     sendJsonResponse(exchange, resp.toString(), 201);
                     return;

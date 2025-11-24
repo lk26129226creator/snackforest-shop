@@ -154,14 +154,45 @@ public class CustomerDAO {
         String salt = generateSalt();
         String hashedPassword = hashPassword(customer.getPasswordHash(), salt);
 
-        String sql = "INSERT INTO customers (idCustomers, CustomerName, Account, PasswordHash, Salt) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, customer.getId());
-            stmt.setString(2, customer.getName());
-            stmt.setString(3, customer.getAccount());
-            stmt.setString(4, hashedPassword);
-            stmt.setString(5, salt);
-            return stmt.executeUpdate() > 0;
+        // 如果 customer 有 id，嘗試更新（修改密碼/帳號/名稱）
+        if (customer.getId() > 0) {
+            String checkSql = "SELECT COUNT(*) FROM customers WHERE idCustomers = ?";
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                checkStmt.setInt(1, customer.getId());
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        String updateSql = "UPDATE customers SET CustomerName = ?, Account = ?, PasswordHash = ?, Salt = ? WHERE idCustomers = ?";
+                        try (PreparedStatement upd = conn.prepareStatement(updateSql)) {
+                            upd.setString(1, customer.getName());
+                            upd.setString(2, customer.getAccount());
+                            upd.setString(3, hashedPassword);
+                            upd.setString(4, salt);
+                            upd.setInt(5, customer.getId());
+                            return upd.executeUpdate() > 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 否則執行 INSERT，並嘗試取得自動產生的 id（需要資料表已設為 AUTO_INCREMENT）
+        String insertSql = "INSERT INTO customers (CustomerName, Account, PasswordHash, Salt) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(insertSql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, customer.getName());
+            stmt.setString(2, customer.getAccount());
+            stmt.setString(3, hashedPassword);
+            stmt.setString(4, salt);
+            int affected = stmt.executeUpdate();
+            if (affected > 0) {
+                try (ResultSet gk = stmt.getGeneratedKeys()) {
+                    if (gk.next()) {
+                        int genId = gk.getInt(1);
+                        customer.setId(genId);
+                    }
+                }
+                return true;
+            }
+            return false;
         }
     }
 

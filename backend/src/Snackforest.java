@@ -174,8 +174,8 @@ public class Snackforest {
      * @return boolean - true 表示成功，false 表示失敗。
      */
     private static boolean createNewCustomer(String name, String account, String password) throws SQLException, NoSuchAlgorithmException {
-        int newId = findNextAvailableId("customers", "idCustomers");
-        Customer newCustomer = new Customer(newId, name, account, password, ""); // 採用新版建構子
+        // 使用資料庫的 AUTO_INCREMENT，由 DAO 在 insert 後回填 id
+        Customer newCustomer = new Customer(0, name, account, password, "");
 
         try {
             return customerDAO.save(newCustomer);
