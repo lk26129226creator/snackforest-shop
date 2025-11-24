@@ -938,6 +938,30 @@ h1, h2, h3, h4, h5, h6 {
 .client-support-panel .client-support-link:focus {
     background: rgba(74,124,89,0.08) !important;
 }
+
+/* Guest entry button (member page) */
+.guest-entry-btn {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 2400;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+    color: #fff;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 999px;
+    box-shadow: 0 10px 28px rgba(15,23,16,0.14);
+    font-weight: 600;
+    cursor: pointer;
+}
+.guest-entry-btn:hover,
+.guest-entry-btn:focus {
+    transform: translateY(-2px);
+}
+
+@media (max-width: 575.98px) {
+    .guest-entry-btn { right: 12px; bottom: 12px; padding: 9px 12px; font-size: 0.95rem; }
+}
 .client-support {
     position: relative;
 }
