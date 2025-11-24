@@ -8,7 +8,6 @@ SnackForest - 全局樣式表 (顏色已還原)
 /* 採用 Poppins 與 Noto Sans TC 字體，並設定客戶端通用的主題色與陰影。 */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap');
 @import url('./shared.css');
-@import url('./_tokens.css');
 
 :root {
     --primary-color: #4a7c59;      /* 原始主題綠 */
@@ -26,7 +25,8 @@ SnackForest - 全局樣式表 (顏色已還原)
     --client-sidebar-width-expanded: 312px; /* 客戶端側欄展開寬度 */
     --client-navbar-height: 88px;           /* 導覽列高度 (同步頂端固定列)，調整為較寬的上下間距 */
     --client-main-max-width: 1240px;        /* 主內容區最大寬度 */
-    --client-main-gutter: 56px;             /* 主內容左右邊距（微調至 56px，為全站提供更寬鬆留白） */
+    --client-main-max-width: 1400px;        /* 主內容區最大寬度 (wider) */
+    --client-main-gutter: 20px;             /* 主內容左右邊距 (narrower gutters) */
     /* 質感升級：擴充色票與陰影層級 */
     --primary-700: #234a2b;
     --primary-600: #2f5f3a;
@@ -56,7 +56,7 @@ body {
     font-family: var(--font-sans-serif);
     color: var(--text-color);
     line-height: 1.7;
-    padding-top: calc(var(--client-navbar-height) + 24px); /* 為固定導覽列預留空間 */
+    padding-top: calc(var(--client-navbar-height) + 12px); /* 減少上方留白 */
     overflow-x: hidden;
 }
 
@@ -421,19 +421,12 @@ body.order-success-active {
 .site-footer{
     background: linear-gradient(180deg, var(--primary-700), var(--primary-600));
     color: #eef6ec;
-    /* 增加上下高度，讓頁腳更有視覺沉穩感 */
-    padding: 64px 0; /* 微幅增加為 64px */
+    padding:40px 0;
     margin-top:72px;
 }
 
 .site-footer .container{
-    /* Footer content should be full-width within the footer band
-       — allow the footer band to fill the viewport while keeping
-       an internal comfortable gutter for content. */
-    max-width: none;
-    width: 100%;
-    padding: 0 var(--client-main-gutter);
-    box-sizing: border-box;
+    max-width:1080px;
 }
 
 .site-footer p{
@@ -608,9 +601,6 @@ h1, h2, h3, h4, h5, h6 {
 /* Navbar-specific: 使用白色框架的按鈕樣式（適用於頂部導覽列）
    - 預設為透明背景、白色文字與白色邊框（截圖風格）
    - hover / focus 時填滿白色，文字變為主題綠，提供明顯互動反饋 */
-/* Topbar / navbar buttons: use tokens and lighter specificity
-   Keep them visually white-on-green header but rely on tokens so we can
-   control variants more easily. Panels (cart/support) are fixed separately. */
 .navbar .btn,
 .navbar .btn-outline-light,
 .navbar .btn-outline-secondary,
@@ -618,12 +608,10 @@ h1, h2, h3, h4, h5, h6 {
 .client-support-btn,
 .client-nav-cart > button,
 .client-member-btn {
-    background: transparent;
-    color: var(--color-surface-1);
-    border: 1px solid rgba(255,255,255,0.9);
-    box-shadow: none;
-    padding: 0.35rem 0.6rem;
-    border-radius: var(--btn-radius);
+    background: transparent !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.9) !important;
+    box-shadow: none !important;
 }
 
 .navbar .btn:hover,
@@ -803,163 +791,7 @@ h1, h2, h3, h4, h5, h6 {
 .client-member-btn:hover,
 .client-member-btn:focus-visible {
     transform: translateY(-1px);
-    box-shadow: var(--shadow-1);
-}
-
-/* -- Card component (consolidate card styles) -- */
-.sf-card {
-    background: var(--color-surface-1);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-1);
-    overflow: hidden;
-}
-.card, .member-card, .summary-card {
-    /* Use sf-card as base; keep existing card markup intact */
-    background: var(--color-surface-1);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-1);
-}
-
-/* 卡片內部：間距與排版節奏 */
-.card .card-body,
-.sf-card .card-body,
-.member-card .card-body,
-.summary-card .card-body {
-    padding: calc(var(--space-md)) !important;
-}
-.card .card-title,
-.sf-card .card-title,
-.member-card .card-title,
-.summary-card .card-title {
-    margin-bottom: var(--space-sm);
-    font-weight: 700;
-    color: var(--color-primary-600);
-}
-.card .card-subtitle,
-.sf-card .card-subtitle {
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
-}
-
-/* 表單：統一輸入控制外觀與聚焦狀態（無障礙） */
-.form-control {
-    border-radius: var(--radius-sm) !important;
-    border: 1px solid rgba(0,0,0,0.08) !important;
-    padding: 10px 12px !important;
-    box-shadow: none !important;
-}
-.form-control:focus {
-    outline: none !important;
-    box-shadow: 0 0 0 4px rgba(74,124,89,0.12) !important;
-    border-color: var(--color-primary-600) !important;
-}
-
-/* 無障礙：互動控制的 focus-visible 樣式 */
-:focus-visible {
-    outline: 3px solid rgba(74,124,89,0.16);
-    outline-offset: 2px;
-}
-
-/* 卡片內一致化間距的小工具 */
-.card-foot { padding-top: var(--space-sm); }
-
-/* 行動端調整：放大點擊目標並收斂間距 */
-@media (max-width: 991.98px) {
-    :root {
-        --btn-padding-y: 12px;
-        --btn-padding-x: 16px;
-    }
-    .client-main { padding: 16px !important; }
-    .home-hero { padding: 20px !important; }
-}
-
-/* 首頁：Hero 區塊對比與層次優化 */
-.home-hero {
-    background: linear-gradient(135deg, var(--color-primary-700) 0%, #0f2230 60%);
-    color: var(--color-surface-1);
-    border-radius: 12px;
-    padding: clamp(28px, 4vw, 48px);
-    box-shadow: var(--shadow-2);
-}
-.home-hero .hero-title {
-    color: var(--color-primary-400);
-    font-weight: 800;
-    letter-spacing: 0.2px;
-    line-height: 1.05;
-}
-.home-hero .hero-sub {
-    color: rgba(255,255,255,0.9);
-    opacity: 0.95;
-}
-.btn-cta {
-    border-radius: var(--btn-radius);
-    padding: calc(var(--btn-padding-y) + 2px) calc(var(--btn-padding-x) + 6px);
-    box-shadow: 0 10px 30px rgba(30,70,40,0.12);
-}
-
-/* 商品格與商品卡片樣式 */
-.product-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: var(--space-lg);
-}
-.product-grid .product-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-    padding: var(--space-sm);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-1);
-    box-shadow: var(--shadow-1);
-}
-.product-card .product-thumb {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    object-fit: cover;
-    border-radius: 8px;
-}
-.product-card .product-title {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: var(--text-default);
-}
-.product-card .product-meta {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
-
-/* 按鈕：使用設計 tokens 並提供可重用樣式 */
-.btn-success,
-.btn-primary {
-    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
-    color: var(--color-surface-1) !important;
-    border: none !important;
-    border-radius: var(--btn-radius) !important;
-    padding: var(--btn-padding-y) var(--btn-padding-x) !important;
-    font-weight: 600;
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-.btn-success:hover,
-.btn-primary:hover,
-.btn-success:focus,
-.btn-primary:focus {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-2);
-}
-
-.btn-ghost {
-    background: transparent !important;
-    color: var(--color-primary-600) !important;
-    border: 1px solid rgba(74,124,89,0.12) !important;
-    border-radius: var(--btn-radius) !important;
-    padding: var(--btn-padding-y) var(--btn-padding-x) !important;
-}
-
-.btn-link {
-    background: transparent !important;
-    color: var(--color-primary-600) !important;
-    border: none !important;
-    padding: 0 !important;
+    box-shadow: 0 10px 24px rgba(15,23,16,0.14);
 }
 
 .client-nav-cart {
@@ -1075,11 +907,11 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 14px;
 }
 
-/* 修正：還原白色面板內按鈕／連結可見樣式
-     - 全域 `.navbar .btn` 規則會讓按鈕在頂欄呈現白色，
-         因此會意外影響到白底的下拉面板（例如購物車、客服）。
-     - 這裡採最小化改動，針對面板內的按鈕／連結明確指定樣式，
-         確保在白底上仍可閱讀與操作。 */
+/* Fix: restore visible styles for buttons/links inside white panels
+   The global `.navbar .btn` rule makes buttons transparent/white in the topbar;
+   that unintentionally affects buttons inside dropdown panels (cart/support).
+   Keep this minimal: explicitly style buttons/links inside the panels so
+   they remain readable on white backgrounds. */
 .client-nav-cart-panel .btn:not(.btn-link) {
     /* keep solid, action-oriented buttons (e.g. 前往結帳) with green background */
     background: var(--primary-600) !important;
@@ -1262,26 +1094,27 @@ body.client-sidebar-expanded:not(.client-sidebar-overlay) {
 
 body.client-sidebar-overlay {
     --client-sidebar-width: 0px;
-    /* Do not aggressively reduce the main gutter here — keep the global
-       `--client-main-gutter` so desktop/tablet spacing remains predictable.
-       If overlay-specific smaller gutters are needed for mobile, handle
-       them in media queries instead. */
+    --client-main-gutter: 16px;
 }
 
 .client-main {
-    /* Make main area full-bleed to the right of the sidebar so pages
-       are not visually constrained in a centered card. Content should
-       fill the available horizontal space (between sidebar and viewport edge). */
-    width: calc(100% - var(--client-sidebar-width));
+    width: var(--client-main-width);
     max-width: 100%;
-    margin-top: calc(var(--client-navbar-height) + 24px);
-    margin-bottom: 64px;
-    margin-left: var(--client-sidebar-width);
-    margin-right: 0;
-    /* keep a comfortable inner gutter so content never feels glued to edges */
-    padding-left: var(--client-main-gutter);
-    padding-right: var(--client-main-gutter);
-    box-sizing: border-box;
+    margin-top: calc(var(--client-navbar-height) + 12px);
+    margin-bottom: 32px;
+    margin-left: calc(
+        var(--client-sidebar-width)
+        + max(
+            var(--client-main-gutter),
+            calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
+        )
+    );
+    margin-right: max(
+        var(--client-main-gutter),
+        calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
+    );
+    /* Layout adjustments: reduce vertical padding and keep full-bleed */
+    padding: 12px 0;
     transition: none;
     will-change: auto;
 }
@@ -1295,7 +1128,7 @@ body.client-sidebar-overlay {
         background: transparent !important;
         border-radius: 0 !important;
         box-shadow: none !important;
-        padding: 28px 0 !important; /* slightly taller vertical spacing */
+        padding: 24px 0 !important; /* keep some vertical spacing, remove interior card padding */
     }
     body.client-sidebar-overlay .client-main {
         background: transparent !important;
@@ -1309,24 +1142,32 @@ body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
     margin: calc(var(--client-navbar-height) + 20px) var(--client-main-gutter) 56px;
     margin-left: var(--client-main-gutter);
-    /* preserve the extra inner gutter in overlay mode as well */
-    padding-left: calc(var(--client-main-gutter) + 12px);
-    padding-right: calc(var(--client-main-gutter) + 12px);
+    /* overlay keeps layout but not framed card styling */
 }
 
 .client-footer {
-    /* Make client footer content span the full available viewport width
-       regardless of sidebar layout. The visible footer band is already
-       full-width; ensure its inner content uses a comfortable gutter. */
-    margin: 0;
-    width: 100%;
-    padding: 0; /* visual spacing handled by .site-footer */
-    box-sizing: border-box;
+    margin-left: calc(
+        var(--client-sidebar-width)
+        + max(
+            var(--client-main-gutter),
+            calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
+        )
+    );
+    margin-right: max(
+        var(--client-main-gutter),
+        calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
+    );
+    width: var(--client-main-width);
+    max-width: 100%;
+    margin-top: 0;
+    transition: none;
+    will-change: auto;
 }
 
 body.client-sidebar-overlay .client-footer {
-    margin: 0;
-    width: 100%;
+    margin-left: var(--client-main-gutter);
+    margin-right: var(--client-main-gutter);
+    width: calc(100% - (var(--client-main-gutter) * 2));
 }
 
 /* 客戶端側邊選單：行動裝置沿用管理端的左側欄風格。 */
@@ -1887,63 +1728,6 @@ body.client-sidebar-expanded:not(.client-sidebar-overlay) .client-sidebar-footer
 #profile-feedback.alert { border-radius: 12px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 10px 22px rgba(15,23,42,0.10); }
 
 /* End: member.html extracted styles */
-
-/* -----------------------------
-   Member page layout upgrades
-   - 更寬鬆的桌面排版：avatar 放大、卡片內距增加
-   - 表單欄位與按鈕調整，提升可點擊面積與質感
-   - 行動裝置縮小 avatar 並保留可讀性
-   ----------------------------- */
-@media (min-width: 992px) {
-    #profile-panel .row.g-4 {
-        gap: 2.4rem; /* 增加左側資訊與右側內容的間距 */
-        align-items: start;
-    }
-
-    /* 限制左側欄寬度，避免 avatar 區域過長 */
-    #profile-panel .col-lg-4 {
-        max-width: 360px;
-        flex: 0 0 360px;
-    }
-
-    .member-card .card-body {
-        padding: 1.6rem 1.6rem; /* 更舒適的內距 */
-    }
-
-    .member-avatar {
-        width: 160px;
-        height: 160px;
-        margin: 0 auto 8px;
-    }
-
-    #profile-panel #profile-form .form-control,
-    #profile-panel #profile-form .form-select,
-    #profile-panel #profile-form textarea {
-        padding: 0.7rem 0.9rem;
-        border-radius: 0.6rem;
-    }
-
-    #profile-panel .btn-primary {
-        padding: 0.72rem 1.2rem;
-        border-radius: 0.6rem;
-        box-shadow: var(--elev-1);
-    }
-
-    #profile-feedback.alert {
-        margin-bottom: 1rem;
-    }
-}
-
-@media (max-width: 991px) {
-    .member-avatar {
-        width: 120px;
-        height: 120px;
-    }
-
-    .member-card .card-body {
-        padding: 1.2rem;
-    }
-}
 
 /* 商品額外資訊的強調樣式 */
 #popover-metadata small { display:block; background: #f7fff6; padding:8px 10px; border-radius:8px; margin-bottom:8px; color: #2f5f3a; }
