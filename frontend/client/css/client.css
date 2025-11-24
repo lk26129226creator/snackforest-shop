@@ -426,7 +426,13 @@ body.order-success-active {
 }
 
 .site-footer .container{
-    max-width:1080px;
+    /* Footer content should be full-width within the footer band
+       — allow the footer band to fill the viewport while keeping
+       an internal comfortable gutter for content. */
+    max-width: none;
+    width: 100%;
+    padding: 0 var(--client-main-gutter);
+    box-sizing: border-box;
 }
 
 .site-footer p{
@@ -1303,28 +1309,18 @@ body.client-sidebar-overlay .client-main {
 }
 
 .client-footer {
-    margin-left: calc(
-        var(--client-sidebar-width)
-        + max(
-            var(--client-main-gutter),
-            calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
-        )
-    );
-    margin-right: max(
-        var(--client-main-gutter),
-        calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
-    );
-    width: var(--client-main-width);
-    max-width: 100%;
-    margin-top: 0;
-    transition: none;
-    will-change: auto;
+    /* Make client footer content span the full available viewport width
+       regardless of sidebar layout. The visible footer band is already
+       full-width; ensure its inner content uses a comfortable gutter. */
+    margin: 0;
+    width: 100%;
+    padding: 0; /* visual spacing handled by .site-footer */
+    box-sizing: border-box;
 }
 
 body.client-sidebar-overlay .client-footer {
-    margin-left: var(--client-main-gutter);
-    margin-right: var(--client-main-gutter);
-    width: calc(100% - (var(--client-main-gutter) * 2));
+    margin: 0;
+    width: 100%;
 }
 
 /* 客戶端側邊選單：行動裝置沿用管理端的左側欄風格。 */
@@ -1885,6 +1881,63 @@ body.client-sidebar-expanded:not(.client-sidebar-overlay) .client-sidebar-footer
 #profile-feedback.alert { border-radius: 12px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 10px 22px rgba(15,23,42,0.10); }
 
 /* End: member.html extracted styles */
+
+/* -----------------------------
+   Member page layout upgrades
+   - 更寬鬆的桌面排版：avatar 放大、卡片內距增加
+   - 表單欄位與按鈕調整，提升可點擊面積與質感
+   - 行動裝置縮小 avatar 並保留可讀性
+   ----------------------------- */
+@media (min-width: 992px) {
+    #profile-panel .row.g-4 {
+        gap: 2.4rem; /* 增加左側資訊與右側內容的間距 */
+        align-items: start;
+    }
+
+    /* 限制左側欄寬度，避免 avatar 區域過長 */
+    #profile-panel .col-lg-4 {
+        max-width: 360px;
+        flex: 0 0 360px;
+    }
+
+    .member-card .card-body {
+        padding: 1.6rem 1.6rem; /* 更舒適的內距 */
+    }
+
+    .member-avatar {
+        width: 160px;
+        height: 160px;
+        margin: 0 auto 8px;
+    }
+
+    #profile-panel #profile-form .form-control,
+    #profile-panel #profile-form .form-select,
+    #profile-panel #profile-form textarea {
+        padding: 0.7rem 0.9rem;
+        border-radius: 0.6rem;
+    }
+
+    #profile-panel .btn-primary {
+        padding: 0.72rem 1.2rem;
+        border-radius: 0.6rem;
+        box-shadow: var(--elev-1);
+    }
+
+    #profile-feedback.alert {
+        margin-bottom: 1rem;
+    }
+}
+
+@media (max-width: 991px) {
+    .member-avatar {
+        width: 120px;
+        height: 120px;
+    }
+
+    .member-card .card-body {
+        padding: 1.2rem;
+    }
+}
 
 /* 商品額外資訊的強調樣式 */
 #popover-metadata small { display:block; background: #f7fff6; padding:8px 10px; border-radius:8px; margin-bottom:8px; color: #2f5f3a; }
