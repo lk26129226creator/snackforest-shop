@@ -1259,23 +1259,18 @@ body.client-sidebar-overlay {
 }
 
 .client-main {
-    width: var(--client-main-width);
+    /* Make main area full-bleed to the right of the sidebar so pages
+       are not visually constrained in a centered card. Content should
+       fill the available horizontal space (between sidebar and viewport edge). */
+    width: calc(100% - var(--client-sidebar-width));
     max-width: 100%;
     margin-top: calc(var(--client-navbar-height) + 24px);
     margin-bottom: 64px;
-    margin-left: calc(
-        var(--client-sidebar-width)
-        + max(
-            var(--client-main-gutter),
-            calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
-        )
-    );
-    margin-right: max(
-        var(--client-main-gutter),
-        calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
-    );
-    /* Removed card-style (background, radius, shadow, padding)
-       to keep main layout clean and full-bleed. */
+    margin-left: var(--client-sidebar-width);
+    margin-right: 0;
+    padding-left: var(--client-main-gutter);
+    padding-right: var(--client-main-gutter);
+    box-sizing: border-box;
     transition: none;
     will-change: auto;
 }
@@ -1303,7 +1298,8 @@ body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
     margin: calc(var(--client-navbar-height) + 20px) var(--client-main-gutter) 56px;
     margin-left: var(--client-main-gutter);
-    /* overlay keeps layout but not framed card styling */
+    padding-left: var(--client-main-gutter);
+    padding-right: var(--client-main-gutter);
 }
 
 .client-footer {
