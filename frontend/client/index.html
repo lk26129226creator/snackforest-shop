@@ -141,6 +141,9 @@
                             <div id="guest-login-msg" class="alert alert-danger d-none" role="alert"></div>
                         </div>
                         <div class="modal-footer">
+                            <div class="me-auto">
+                                    <a href="/frontend/register.html" class="btn btn-link">註冊新會員</a>
+                            </div>
                             <button type="button" class="btn btn-link" data-bs-dismiss="modal">取消</button>
                             <button type="button" class="btn btn-success" id="guest-login-btn">登入</button>
                         </div>
@@ -243,42 +246,6 @@
                 document.getElementById('guest-password')?.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); doGuestLogin(); } });
             })();
             </script>
-                <script>
-                // Prevent page content horizontal shift when Bootstrap adds padding-right to body
-                (function(){
-                    const modalEl = document.getElementById('guestLoginModal');
-                    if(!modalEl || !window.bootstrap) return;
-
-                    // Store original styles so we can restore them after modal closes
-                    let __originalHtmlOverflowY = '';
-                    let __originalBodyPaddingRight = '';
-
-                    modalEl.addEventListener('show.bs.modal', function(){
-                        try {
-                            __originalHtmlOverflowY = document.documentElement.style.overflowY || '';
-                            __originalBodyPaddingRight = document.body.style.paddingRight || '';
-                            // Force a visible vertical scrollbar on the page to avoid layout jump
-                            document.documentElement.style.overflowY = 'scroll';
-                            // add class to give CSS higher chance to apply styles or transitions
-                            modalEl.classList.add('is-guest-styled');
-                        } catch(_) {}
-                    });
-
-                    modalEl.addEventListener('shown.bs.modal', function(){
-                        // ensure padding-right left untouched (Bootstrap may have set it); we keep scrollbar visible
-                        try { /* nothing to change here; overflow is forced */ } catch(_) {}
-                    });
-
-                    modalEl.addEventListener('hidden.bs.modal', function(){
-                        try {
-                            // restore original values
-                            document.documentElement.style.overflowY = __originalHtmlOverflowY || '';
-                            document.body.style.paddingRight = __originalBodyPaddingRight || '';
-                            modalEl.classList.remove('is-guest-styled');
-                        } catch(_) {}
-                    });
-                })();
-                </script>
         </div>
     </div>
 </nav>

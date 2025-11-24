@@ -46,6 +46,7 @@ SnackForest - 全局樣式表 (顏色已還原)
 html {
     height: 100%;
     overflow-x: hidden;
+    overflow-y: scroll; /* 新增：強制顯示Y軸滾動條，避免懸浮視窗跳出時因滾動條消失造成頁面位移 */
 }
 
 body {
@@ -980,55 +981,40 @@ h1, h2, h3, h4, h5, h6 {
     padding: 16px;
 
 /* Guest inline login modal tweaks */
-/* Guest inline login modal tweaks (scoped to modal only)
-   - 只修改 modal 內部的文字顏色與表單/按鈕樣式，避免影響其他元件 */
 #guestLoginModal .modal-dialog { max-width: 420px; }
 #guestLoginModal .modal-content {
-    border-radius: 12px !important;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 18px 50px rgba(8,24,16,0.28) !important;
-    border: none !important;
-    background: #ffffff; /* 白色內容區，header 漸層保留 */
+    box-shadow: 0 18px 50px rgba(8,24,16,0.28);
+    border: none;
 }
-
-/* header 保留白字，以維持漸層可讀性 */
 #guestLoginModal .modal-header {
-    background: linear-gradient(90deg,var(--primary-600),var(--primary-500)) !important;
-    color: #ffffff !important;
-    border-bottom: none !important;
-    padding: 1rem 1.25rem !important;
+    background: linear-gradient(90deg,var(--primary-600),var(--primary-500));
+    color: #ffffff;
+    border-bottom: none;
+    padding: 1rem 1.25rem;
 }
-#guestLoginModal .modal-title { color: #ffffff !important; font-weight: 700; letter-spacing: 0.2px; }
-
-/* 針對 modal 內文：淺底 + 深色文字 */
-#guestLoginModal .modal-body { background: #f6fbf6; padding: 1.15rem 1.25rem; }
-#guestLoginModal .modal-body, #guestLoginModal .modal-body * { color: var(--text-color) !important; }
-
-/* 表單欄位 */
+#guestLoginModal .modal-title { color: #ffffff; font-weight: 700; letter-spacing: 0.2px; }
+#guestLoginModal .modal-body {
+    background: #f6fbf6;
+    padding: 1.15rem 1.25rem;
+    color: var(--text-color); /* 新增：確保彈窗內文為深色，避免繼承到白色文字 */
+}
 #guestLoginModal .form-floating .form-control {
     border-radius: 10px;
     padding: 0.9rem 0.85rem;
     border: 1px solid rgba(12,20,12,0.06);
     box-shadow: none;
-    background: #ffffff;
-    color: var(--text-color);
 }
-#guestLoginModal .form-floating .form-control::placeholder { color: rgba(84,94,87,0.45); opacity: 1; }
-#guestLoginModal .form-floating label { padding-left: 0.25rem; color: var(--muted-text); font-weight:600; }
+#guestLoginModal .form-floating label { padding-left: 0.25rem; }
 #guestLoginModal .form-check { margin-left: 4px; }
-#guestLoginModal .form-check-label { color: var(--muted-text); }
-
-/* footer 與按鈕：按鈕文字改為深色（白底），取消連結也顯示深色 */
-#guestLoginModal .modal-footer { background: transparent; padding: 0.75rem 1.25rem 1rem; border-top: 1px solid rgba(15,23,16,0.03); }
+#guestLoginModal .modal-footer { background: transparent; padding: 0.75rem 1.25rem 1rem; }
 #guestLoginModal .btn-success {
     border-radius: 999px;
     padding: 0.55rem 1.1rem;
-    box-shadow: 0 8px 20px rgba(31,44,36,0.06);
-    background: #ffffff !important;
-    border: 1px solid var(--primary-500) !important;
-    color: var(--text-color) !important; /* 按鈕文字為深色 */
+    box-shadow: 0 8px 20px rgba(31,44,36,0.12);
 }
-#guestLoginModal .btn-link { color: var(--text-color) !important; font-weight:600; }
+#guestLoginModal .btn-link { color: rgba(12,20,12,0.7); }
 #guestLoginModal .alert { margin-bottom: 0.5rem; }
 
 /* slightly darker backdrop for modal */
@@ -1038,10 +1024,7 @@ h1, h2, h3, h4, h5, h6 {
     #guestLoginModal .modal-dialog { margin: 1.5rem; }
     #guestLoginModal .modal-body { padding: 1rem; }
 }
-
-/* Prevent layout shift when modal opens by reserving scrollbar gutter */
-html, body {
-    scrollbar-gutter: stable both-edges;
+    z-index: 55;
 }
 
 .client-support-panel h6 {
@@ -2108,4 +2091,43 @@ input[type=number] {
     background: transparent !important;
     pointer-events: none !important;
 }
+
+/* --------------------------------------------------
+   Quick fixes (測試用小改動)
+   - 修正由頂欄觸發的面板 / modal 內文字顏色，避免白字在淺背景上看不到
+   - 防止 Bootstrap 在開啟 modal 時修改 body padding 導致頁面水平位移
+   -------------------------------------------------- */
+
+/* 確保由 .navbar 觸發或位於導覽列內的面板使用深色正文，提升可讀性 */
+.navbar .client-nav-cart-panel,
+.navbar .client-support-panel,
+.navbar .client-sidebar-mobile-actions,
+.client-nav-cart-panel,
+.client-support-panel,
+#guestLoginModal .modal-body,
+#guestLoginModal .modal-content {
+    color: var(--text-color) !important;
+}
+
+/* 面板內的純文字連結或小按鈕使用主題綠以保留可點擊感 */
+.client-nav-cart-panel .btn-link,
+.client-support-panel .client-support-link,
+#guestLoginModal .btn-link {
+    color: var(--primary-600) !important;
+}
+
+/* 面板內的實心行動按鈕維持主題色（覆寫可能不一致的全域規則） */
+.client-nav-cart-panel .btn:not(.btn-link),
+.client-support-panel .btn:not(.btn-link),
+#guestLoginModal .btn:not(.btn-link) {
+    color: #fff !important;
+    background: linear-gradient(180deg, var(--primary-500), var(--primary-600)) !important;
+    border: none !important;
+}
+
+/* 測試：避免 Bootstrap 在開啟 modal 時對 body 加上 padding-right，導致主內容重算寬度而發生往左/往右位移 */
+body.modal-open {
+    padding-right: 0 !important;
+}
+
 

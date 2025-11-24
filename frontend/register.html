@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SnackForest 註冊</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/frontend/client/css/client.css">
+    <link rel="stylesheet" href="/frontend/client/css/client.mobile.css" media="(max-width: 991.98px)">
+</head>
+<body class="login-page-body">
+<main class="login-wrapper">
+    <div class="login-card card p-4">
+        <div class="text-center mb-3">
+            <div class="login-brand mb-2">SF</div>
+            <h3 class="fw-bold">建立新會員帳號</h3>
+            <p class="text-muted">加入 SnackForest，享受會員專屬優惠</p>
+        </div>
+        <form id="registerForm">
+            <div id="register-feedback" class="alert d-none" role="alert"></div>
+            <div class="mb-3 form-floating">
+                <input type="text" id="reg-name" class="form-control" placeholder="姓名" required>
+                <label for="reg-name">姓名</label>
+            </div>
+            <div class="mb-3 form-floating">
+                <input type="email" id="reg-email" class="form-control" placeholder="電子郵件" required>
+                <label for="reg-email">電子郵件</label>
+            </div>
+            <div class="mb-3 form-floating">
+                <input type="password" id="reg-password" class="form-control" placeholder="密碼" required>
+                <label for="reg-password">密碼</label>
+            </div>
+            <div class="mb-3 form-floating">
+                <input type="tel" id="reg-phone" class="form-control" placeholder="電話">
+                <label for="reg-phone">電話（選填）</label>
+            </div>
+            <div class="mb-3 form-floating">
+                <input type="text" id="reg-address" class="form-control" placeholder="地址">
+                <label for="reg-address">地址（選填）</label>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" id="registerBtn" class="btn btn-success btn-lg">建立帳號</button>
+                <a href="/frontend/login.html" class="btn btn-link">已有帳號？前往登入</a>
+            </div>
+        </form>
+    </div>
+    <p class="text-center text-muted mt-3">© <span id="y"></span> SnackForest</p>
+</main>
+
+<script>
+document.getElementById('y').textContent = new Date().getFullYear();
+const apiBase = (window.SF_API_BASE || 'http://localhost:8000/api').replace(/\/$/, '');
+
+document.getElementById('registerForm').addEventListener('submit', async function(ev) {
+    ev.preventDefault();
+    const fb = document.getElementById('register-feedback'); fb.className = 'alert d-none'; fb.textContent = '';
+    const payload = {
+        name: (document.getElementById('reg-name').value || '').trim(),
+        email: (document.getElementById('reg-email').value || '').trim(),
+        password: (document.getElementById('reg-password').value || '').trim(),
+        phone: (document.getElementById('reg-phone').value || '').trim() || null,
+        address: (document.getElementById('reg-address').value || '').trim() || null
+    };
+    if (!payload.name || !payload.email || !payload.password) {
+        fb.className = 'alert alert-danger'; fb.textContent = '請填寫姓名、電子郵件與密碼'; return;
+    }
+
+    const btn = document.getElementById('registerBtn');
+    btn.setAttribute('disabled', 'disabled');
+    btn.textContent = '註冊中…';
+
+    try {
+        const res = await fetch(apiBase + '/customers', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await (res.ok ? res.json() : res.json().catch(()=>({success:false, message:'註冊失敗'})));
+        if (!res.ok || !data || data.success === false) {
+            const msg = data && data.message ? data.message : '註冊失敗，請稍後再試';
+            fb.className = 'alert alert-danger'; fb.textContent = msg; return;
+        }
+
+        try { if (data.customerId) localStorage.setItem('customerId', String(data.customerId)); } catch(_){}
+        try { if (data.customerName || payload.name) localStorage.setItem('customerName', data.customerName || payload.name); } catch(_){}
+        try { localStorage.setItem('sf-client-role','customer'); } catch(_){}
+
+        // 導到會員頁（使用相對路徑）
+        window.location.href = 'client/member.html';
+    } catch (err) {
+        fb.className = 'alert alert-danger'; fb.textContent = err && err.message ? err.message : '註冊過程發生錯誤';
+    } finally {
+        btn.removeAttribute('disabled'); btn.textContent = '建立帳號';
+    }
+});
+</script>
+
+</body>
+</html>

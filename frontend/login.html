@@ -62,13 +62,16 @@
                 </div>
             </div>
 
-            <button class="w-100 btn btn-lg btn-success" id="loginBtn">
-                <span class="spinner-border spinner-border-sm me-2 d-none" id="loginSpinner" role="status" aria-hidden="true"></span>
-                登入
-            </button>
-                <!-- Guest entry button (for visitors who want to browse without logging in) -->
-                <!-- guest-entry button is positioned via CSS to bottom-right -->
-                <button id="guest-entry-btn" type="button" aria-label="以訪客身分瀏覽">以訪客身分瀏覽</button>
+            <div class="d-grid gap-2 mb-2 d-md-flex">
+                <a href="register.html" class="btn btn-lg btn-outline-secondary flex-fill" id="toRegisterBtn">註冊新會員</a>
+                <button class="btn btn-lg btn-success flex-fill" id="loginBtn">
+                    <span class="spinner-border spinner-border-sm me-2 d-none" id="loginSpinner" role="status" aria-hidden="true"></span>
+                    登入
+                </button>
+            </div>
+            <!-- Guest entry button (for visitors who want to browse without logging in) -->
+            <!-- guest-entry button is positioned via CSS to bottom-right -->
+            <button id="guest-entry-btn" type="button" aria-label="以訪客身分瀏覽">以訪客身分瀏覽</button>
             <div id="msg" class="alert alert-danger mt-3 d-none" role="alert"></div>
         </div>
     </div>
