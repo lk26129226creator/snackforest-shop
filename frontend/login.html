@@ -10,6 +10,26 @@
 <link rel="stylesheet" href="client/css/client.mobile.css" media="(max-width: 991.98px)">
 <link rel="icon" type="image/png" href="/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png">
 </head>
+<!-- custom guest-entry style -->
+<style>
+/* small fixed link-style guest entry in bottom-right */
+#guest-entry-btn {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    z-index: 2400;
+    background: transparent !important;
+    border: none !important;
+    color: #0d6efd !important;
+    text-decoration: underline !important;
+    padding: 6px 8px !important;
+    font-size: 0.95rem !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+}
+#guest-entry-btn:hover { text-decoration: none !important; }
+</style>
+</head>
 <body class="login-page-body" data-require-auth="false">
 <main class="login-wrapper">
     <div class="login-card card">
@@ -47,9 +67,8 @@
                 登入
             </button>
                 <!-- Guest entry button (for visitors who want to browse without logging in) -->
-                <div class="mt-3 text-center">
-                    <button id="guest-entry-btn" type="button" class="btn btn-outline-secondary">以訪客身分瀏覽</button>
-                </div>
+                <!-- guest-entry button is positioned via CSS to bottom-right -->
+                <button id="guest-entry-btn" type="button" aria-label="以訪客身分瀏覽">以訪客身分瀏覽</button>
             <div id="msg" class="alert alert-danger mt-3 d-none" role="alert"></div>
         </div>
     </div>
@@ -182,21 +201,25 @@ document.getElementById('showPwd').addEventListener('change', function(){
 document.getElementById('y').textContent = new Date().getFullYear();
 </script>
 <script>
-// Guest entry behavior: clear client login keys and navigate to client home
+// Guest entry behavior: clear client login keys, mark guest, and navigate to client home
 document.getElementById('guest-entry-btn')?.addEventListener('click', function(){
     try{
-        // Remove common login/session keys used by the client
-        var keys = [
+        // Remove customer-specific and admin session keys
+        var removeKeys = [
             'customerId','sf-client-id','sf-clientId','sfClientId',
-            'customerName','sf-client-name','sf-client-name',
-            'userRole','sf-client-role','sf-client-session',
-            'sf-admin-session','sf-admin-role','userName','username','adminName'
+            'customerName','sf-client-name','sf-client-name','sf-client-avatar','sf-client-avatar-resolved',
+            'sf-client-session','sf-admin-session','sf-admin-role','sf-admin-name','sf-admin-username',
+            'username'
         ];
-        keys.forEach(function(k){ try{ localStorage.removeItem(k); }catch(_){}});
-        // Mark guest flag so client UI can behave accordingly
-        try{ localStorage.setItem('sf-guest','1'); }catch(_){ }
+        removeKeys.forEach(function(k){ try{ localStorage.removeItem(k); }catch(_){} });
+
+        // Mark as guest so client UI can adapt (and ensure role won't be treated as logged-in customer)
+        try{ localStorage.setItem('sf-guest','1'); }catch(_){}
+        try{ localStorage.setItem('userRole','guest'); }catch(_){}
+        try{ localStorage.setItem('sf-client-role','guest'); }catch(_){}
     }catch(_){ }
-    // Redirect to client homepage
+
+    // Redirect to client homepage (allow browsing without being treated as authenticated customer)
     try{ window.location.href = 'client/index.html'; }catch(e){ window.location.assign('client/index.html'); }
 });
 </script>
