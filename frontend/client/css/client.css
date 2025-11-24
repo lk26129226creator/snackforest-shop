@@ -820,7 +820,7 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: var(--shadow-1);
 }
 
-/* Card internals: spacing and typographic rhythm */
+/* 卡片內部：間距與排版節奏 */
 .card .card-body,
 .sf-card .card-body,
 .member-card .card-body,
@@ -841,7 +841,7 @@ h1, h2, h3, h4, h5, h6 {
     font-size: var(--font-size-sm);
 }
 
-/* Forms: unify control appearance and focus state for accessibility */
+/* 表單：統一輸入控制外觀與聚焦狀態（無障礙） */
 .form-control {
     border-radius: var(--radius-sm) !important;
     border: 1px solid rgba(0,0,0,0.08) !important;
@@ -854,16 +854,16 @@ h1, h2, h3, h4, h5, h6 {
     border-color: var(--color-primary-600) !important;
 }
 
-/* Accessibility: clear focus-visible style for interactive controls */
+/* 無障礙：互動控制的 focus-visible 樣式 */
 :focus-visible {
     outline: 3px solid rgba(74,124,89,0.16);
     outline-offset: 2px;
 }
 
-/* Small utility for consistent gutters inside cards */
+/* 卡片內一致化間距的小工具 */
 .card-foot { padding-top: var(--space-sm); }
 
-/* Mobile adjustments: slightly larger tap targets and condensed spacing */
+/* 行動端調整：放大點擊目標並收斂間距 */
 @media (max-width: 991.98px) {
     :root {
         --btn-padding-y: 12px;
@@ -873,7 +873,7 @@ h1, h2, h3, h4, h5, h6 {
     .home-hero { padding: 20px !important; }
 }
 
-/* Homepage: hero improvements for better contrast and hierarchy */
+/* 首頁：Hero 區塊對比與層次優化 */
 .home-hero {
     background: linear-gradient(135deg, var(--color-primary-700) 0%, #0f2230 60%);
     color: var(--color-surface-1);
@@ -897,7 +897,7 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 10px 30px rgba(30,70,40,0.12);
 }
 
-/* Product grid and product card styling */
+/* 商品格與商品卡片樣式 */
 .product-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -928,7 +928,7 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.9rem;
 }
 
-/* Buttons: adopt design tokens and provide reusable button styles */
+/* 按鈕：使用設計 tokens 並提供可重用樣式 */
 .btn-success,
 .btn-primary {
     background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
@@ -1075,11 +1075,11 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 14px;
 }
 
-/* Fix: restore visible styles for buttons/links inside white panels
-   The global `.navbar .btn` rule makes buttons transparent/white in the topbar;
-   that unintentionally affects buttons inside dropdown panels (cart/support).
-   Keep this minimal: explicitly style buttons/links inside the panels so
-   they remain readable on white backgrounds. */
+/* 修正：還原白色面板內按鈕／連結可見樣式
+     - 全域 `.navbar .btn` 規則會讓按鈕在頂欄呈現白色，
+         因此會意外影響到白底的下拉面板（例如購物車、客服）。
+     - 這裡採最小化改動，針對面板內的按鈕／連結明確指定樣式，
+         確保在白底上仍可閱讀與操作。 */
 .client-nav-cart-panel .btn:not(.btn-link) {
     /* keep solid, action-oriented buttons (e.g. 前往結帳) with green background */
     background: var(--primary-600) !important;
