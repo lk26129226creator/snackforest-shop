@@ -398,6 +398,47 @@ body.order-success-active {
     font-size: .95rem;
 }
 
+/* ------------------------------------------------------------------
+   Guest Login Modal - 強制使用黑色字體以覆蓋 Bootstrap 的白色樣式
+   針對 #guestLoginModal 的標題、標籤、輸入、按鈕與 placeholder 做明確覆寫
+   ------------------------------------------------------------------ */
+#guestLoginModal .modal-content,
+#guestLoginModal .modal-header,
+#guestLoginModal .modal-body,
+#guestLoginModal .modal-footer,
+#guestLoginModal .modal-title,
+#guestLoginModal label,
+#guestLoginModal .form-label,
+#guestLoginModal .form-check-label,
+#guestLoginModal .form-control,
+#guestLoginModal p,
+#guestLoginModal small,
+#guestLoginModal .btn {
+    color: #0b0b0b !important;
+}
+
+#guestLoginModal .form-control::placeholder {
+    color: #6b6b6b !important;
+    opacity: 1 !important;
+}
+
+#guestLoginModal .modal-content {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%) !important;
+}
+
+#guestLoginModal .btn-close {
+    color: #2f4858 !important;
+    opacity: 1 !important;
+}
+
+/* 小調整：讓表單欄位文字預設為黑色（有時 bootstrap 會把 input text 設為白色於深色 modal） */
+#guestLoginModal .form-control {
+    color: #0b0b0b !important;
+    background-color: #fff !important;
+    border-color: rgba(0,0,0,0.06) !important;
+}
+
+
 /* 首頁分類網格：client/index.html 的 .category-grid。 */
 .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
 .category-card { background:#fff; border-radius: .75rem; padding: 18px; text-align:center; cursor:pointer; box-shadow: 0 6px 18px rgba(0,0,0,.06); transition: transform .18s ease, box-shadow .18s ease; }
@@ -1023,6 +1064,8 @@ h1, h2, h3, h4, h5, h6 {
 /* Prevent layout shift when modal opens by reserving scrollbar gutter */
 html, body {
     scrollbar-gutter: stable both-edges;
+}
+    z-index: 55;
 }
 
 .client-support-panel h6 {
