@@ -26,7 +26,7 @@ SnackForest - 全局樣式表 (顏色已還原)
     --client-sidebar-width-expanded: 312px; /* 客戶端側欄展開寬度 */
     --client-navbar-height: 88px;           /* 導覽列高度 (同步頂端固定列)，調整為較寬的上下間距 */
     --client-main-max-width: 1240px;        /* 主內容區最大寬度 */
-    --client-main-gutter: 48px;             /* 主內容左右邊距 */
+    --client-main-gutter: 56px;             /* 主內容左右邊距（微調至 56px，為全站提供更寬鬆留白） */
     /* 質感升級：擴充色票與陰影層級 */
     --primary-700: #234a2b;
     --primary-600: #2f5f3a;
@@ -422,7 +422,7 @@ body.order-success-active {
     background: linear-gradient(180deg, var(--primary-700), var(--primary-600));
     color: #eef6ec;
     /* 增加上下高度，讓頁腳更有視覺沉穩感 */
-    padding: 56px 0;
+    padding: 64px 0; /* 微幅增加為 64px */
     margin-top:72px;
 }
 
@@ -2234,28 +2234,4 @@ input[type=number] {
     background: transparent !important;
     pointer-events: none !important;
 }
-
-/* ----- Visual verification helpers (temporary) -----
-   These rules are intentionally specific and use !important so
-   you can refresh the page and immediately verify whether the
-   live site is loading the edited CSS. After you confirm, I'll
-   remove these helpers or convert them to permanent styles. */
-.client-main {
-    padding-left: calc(var(--client-main-gutter) + 12px) !important;
-    padding-right: calc(var(--client-main-gutter) + 12px) !important;
-    /* subtle outline to show content gutter (temporary) */
-    outline: 3px solid rgba(255, 230, 180, 0.06) !important;
-}
-
-.site-footer {
-    padding-top: 56px !important;
-    padding-bottom: 56px !important;
-    /* small top border to make footer band visually obvious */
-    border-top: 6px solid rgba(0,0,0,0.04) !important;
-}
-
-@media (max-width: 991px) {
-    .client-main { outline: none !important; }
-}
-/* ----- end verification helpers ----- */
 
