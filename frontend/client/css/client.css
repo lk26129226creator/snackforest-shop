@@ -2235,3 +2235,27 @@ input[type=number] {
     pointer-events: none !important;
 }
 
+/* ----- Visual verification helpers (temporary) -----
+   These rules are intentionally specific and use !important so
+   you can refresh the page and immediately verify whether the
+   live site is loading the edited CSS. After you confirm, I'll
+   remove these helpers or convert them to permanent styles. */
+.client-main {
+    padding-left: calc(var(--client-main-gutter) + 12px) !important;
+    padding-right: calc(var(--client-main-gutter) + 12px) !important;
+    /* subtle outline to show content gutter (temporary) */
+    outline: 3px solid rgba(255, 230, 180, 0.06) !important;
+}
+
+.site-footer {
+    padding-top: 56px !important;
+    padding-bottom: 56px !important;
+    /* small top border to make footer band visually obvious */
+    border-top: 6px solid rgba(0,0,0,0.04) !important;
+}
+
+@media (max-width: 991px) {
+    .client-main { outline: none !important; }
+}
+/* ----- end verification helpers ----- */
+
