@@ -11,9 +11,11 @@
         const requireAttr = body.getAttribute('data-require-auth');
         if (requireAttr && requireAttr.toLowerCase() === 'false') return;
 
-        // 客戶端角色儲存在兩個可能的 key 中，取到 customer 即視為已登入。
+        // 客戶端角色儲存在兩個可能的 key 中。
+        // 設定允許訪客（'guest'）或標記 `sf-guest='1'` 的情況可繼續瀏覽（不被導回登入）。
         const clientRole = (localStorage.getItem('sf-client-role') || localStorage.getItem('userRole') || '').toLowerCase();
-        if (clientRole === 'customer') return;
+        const guestFlag = (localStorage.getItem('sf-guest') || '').toString();
+        if (clientRole === 'customer' || clientRole === 'guest' || guestFlag === '1') return;
 
         // 支援自訂登入入口，若未指定則依路徑推斷回到 login.html。
         let loginPath = body.getAttribute('data-login-path');
