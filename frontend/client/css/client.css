@@ -421,7 +421,8 @@ body.order-success-active {
 .site-footer{
     background: linear-gradient(180deg, var(--primary-700), var(--primary-600));
     color: #eef6ec;
-    padding:40px 0;
+    /* 增加上下高度，讓頁腳更有視覺沉穩感 */
+    padding: 56px 0;
     margin-top:72px;
 }
 
@@ -1274,8 +1275,9 @@ body.client-sidebar-overlay {
     margin-bottom: 64px;
     margin-left: var(--client-sidebar-width);
     margin-right: 0;
-    padding-left: var(--client-main-gutter);
-    padding-right: var(--client-main-gutter);
+    /* keep a comfortable inner gutter so content never feels glued to edges */
+    padding-left: calc(var(--client-main-gutter) + 12px);
+    padding-right: calc(var(--client-main-gutter) + 12px);
     box-sizing: border-box;
     transition: none;
     will-change: auto;
@@ -1290,7 +1292,7 @@ body.client-sidebar-overlay {
         background: transparent !important;
         border-radius: 0 !important;
         box-shadow: none !important;
-        padding: 24px 0 !important; /* keep some vertical spacing, remove interior card padding */
+        padding: 28px 0 !important; /* slightly taller vertical spacing */
     }
     body.client-sidebar-overlay .client-main {
         background: transparent !important;
@@ -1304,8 +1306,9 @@ body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
     margin: calc(var(--client-navbar-height) + 20px) var(--client-main-gutter) 56px;
     margin-left: var(--client-main-gutter);
-    padding-left: var(--client-main-gutter);
-    padding-right: var(--client-main-gutter);
+    /* preserve the extra inner gutter in overlay mode as well */
+    padding-left: calc(var(--client-main-gutter) + 12px);
+    padding-right: calc(var(--client-main-gutter) + 12px);
 }
 
 .client-footer {
