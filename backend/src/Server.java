@@ -1473,12 +1473,24 @@ public class Server {
                     dao.CustomerDAO customerDAO = new dao.CustomerDAO(conn);
                     model.Customer newCustomer = new model.Customer(newId, name, email, password, "");
                     System.err.println("[DEBUG] Creating customer id=" + newId + " name=" + name + " account=" + email);
-                    boolean ok = customerDAO.save(newCustomer);
-                    System.err.println("[DEBUG] customerDAO.save returned: " + ok);
-                    if (!ok) {
-                        System.err.println("[ERROR] customerDAO.save failed to create customer record");
-                        sendErrorResponse(exchange, 500, "Failed to create customer", null);
-                        return;
+                    try {
+                        boolean ok = customerDAO.save(newCustomer);
+                        System.err.println("[DEBUG] customerDAO.save returned: " + ok);
+                        if (!ok) {
+                            System.err.println("[ERROR] customerDAO.save failed to create customer record");
+                            sendErrorResponse(exchange, 500, "Failed to create customer", null);
+                            return;
+                        }
+                    } catch (java.sql.SQLException sqlEx) {
+                        // 檢查是否為重複鍵或資料完整性違規（MySQL error code 1062 / SQLState 開頭為 23）
+                        int errCode = sqlEx.getErrorCode();
+                        String sqlState = sqlEx.getSQLState();
+                        System.err.println("[ERROR] SQLException during customer save: code=" + errCode + " state=" + sqlState + " msg=" + sqlEx.getMessage());
+                        if (errCode == 1062 || (sqlState != null && sqlState.startsWith("23"))) {
+                            sendErrorResponse(exchange, 409, "Account already exists or constraint violation", sqlEx);
+                            return;
+                        }
+                        throw sqlEx;
                     }
 
                     // DAO.save 只會寫入 id, CustomerName, Account, PasswordHash, Salt；補寫 Email/Phone/Address/UpdatedAt
