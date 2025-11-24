@@ -1262,7 +1262,10 @@ body.client-sidebar-expanded:not(.client-sidebar-overlay) {
 
 body.client-sidebar-overlay {
     --client-sidebar-width: 0px;
-    --client-main-gutter: 16px;
+    /* Do not aggressively reduce the main gutter here — keep the global
+       `--client-main-gutter` so desktop/tablet spacing remains predictable.
+       If overlay-specific smaller gutters are needed for mobile, handle
+       them in media queries instead. */
 }
 
 .client-main {
@@ -1276,8 +1279,8 @@ body.client-sidebar-overlay {
     margin-left: var(--client-sidebar-width);
     margin-right: 0;
     /* keep a comfortable inner gutter so content never feels glued to edges */
-    padding-left: calc(var(--client-main-gutter) + 12px);
-    padding-right: calc(var(--client-main-gutter) + 12px);
+    padding-left: var(--client-main-gutter);
+    padding-right: var(--client-main-gutter);
     box-sizing: border-box;
     transition: none;
     will-change: auto;
