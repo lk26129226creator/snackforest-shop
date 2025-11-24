@@ -243,31 +243,7 @@
                 document.getElementById('guest-password')?.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); doGuestLogin(); } });
             })();
             </script>
-                <script>
-                // Prevent page content horizontal shift when Bootstrap adds padding-right to body
-                (function(){
-                    const modalEl = document.getElementById('guestLoginModal');
-                    if(!modalEl || !window.bootstrap) return;
-
-                    modalEl.addEventListener('show.bs.modal', function(){
-                        // Bootstrap applies inline padding-right to body to compensate for scrollbar removal.
-                        // Remove that inline style shortly after show so layout doesn't jump. We do this only
-                        // for our guest modal to avoid interfering with other global behavior.
-                        setTimeout(() => {
-                            try { document.body.style.paddingRight = ''; } catch (_) {}
-                        }, 20);
-                    });
-
-                    modalEl.addEventListener('shown.bs.modal', function(){
-                        try { document.body.style.paddingRight = ''; } catch(_) {}
-                    });
-
-                    modalEl.addEventListener('hidden.bs.modal', function(){
-                        // ensure any leftover inline padding is cleared when modal closes
-                        try { document.body.style.paddingRight = ''; } catch(_) {}
-                    });
-                })();
-                </script>
+                <!-- Keep Bootstrap's body padding compensation intact to avoid layout shift. -->
         </div>
     </div>
 </nav>
