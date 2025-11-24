@@ -1448,6 +1448,8 @@ public class Server {
             }
             try {
                 String body = readRequestBody(exchange, "");
+                // Debug: 印出收到的 request body 到 stderr，方便在不同 terminal 視窗中觀察
+                System.err.println("[DEBUG] CustomersHandler received body: " + (body == null ? "<null>" : body));
                 JSONObject req = new JSONObject(body);
                 String name = req.optString("name", "").trim();
                 String email = req.optString("email", "").trim();
@@ -1470,8 +1472,11 @@ public class Server {
                     // 使用 DAO.save 建立新使用者（注意：CustomerDAO.save 會對傳入的 password 做雜湊）
                     dao.CustomerDAO customerDAO = new dao.CustomerDAO(conn);
                     model.Customer newCustomer = new model.Customer(newId, name, email, password, "");
+                    System.err.println("[DEBUG] Creating customer id=" + newId + " name=" + name + " account=" + email);
                     boolean ok = customerDAO.save(newCustomer);
+                    System.err.println("[DEBUG] customerDAO.save returned: " + ok);
                     if (!ok) {
+                        System.err.println("[ERROR] customerDAO.save failed to create customer record");
                         sendErrorResponse(exchange, 500, "Failed to create customer", null);
                         return;
                     }
@@ -1496,6 +1501,9 @@ public class Server {
                     return;
                 }
             } catch (Exception e) {
+                // 額外保險：先印出例外到 stderr，確保在任何情況下都有輸出
+                System.err.println("[ERROR] Exception in CustomersHandler: " + e.getClass().getName() + ": " + e.getMessage());
+                e.printStackTrace();
                 sendErrorResponse(exchange, 500, "Failed to create customer", e);
             }
         }
