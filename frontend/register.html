@@ -51,7 +51,20 @@
 
 <script>
 document.getElementById('y').textContent = new Date().getFullYear();
-const apiBase = (window.SF_API_BASE || 'http://localhost:8000/api').replace(/\/$/, '');
+// 優先使用 window.SF_API_BASE（若被外部設定）
+// 否則：若頁面是由 HTTP/HTTPS 提供（有 location.hostname），使用相同 origin 的 /api，
+// 這能避免瀏覽器因「本地網路存取 (PNA)」政策阻擋跨來源到 localhost 的請求。
+// 若頁面沒有可用的 location（例如某些 file:// 情況），才退回到 http://localhost:8000/api。
+const defaultApi = (function(){
+    try {
+        if (typeof window !== 'undefined' && location && location.hostname) {
+            // 使用相同協定與主機，以避免混合內容與本地網路限制
+            return location.protocol + '//' + location.hostname + (location.port ? (':' + location.port) : '') + '/api';
+        }
+    } catch (e) {}
+    return 'http://localhost:8000/api';
+})();
+const apiBase = (window.SF_API_BASE || defaultApi).replace(/\/$/, '');
 
 document.getElementById('registerForm').addEventListener('submit', async function(ev) {
     ev.preventDefault();
