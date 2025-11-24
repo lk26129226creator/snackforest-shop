@@ -127,15 +127,26 @@
 		if (redirectUrl) setTimeout(() => { try { window.location.href = redirectUrl; } catch (_) { window.location.assign(redirectUrl); } }, 1600);
 	}
 
-	if (role !== 'customer') {
-		const redirectTarget = role === 'admin' ? '../admin/index.html' : '../login.html';
-		lockDownMemberUI('請使用會員帳號登入以檢視會員中心，系統將為您導向適當頁面。', 'warning', redirectTarget);
-		return;
-	}
+	// Only enforce member-only redirects when the user is actively viewing the member area.
+	// This file is loaded on both the standalone `member.html` and on the homepage (as a tab).
+	// To avoid redirecting guests who are browsing the homepage, only lock down when:
+	//  - the current pathname is the standalone member page, OR
+	//  - the current location hash explicitly requests the member section (#member)
+	const pathname = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+	const isStandaloneMemberPage = pathname.toLowerCase().endsWith('/member.html') || pathname.toLowerCase().endsWith('member.html');
+	const wantsMemberSection = (window.location && String(window.location.hash || '').replace('#','') === 'member');
 
-	if (!cid) {
-		lockDownMemberUI('請先登入會員帳號以檢視會員中心。', 'warning', '../login.html');
-		return;
+	if (isStandaloneMemberPage || wantsMemberSection) {
+		if (role !== 'customer') {
+			const redirectTarget = role === 'admin' ? '../admin/index.html' : '../login.html';
+			lockDownMemberUI('請使用會員帳號登入以檢視會員中心，系統將為您導向適當頁面。', 'warning', redirectTarget);
+			return;
+		}
+
+		if (!cid) {
+			lockDownMemberUI('請先登入會員帳號以檢視會員中心。', 'warning', '../login.html');
+			return;
+		}
 	}
 
 	function resolveAssetUrl(path) {
