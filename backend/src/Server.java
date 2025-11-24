@@ -1463,7 +1463,22 @@ public class Server {
                 }
 
                 try (Connection conn = DBConnect.getConnection()) {
-                    // 計算下一個 id
+                    // 寫入前先檢查是否已有相同 Account（避免重複鍵）
+                    try (PreparedStatement check = conn.prepareStatement("SELECT COUNT(*) FROM customers WHERE LOWER(Account)=LOWER(?)")) {
+                        check.setString(1, email);
+                        try (ResultSet crs = check.executeQuery()) {
+                            if (crs.next() && crs.getInt(1) > 0) {
+                                System.err.println("[INFO] Attempt to create existing account: " + email);
+                                sendErrorResponse(exchange, 409, "Account already exists", null);
+                                return;
+                            }
+                        }
+                    } catch (SQLException ex) {
+                        System.err.println("[WARN] Failed to perform pre-check for existing account: " + ex.getMessage());
+                        // 不要因為 pre-check 失敗就停止註冊流程；繼續嘗試建立帳號，接著由後續的 INSERT 去處理可能的錯誤
+                    }
+
+                    // 計算下一個 id（現行設計未使用 AUTO_INCREMENT）
                     int newId = 1;
                     try (Statement s = conn.createStatement(); ResultSet rs = s.executeQuery("SELECT COALESCE(MAX(idCustomers),0) + 1 FROM customers")) {
                         if (rs.next()) newId = rs.getInt(1);
@@ -1490,7 +1505,8 @@ public class Server {
                             sendErrorResponse(exchange, 409, "Account already exists or constraint violation", sqlEx);
                             return;
                         }
-                        throw sqlEx;
+                        sendErrorResponse(exchange, 500, "Failed to create customer due to database error", sqlEx);
+                        return;
                     }
 
                     // DAO.save 只會寫入 id, CustomerName, Account, PasswordHash, Salt；補寫 Email/Phone/Address/UpdatedAt
