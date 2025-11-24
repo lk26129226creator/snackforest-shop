@@ -982,43 +982,35 @@ h1, h2, h3, h4, h5, h6 {
 /* Guest inline login modal tweaks */
 #guestLoginModal .modal-dialog { max-width: 420px; }
 #guestLoginModal .modal-content {
-    border-radius: 12px;
+    border-radius: 12px !important;
     overflow: hidden;
-    box-shadow: 0 18px 50px rgba(8,24,16,0.18);
-    border: none;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfff9 100%);
-    color: var(--text-color);
+    box-shadow: 0 18px 50px rgba(8,24,16,0.28) !important;
+    border: none !important;
 }
 #guestLoginModal .modal-header {
-    background: #fbfff9;
-    color: var(--text-color);
-    border-bottom: 1px solid rgba(0,0,0,0.04);
-    padding: 1rem 1.25rem;
+    background: linear-gradient(90deg,var(--primary-600),var(--primary-500)) !important;
+    color: #ffffff !important;
+    border-bottom: none !important;
+    padding: 1rem 1.25rem !important;
 }
-#guestLoginModal .modal-title { color: var(--primary-600); font-weight: 700; letter-spacing: 0.2px; }
-#guestLoginModal .modal-body { background: transparent; padding: 1.25rem; color: var(--text-color); }
+#guestLoginModal .modal-title { color: #ffffff !important; font-weight: 700; letter-spacing: 0.2px; }
+#guestLoginModal .modal-body { background: #f6fbf6; padding: 1.15rem 1.25rem; }
 #guestLoginModal .form-floating .form-control {
     border-radius: 10px;
     padding: 0.9rem 0.85rem;
-    border: 1px solid rgba(12,20,12,0.08);
+    border: 1px solid rgba(12,20,12,0.06);
     box-shadow: none;
-    color: #111;
-    background: #fff;
 }
-#guestLoginModal .form-floating label { color: #5b6470; padding-left: 0.25rem; }
-#guestLoginModal .form-control::placeholder { color: rgba(0,0,0,0.35); }
-#guestLoginModal .form-check label { color: var(--muted-text); }
+#guestLoginModal .form-floating label { padding-left: 0.25rem; }
+#guestLoginModal .form-check { margin-left: 4px; }
 #guestLoginModal .modal-footer { background: transparent; padding: 0.75rem 1.25rem 1rem; }
 #guestLoginModal .btn-success {
     border-radius: 999px;
     padding: 0.55rem 1.1rem;
     box-shadow: 0 8px 20px rgba(31,44,36,0.12);
-    background: linear-gradient(135deg,var(--primary-500),var(--primary-600));
-    color: #fff;
-    border: none;
 }
-#guestLoginModal .btn-link { color: var(--muted-text); }
-#guestLoginModal .alert { margin-bottom: 0.5rem; color: var(--primary-700); background: rgba(255,235,235,0.95); border-radius: 8px; padding: 10px; }
+#guestLoginModal .btn-link { color: rgba(12,20,12,0.7); }
+#guestLoginModal .alert { margin-bottom: 0.5rem; }
 
 /* slightly darker backdrop for modal */
 .modal-backdrop.show { background-color: rgba(10,20,12,0.5); }
@@ -1029,7 +1021,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Prevent layout shift when modal opens by reserving scrollbar gutter */
-html, body { scrollbar-gutter: stable both-edges; }
+html, body {
+    scrollbar-gutter: stable both-edges;
+}
 
 .client-support-panel h6 {
     font-size: 0.95rem;
