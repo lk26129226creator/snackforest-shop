@@ -115,7 +115,134 @@
                     <i class="fa-solid fa-user-check me-2" aria-hidden="true"></i>
                     <span>會員中心</span>
                 </a>
+
             </div>
+            <!-- Guest inline login modal (shown when guest clicks member/avatar) -->
+            <div class="modal fade" id="guestLoginModal" tabindex="-1" aria-labelledby="guestLoginModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="guestLoginModalLabel">會員登入</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-floating mb-3">
+                                <input type="text" id="guest-username" class="form-control" placeholder="帳號" autocomplete="username">
+                                <label for="guest-username">帳號</label>
+                            </div>
+                            <div class="form-floating mb-2">
+                                <input type="password" id="guest-password" class="form-control" placeholder="密碼" autocomplete="current-password">
+                                <label for="guest-password">密碼</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="guest-showpwd">
+                                <label class="form-check-label" for="guest-showpwd">顯示密碼</label>
+                            </div>
+                            <div id="guest-login-msg" class="alert alert-danger d-none" role="alert"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-link" data-bs-dismiss="modal">取消</button>
+                            <button type="button" class="btn btn-success" id="guest-login-btn">登入</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            // Guest inline login modal behavior
+            (function(){
+                function getClientRole(){
+                    return (localStorage.getItem('sf-client-role') || localStorage.getItem('userRole') || '').toLowerCase();
+                }
+
+                // Show modal when guest clicks member links/buttons
+                document.addEventListener('click', function(ev){
+                    try{
+                        const target = ev.target.closest && ev.target.closest('a,button');
+                        if(!target) return;
+                        const href = target.getAttribute && target.getAttribute('href');
+                        const isMemberLink = (target.classList && target.classList.contains('client-member-btn')) ||
+                                                                 (target.closest && target.closest('[data-client-profile-link]')) ||
+                                                                 (href && href.indexOf('member.html')>=0);
+                        if(!isMemberLink) return;
+
+                        const role = getClientRole();
+                        if(role === 'customer') return; // allow normal navigation for logged-in customers
+
+                        // prevent navigation and show inline modal for quick login
+                        ev.preventDefault();
+                        var modalEl = document.getElementById('guestLoginModal');
+                        if(!modalEl) return;
+                        var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        bsModal.show();
+                        // put focus on username
+                        setTimeout(function(){ try{ document.getElementById('guest-username').focus(); }catch(_){} }, 150);
+                    }catch(e){ /* ignore */ }
+                }, true);
+
+                // handle show password toggle
+                document.getElementById('guest-showpwd')?.addEventListener('change', function(){
+                    var pwd = document.getElementById('guest-password'); if(pwd) pwd.type = this.checked ? 'text' : 'password';
+                });
+
+                function setBusy(busy){
+                    var btn = document.getElementById('guest-login-btn');
+                    if(!btn) return;
+                    if(busy){ btn.setAttribute('disabled','disabled'); btn.textContent = '登入中…'; }
+                    else { btn.removeAttribute('disabled'); btn.textContent = '登入'; }
+                }
+
+                async function doGuestLogin(){
+                    var msg = document.getElementById('guest-login-msg'); if(msg){ msg.classList.add('d-none'); msg.textContent=''; }
+                    var username = (document.getElementById('guest-username')||{}).value || '';
+                    var password = (document.getElementById('guest-password')||{}).value || '';
+                    if(!username || !password){ if(msg){ msg.textContent='請輸入帳號密碼'; msg.classList.remove('d-none'); } return; }
+                    setBusy(true);
+                    try{
+                        const apiBase = (window.SF_API_BASE || 'http://localhost:8000/api').replace(/\/$/,'');
+                        const res = await fetch(apiBase + '/login', {
+                            method: 'POST', headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({ username: username.trim(), password: password })
+                        });
+                        if(!res.ok){ let text='登入失敗'; try{ const d = await res.json(); if(d && d.message) text = d.message; }catch(_){} throw new Error(text); }
+                        const data = await res.json();
+                        if(!data || !data.success){ throw new Error(data && data.message ? data.message : '登入失敗'); }
+
+                        const resolvedRole = (data.role||'').toLowerCase();
+                        localStorage.setItem('userRole', resolvedRole);
+                        if(resolvedRole === 'customer'){
+                            if(data.customerId) { localStorage.setItem('customerId', data.customerId); localStorage.setItem('sf-client-id', String(data.customerId)); }
+                            if(data.customerName){ localStorage.setItem('customerName', data.customerName); localStorage.setItem('sf-client-name', data.customerName); localStorage.setItem('userName', data.customerName); }
+                            localStorage.setItem('sf-client-role','customer');
+                            try{ localStorage.setItem('sf-client-session', JSON.stringify({ role:'customer', customerId: data.customerId||null, name: data.customerName||'', loginAt: Date.now() })); }catch(_){}
+                        } else {
+                            // admin
+                            const fallbackName = data.adminName || data.userName || 'Admin';
+                            localStorage.setItem('userName', fallbackName);
+                            localStorage.setItem('sf-admin-role','admin');
+                            try{ localStorage.setItem('sf-admin-session', JSON.stringify({ role:'admin', name: fallbackName, username: username, loginAt: Date.now() })); }catch(_){}
+                        }
+
+                        // hide modal and navigate to member area for customers, admin to admin area
+                        var modalEl = document.getElementById('guestLoginModal');
+                        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                        if(resolvedRole === 'customer'){
+                            window.location.href = 'member.html';
+                        } else if(resolvedRole === 'admin'){
+                            window.location.href = '../admin/index.html';
+                        } else {
+                            // fallback to client index
+                            window.location.href = 'index.html';
+                        }
+                    }catch(e){ if(msg){ msg.textContent = e && e.message ? e.message : '登入失敗'; msg.classList.remove('d-none'); } }
+                    finally{ setBusy(false); }
+                }
+
+                document.getElementById('guest-login-btn')?.addEventListener('click', function(ev){ doGuestLogin(); });
+                // allow Enter key on password field
+                document.getElementById('guest-password')?.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); doGuestLogin(); } });
+            })();
+            </script>
         </div>
     </div>
 </nav>
