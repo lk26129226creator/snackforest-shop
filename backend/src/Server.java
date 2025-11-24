@@ -88,6 +88,8 @@ public class Server {
             HttpContext payCtx = server.createContext("/api/paymentmethod", new PaymentMethodHandler());
             // API: 登入驗證，對應 client/js/auth-guard.js 與 admin/js/auth 模組。
             HttpContext loginCtx = server.createContext("/api/login", new LoginHandler());
+            // API: 取得 customers schema 的 debug 端點（臨時，用於排查資料庫 schema 問題）
+            HttpContext customersSchemaCtx = server.createContext("/api/debug/schema/customers", new CustomersSchemaHandler());
             // API: 顧客註冊（前端 register.html 會 POST /api/customers）
             HttpContext customersCtx = server.createContext("/api/customers", new CustomersHandler());
             // API: 圖片上傳，同步管理端商品與輪播管理上傳需求。
@@ -104,7 +106,7 @@ public class Server {
             HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
 
             // 彙總所有 Context，統一加入 CORS Filter 以支援跨來源的前端 fetch。
-            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, heroUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, customersCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, heroGalleryCtx, customerProfileCtx};
+            HttpContext[] allContexts = {productsCtx, dbDebugCtx, customersSchemaCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, heroUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, customersCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, heroGalleryCtx, customerProfileCtx};
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
@@ -1167,6 +1169,53 @@ public class Server {
                 resp.put("message", e.getMessage());
                 e.printStackTrace();
                 sendJsonResponse(exchange, resp.toString(), 500);
+            }
+        }
+    }
+
+    /**
+     * 臨時的 customers schema 檢視端點，回傳 DESCRIBE 與 SHOW CREATE TABLE 的結果（僅供除錯，部署後可移除）。
+     */
+    static class CustomersSchemaHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+                return;
+            }
+            JSONObject resp = new JSONObject();
+            try (Connection conn = DBConnect.getConnection()) {
+                // DESCRIBE customers
+                try (PreparedStatement desc = conn.prepareStatement("DESCRIBE customers"); ResultSet rs = desc.executeQuery()) {
+                    JSONArray cols = new JSONArray();
+                    while (rs.next()) {
+                        JSONObject c = new JSONObject();
+                        c.put("Field", rs.getString("Field"));
+                        c.put("Type", rs.getString("Type"));
+                        c.put("Null", rs.getString("Null"));
+                        c.put("Key", rs.getString("Key"));
+                        c.put("Default", rs.getString("Default"));
+                        c.put("Extra", rs.getString("Extra"));
+                        cols.put(c);
+                    }
+                    resp.put("describe", cols);
+                }
+
+                // SHOW CREATE TABLE customers
+                try (PreparedStatement sct = conn.prepareStatement("SHOW CREATE TABLE customers"); ResultSet r2 = sct.executeQuery()) {
+                    if (r2.next()) {
+                        String create = r2.getString(2);
+                        resp.put("createTable", create);
+                    }
+                }
+
+                resp.put("status", "ok");
+                sendJsonResponse(exchange, resp.toString(), 200);
+            } catch (Exception e) {
+                resp.put("status", "error");
+                resp.put("message", e.getMessage());
+                e.printStackTrace();
+                try { sendJsonResponse(exchange, resp.toString(), 500); } catch (IOException ioe) { ioe.printStackTrace(); }
             }
         }
     }
