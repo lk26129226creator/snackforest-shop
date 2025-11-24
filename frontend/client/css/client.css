@@ -1019,6 +1019,11 @@ h1, h2, h3, h4, h5, h6 {
     #guestLoginModal .modal-dialog { margin: 1.5rem; }
     #guestLoginModal .modal-body { padding: 1rem; }
 }
+
+/* Prevent layout shift when modal opens by reserving scrollbar gutter */
+html, body {
+    scrollbar-gutter: stable both-edges;
+}
     z-index: 55;
 }
 
