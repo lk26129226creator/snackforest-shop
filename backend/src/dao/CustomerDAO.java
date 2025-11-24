@@ -93,13 +93,8 @@ public class CustomerDAO {
                     }
                 }
 
-                // 回溯支援：歷史版本曾以 Phone 欄位作為登入驗證依據
-                if (hasColumn(rs, "Phone")) {
-                    String phonePassword = rs.getString("Phone");
-                    if (phonePassword != null && phonePassword.equals(password)) {
-                        return mapRowToCustomer(rs);
-                    }
-                }
+                // 注意：已移除以 Phone 作為密碼的回溯支援。
+                // 在將現有使用者的 Phone 遷移為密碼（雜湊）之後，請確保資料庫已產生 PasswordHash 與 Salt。
             }
         }
         return null; // 查無資料或密碼不符

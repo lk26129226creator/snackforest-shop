@@ -88,6 +88,8 @@ public class Server {
             HttpContext payCtx = server.createContext("/api/paymentmethod", new PaymentMethodHandler());
             // API: 登入驗證，對應 client/js/auth-guard.js 與 admin/js/auth 模組。
             HttpContext loginCtx = server.createContext("/api/login", new LoginHandler());
+            // API: 顧客註冊（前端 register.html 會 POST /api/customers）
+            HttpContext customersCtx = server.createContext("/api/customers", new CustomersHandler());
             // API: 圖片上傳，同步管理端商品與輪播管理上傳需求。
             HttpContext uploadCtx = server.createContext("/api/upload/image", new ImageUploadHandler());
             // API: 圖片刪除，與 admin/js/images.js 清理功能對應。
@@ -102,7 +104,7 @@ public class Server {
             HttpContext customerProfileCtx = server.createContext("/api/customer-profile", new CustomerProfileHandler());
 
             // 彙總所有 Context，統一加入 CORS Filter 以支援跨來源的前端 fetch。
-            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, heroUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, heroGalleryCtx, customerProfileCtx};
+            HttpContext[] allContexts = {productsCtx, dbDebugCtx, staticCtx, rootCtx, imagesCtx, uploadsCtx, avatarUploadsCtx, heroUploadsCtx, pingCtx, categoryCtx, categoriesCtx, orderCtx, shipCtx, payCtx, loginCtx, customersCtx, uploadCtx, deleteCtx, carouselCtx, siteConfigCtx, heroGalleryCtx, customerProfileCtx};
             for (HttpContext ctx : allContexts) ctx.getFilters().add(new CorsFilter());
 
             server.start();
@@ -1429,6 +1431,72 @@ public class Server {
                 else sendErrorResponse(exchange, 401, "帳號或密碼錯誤", null);
             } catch (Exception e) {
                 sendErrorResponse(exchange, 500, "An unexpected error occurred during login", e);
+            }
+        }
+    }
+
+    /**
+     * 處理 /api/customers 的 POST 請求，用於前端註冊新會員。
+     * 只實作 POST（建立新會員），回傳 JSON { success: true, customerId, customerName }
+     */
+    static class CustomersHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendErrorResponse(exchange, 405, "Method Not Allowed", null);
+                return;
+            }
+            try {
+                String body = readRequestBody(exchange, "");
+                JSONObject req = new JSONObject(body);
+                String name = req.optString("name", "").trim();
+                String email = req.optString("email", "").trim();
+                String password = req.optString("password", "").trim();
+                String phone = req.has("phone") && !req.isNull("phone") ? req.optString("phone", null) : null;
+                String address = req.has("address") && !req.isNull("address") ? req.optString("address", null) : null;
+
+                if (name.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                    sendErrorResponse(exchange, 400, "name, email and password are required", null);
+                    return;
+                }
+
+                try (Connection conn = DBConnect.getConnection()) {
+                    // 計算下一個 id
+                    int newId = 1;
+                    try (Statement s = conn.createStatement(); ResultSet rs = s.executeQuery("SELECT COALESCE(MAX(idCustomers),0) + 1 FROM customers")) {
+                        if (rs.next()) newId = rs.getInt(1);
+                    }
+
+                    // 使用 DAO.save 建立新使用者（注意：CustomerDAO.save 會對傳入的 password 做雜湊）
+                    dao.CustomerDAO customerDAO = new dao.CustomerDAO(conn);
+                    model.Customer newCustomer = new model.Customer(newId, name, email, password, "");
+                    boolean ok = customerDAO.save(newCustomer);
+                    if (!ok) {
+                        sendErrorResponse(exchange, 500, "Failed to create customer", null);
+                        return;
+                    }
+
+                    // DAO.save 只會寫入 id, CustomerName, Account, PasswordHash, Salt；補寫 Email/Phone/Address/UpdatedAt
+                    try (PreparedStatement ps = conn.prepareStatement("UPDATE customers SET Email=?, Phone=?, Address=?, UpdatedAt=NOW() WHERE idCustomers=?")) {
+                        ps.setString(1, email);
+                        ps.setString(2, phone);
+                        ps.setString(3, address);
+                        ps.setInt(4, newId);
+                        ps.executeUpdate();
+                    } catch (Exception ex) {
+                        // 非致命：已建立帳號，但無法更新額外欄位
+                        System.err.println("Warning: failed to update extra customer fields: " + ex.getMessage());
+                    }
+
+                    JSONObject resp = new JSONObject();
+                    resp.put("success", true);
+                    resp.put("customerId", newId);
+                    resp.put("customerName", name);
+                    sendJsonResponse(exchange, resp.toString(), 201);
+                    return;
+                }
+            } catch (Exception e) {
+                sendErrorResponse(exchange, 500, "Failed to create customer", e);
             }
         }
     }
