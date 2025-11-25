@@ -26,6 +26,13 @@ body {
     min-height: 100vh;
 }
 
+/* 確保 html/body 伸展以使用 flex 推動 footer */
+html, body { height: 100%; }
+
+/* 隱藏非預期位置直接放在 body 下的 close 按鈕（常見於斷裂的 toast markup）
+   只針對直接 child 的 btn-close，以免影響 modal/popover 內的按鈕 */
+body > .btn-close { display: none !important; }
+
 body.client-search-open {
     overflow: hidden;
 }
@@ -61,6 +68,27 @@ body.client-sidebar-expanded {
 /* 確保主內容高度可以推擠頁尾到視窗底部（避免頁尾漂浮） */
 @media (max-width: 991.98px) {
     .client-main { min-height: calc(100vh - var(--client-navbar-height) - var(--client-tabbar-height) - 24px); }
+}
+
+/* 讓 site-footer 固定在主佈局底部（若內容不足），但不要使用 position:fixed，保持可滾動性 */
+.site-footer { margin-top: auto; }
+
+/* 行動版：將 login.html 裡的 fixed guest-entry 按鈕改為卡片內的靜態按鈕，避免靠近主要按鈕或被 tabbar 遮擋 */
+@media (max-width: 991.98px) {
+    #guest-entry-btn {
+        position: static !important;
+        right: auto !important;
+        bottom: auto !important;
+        display: inline-block !important;
+        margin: 10px auto 0 auto !important;
+        padding: 8px 12px !important;
+        text-decoration: underline !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: var(--primary-color, #0d6efd) !important;
+        font-size: 0.95rem !important;
+    }
 }
 
 body.client-sidebar-overlay .client-main {

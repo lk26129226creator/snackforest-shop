@@ -31,9 +31,19 @@
                 throw new Error(res.status === 404 ? '找不到該商品。' : `無法載入商品 (HTTP ${res.status})`);
             }
             const rawProduct = await res.json();
-            const product = normalizeProduct(rawProduct);
-            if (!product) throw new Error('商品資料格式不正確。');
-            
+            // normalizeProduct may be provided by utils; ensure returned object contains safe arrays/strings
+            const product = (typeof normalizeProduct === 'function') ? normalizeProduct(rawProduct) : rawProduct;
+            if (!product || typeof product !== 'object') throw new Error('商品資料格式不正確。');
+
+            // Defensive defaults used in rendering
+            if (!Array.isArray(product.imageUrls)) {
+                product.imageUrls = [];
+            }
+            if (!product.imageUrl && product.imageUrls.length > 0) {
+                product.imageUrl = product.imageUrls[0];
+            }
+            product.imageUrl = product.imageUrl || '';
+
             renderProductDetail(container, product);
         } catch (e) {
             container.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
