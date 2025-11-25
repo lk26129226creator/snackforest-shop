@@ -162,7 +162,9 @@
 		const isUpload = lowerPrefixed.startsWith('/uploads/');
 		const isFrontendAsset = lowerPrefixed.startsWith('frontend/') || lowerPrefixed.startsWith('/frontend/');
 		const frontendOrigin = (window.location && window.location.origin) || API_ORIGIN;
-		const base = isUpload ? STORAGE_ORIGIN : (isFrontendAsset ? frontendOrigin : API_ORIGIN);
+		// 使用 typeof 檢查以避免在某些執行環境中觸發 ReferenceError
+		const storageOrigin = (typeof STORAGE_ORIGIN !== 'undefined' && STORAGE_ORIGIN) ? STORAGE_ORIGIN : API_ORIGIN;
+		const base = isUpload ? storageOrigin : (isFrontendAsset ? frontendOrigin : API_ORIGIN);
 		if (!base) return normalizedPrefixed;
 		const normalizedBase = base.replace(/\/+$/, '');
 		const joined = normalizedPrefixed.startsWith('/') ? `${normalizedBase}${normalizedPrefixed}` : `${normalizedBase}/${normalizedPrefixed}`;
