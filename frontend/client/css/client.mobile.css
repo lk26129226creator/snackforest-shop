@@ -91,31 +91,6 @@ body.client-sidebar-expanded {
     }
 }
 
-/* 行動版：把 site-footer 固定在視窗底部，並為內容增加足夠的底部內距以避免遮擋 */
-@media (max-width: 991.98px) {
-    .site-footer {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px));
-        z-index: 1150;
-        margin: 0;
-        padding-top: 14px;
-        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-        background: linear-gradient(180deg, var(--primary-700), var(--primary-600));
-        box-shadow: 0 -8px 30px rgba(15,23,42,0.12);
-    }
-
-    /* 增加主內容底部內距，確保滾動時不會被 footer 與 tabbar 遮蓋 */
-    body {
-        padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 110px);
-    }
-
-    .client-main {
-        padding-bottom: calc(110px + var(--client-main-gutter));
-    }
-}
-
 body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
     margin: clamp(18px, 5vw, 26px) var(--client-main-gutter);
