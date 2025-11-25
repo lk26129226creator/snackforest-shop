@@ -559,9 +559,9 @@
 		currentProfile = data;
 		const displayName = data.displayName || data.name || storedCustomerName;
 		if (profileNameInput) profileNameInput.value = displayName || '';
-		if (profileEmailInput) profileEmailInput.value = data.email || '';
-		if (profilePhoneInput) profilePhoneInput.value = data.phone || '';
-		if (profileAddressInput) profileAddressInput.value = data.address || '';
+		if (profileEmailInput) profileEmailInput.value = data.email || (localStorage.getItem('sf-client-email') || '');
+		if (profilePhoneInput) profilePhoneInput.value = data.phone || (localStorage.getItem('sf-client-phone') || '');
+		if (profileAddressInput) profileAddressInput.value = data.address || (localStorage.getItem('sf-client-address') || '');
 		if (profileIdInput) profileIdInput.value = data.customerId || cid || '';
 		if (avatarInitial) {
 			const initial = (displayName || 'M').trim().charAt(0).toUpperCase() || 'M';
@@ -717,6 +717,10 @@
 			} else {
 				localStorage.removeItem('sf-client-id');
 			}
+			// Sync email/phone/address into localStorage as a local fallback
+			try { if (data.email) localStorage.setItem('sf-client-email', data.email); else localStorage.removeItem('sf-client-email'); } catch(_){}
+			try { if (data.phone) localStorage.setItem('sf-client-phone', data.phone); else localStorage.removeItem('sf-client-phone'); } catch(_){}
+			try { if (data.address) localStorage.setItem('sf-client-address', data.address); else localStorage.removeItem('sf-client-address'); } catch(_){}
 			if (sanitizedAvatar) {
 				localStorage.setItem('sf-client-avatar', sanitizedAvatar);
 				localStorage.setItem('sf-client-avatar-resolved', finalAvatarUrl);

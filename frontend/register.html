@@ -106,7 +106,11 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         }
 
         try { if (data.customerId) localStorage.setItem('customerId', String(data.customerId)); } catch(_){}
-        try { if (data.customerName || payload.name) localStorage.setItem('customerName', data.customerName || payload.name); } catch(_){}
+        try { if (data.customerName || payload.name) localStorage.setItem('customerName', data.customerName || payload.name); } catch(_){ }
+        // Save email/phone/address locally as temporary fallback for immediate profile view
+        try { if (payload.email) localStorage.setItem('sf-client-email', payload.email); else localStorage.removeItem('sf-client-email'); } catch(_){}
+        try { if (payload.phone) localStorage.setItem('sf-client-phone', payload.phone); else localStorage.removeItem('sf-client-phone'); } catch(_){}
+        try { if (payload.address) localStorage.setItem('sf-client-address', payload.address); else localStorage.removeItem('sf-client-address'); } catch(_){}
         try { localStorage.setItem('sf-client-role','customer'); } catch(_){}
 
         // 顯示註冊成功懸浮提示，然後導到會員頁（延遲導向讓使用者看到提示）

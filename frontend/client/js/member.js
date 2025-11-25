@@ -181,9 +181,9 @@
 		currentProfile = data;
 		const displayName = data.displayName || data.name || storedCustomerName;
 		if (profileNameInput) profileNameInput.value = displayName || '';
-		if (profileEmailInput) profileEmailInput.value = data.email || '';
-		if (profilePhoneInput) profilePhoneInput.value = data.phone || '';
-		if (profileAddressInput) profileAddressInput.value = data.address || '';
+		if (profileEmailInput) profileEmailInput.value = data.email || (localStorage.getItem('sf-client-email') || '');
+		if (profilePhoneInput) profilePhoneInput.value = data.phone || (localStorage.getItem('sf-client-phone') || '');
+		if (profileAddressInput) profileAddressInput.value = data.address || (localStorage.getItem('sf-client-address') || '');
 		if (profileIdInput) profileIdInput.value = data.customerId || cid || '';
 		if (avatarInitial) { const initial = (displayName || 'M').trim().charAt(0).toUpperCase() || 'M'; avatarInitial.textContent = initial; }
 		const previousStoredAvatar = getStoredAvatarUrl();
@@ -244,7 +244,36 @@
 		}
 		if (profileUpdatedEl) { if (data.updatedAt) { try { profileUpdatedEl.textContent = '最後更新：' + new Date(data.updatedAt).toLocaleString('zh-TW'); } catch (_) { profileUpdatedEl.textContent = ''; } } else { profileUpdatedEl.textContent = ''; } }
 		if (displayName && displayName !== storedCustomerName) { localStorage.setItem('customerName', displayName); } else if (!displayName) { localStorage.removeItem('customerName'); }
-		try { if (displayName) { localStorage.setItem('sf-client-name', displayName); } else { localStorage.removeItem('sf-client-name'); } if (cid) { localStorage.setItem('sf-client-id', cid); } else { localStorage.removeItem('sf-client-id'); } if (sanitizedAvatar) { localStorage.setItem('sf-client-avatar', sanitizedAvatar); localStorage.setItem('sf-client-avatar-resolved', finalAvatarUrl); } else { localStorage.removeItem('sf-client-avatar'); localStorage.removeItem('sf-client-avatar-resolved'); } if (avatarVersion) { localStorage.setItem('sf-client-profile-version', String(avatarVersion)); localStorage.setItem('sf-client-profile-sync', String(Date.now())); } else { localStorage.removeItem('sf-client-profile-version'); localStorage.removeItem('sf-client-profile-sync'); } } catch (_) {}
+		try {
+			if (displayName) {
+				localStorage.setItem('sf-client-name', displayName);
+			} else {
+				localStorage.removeItem('sf-client-name');
+			}
+			if (cid) {
+				localStorage.setItem('sf-client-id', cid);
+			} else {
+				localStorage.removeItem('sf-client-id');
+			}
+			if (sanitizedAvatar) {
+				localStorage.setItem('sf-client-avatar', sanitizedAvatar);
+				localStorage.setItem('sf-client-avatar-resolved', finalAvatarUrl);
+			} else {
+				localStorage.removeItem('sf-client-avatar');
+				localStorage.removeItem('sf-client-avatar-resolved');
+			}
+			if (avatarVersion) {
+				localStorage.setItem('sf-client-profile-version', String(avatarVersion));
+				localStorage.setItem('sf-client-profile-sync', String(Date.now()));
+			} else {
+				localStorage.removeItem('sf-client-profile-version');
+				localStorage.removeItem('sf-client-profile-sync');
+			}
+			// 同步常見欄位作為立即顯示的備援
+			try { if (data.email) localStorage.setItem('sf-client-email', data.email); else localStorage.removeItem('sf-client-email'); } catch(_){}
+			try { if (data.phone) localStorage.setItem('sf-client-phone', data.phone); else localStorage.removeItem('sf-client-phone'); } catch(_){}
+			try { if (data.address) localStorage.setItem('sf-client-address', data.address); else localStorage.removeItem('sf-client-address'); } catch(_){}
+		} catch (_) {}
 		try { const detail = { name: displayName || '', avatarUrl: sanitizedAvatar || '', avatarUrlResolved: finalAvatarUrl || '', avatarVersion: avatarVersion || '', updatedAt: data.updatedAt || '', customerId: cid || '' }; window.dispatchEvent(new CustomEvent('sf:profile-updated', { detail })); window.dispatchEvent(new CustomEvent('avatar-updated', { detail })); } catch (_) {}
 	}
 
