@@ -73,24 +73,6 @@ body.client-sidebar-expanded {
 /* 讓 site-footer 固定在主佈局底部（若內容不足），但不要使用 position:fixed，保持可滾動性 */
 .site-footer { margin-top: auto; }
 
-/* 行動版：將 login.html 裡的 fixed guest-entry 按鈕改為卡片內的靜態按鈕，避免靠近主要按鈕或被 tabbar 遮擋 */
-@media (max-width: 991.98px) {
-    #guest-entry-btn {
-        position: static !important;
-        right: auto !important;
-        bottom: auto !important;
-        display: inline-block !important;
-        margin: 10px auto 0 auto !important;
-        padding: 8px 12px !important;
-        text-decoration: underline !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: var(--primary-color, #0d6efd) !important;
-        font-size: 0.95rem !important;
-    }
-}
-
 body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
     margin: clamp(18px, 5vw, 26px) var(--client-main-gutter);

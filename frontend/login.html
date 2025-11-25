@@ -10,12 +10,32 @@
 <link rel="stylesheet" href="client/css/client.mobile.css" media="(max-width: 991.98px)">
 <link rel="icon" type="image/png" href="/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png">
 </head>
+<style>
+/* Guest entry button: blue underlined link, right-aligned on both desktop and mobile */
+#guest-entry-btn{
+    display:inline-block;
+    background:transparent !important;
+    border:none !important;
+    color:#0d6efd !important;
+    text-decoration:underline !important;
+    padding:6px 8px !important;
+    font-size:0.95rem !important;
+    margin-top:8px;
+}
+#guest-entry-btn:hover{ color:#0b5ed7 !important; text-decoration:none !important; }
+@media (max-width: 576px){
+    #guest-entry-btn{ margin-top:10px; }
+}
+</style>
+</head>
 <body class="login-page-body" data-require-auth="false">
 <main class="login-wrapper">
     <div class="login-card card">
         <div class="card-body p-4 p-md-5">
             <div class="text-center mb-4">
-                <div class="login-brand mb-2">SF</div>
+                <div class="login-brand mb-2">
+                    <img src="/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png" alt="SnackForest" class="login-brand-img">
+                </div>
                 <h1 class="h4 mb-1">SnackForest 登入</h1>
                 <p class="text-muted small mb-0">歡迎回來，請先登入您的帳號</p>
             </div>
@@ -42,7 +62,7 @@
                 </div>
             </div>
 
-            <div class="d-grid gap-2 mb-2 d-md-flex">
+            <div class="d-grid gap-2 mb-2 d-md-flex align-items-center">
                 <a href="register.html" class="btn btn-lg btn-outline-secondary flex-fill" id="toRegisterBtn">註冊新會員</a>
                 <button class="btn btn-lg btn-success flex-fill" id="loginBtn">
                     <span class="spinner-border spinner-border-sm me-2 d-none" id="loginSpinner" role="status" aria-hidden="true"></span>
@@ -50,8 +70,9 @@
                 </button>
             </div>
             <!-- Guest entry button (for visitors who want to browse without logging in) -->
-            <!-- guest-entry button is positioned via CSS to bottom-right -->
-            <button id="guest-entry-btn" type="button" aria-label="以訪客身分瀏覽">以訪客身分瀏覽</button>
+            <div class="d-flex justify-content-end mt-2">
+                <button id="guest-entry-btn" type="button" aria-label="以訪客身分瀏覽">以訪客身分瀏覽</button>
+            </div>
             <div id="msg" class="alert alert-danger mt-3 d-none" role="alert"></div>
         </div>
     </div>

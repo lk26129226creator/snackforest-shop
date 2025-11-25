@@ -191,3 +191,69 @@
 .sf-demo-input{ margin:5px; padding:8px; }
 /* demo panel helper */
 .sf-demo-panel{ display:none; margin-top:15px; padding:15px; background:#f8f9fa; border-radius:5px; }
+
+/* 登入頁：註冊按鈕保持白底（桌面 + 手機）
+   - 目標：不要在 hover 時變成綠底（覆寫 Bootstrap outline hover 行為）
+   - 僅針對登入頁生效（使用 .login-wrapper 範圍）
+   - 使用 high-specificity 與 !important 以確保覆寫現有樣式 */
+.login-wrapper #toRegisterBtn{
+    background: #fff !important;
+    color: #4a7c59 !important; /* rgb(74,124,89) */
+    border-color: rgba(74,124,89,0.18) !important;
+}
+.login-wrapper #toRegisterBtn:hover,
+.login-wrapper #toRegisterBtn:focus,
+.login-wrapper #toRegisterBtn:active{
+    background: #fff !important;
+    color: #4a7c59 !important; /* keep text green on hover */
+    border-color: rgba(74,124,89,0.18) !important;
+    box-shadow: var(--shadow-hover) !important;
+    transform: translateY(-3px) !important;
+}
+
+/* login brand (logo) styling: make the logo circular and size it consistently */
+.login-brand{
+    width:72px;
+    height:72px;
+    border-radius:50%;
+    overflow:hidden;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background: linear-gradient(180deg, rgba(74,124,89,0.12), rgba(74,124,89,0.08));
+}
+.login-brand-img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+}
+
+/* 登入按鈕也微微上浮 */
+.login-wrapper #loginBtn{
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.login-wrapper #loginBtn:hover,
+.login-wrapper #loginBtn:focus,
+.login-wrapper #loginBtn:active{
+    /* keep the same green as the normal state (avoid bright/fluorescent hover) */
+    background: var(--btn-success-bg, var(--primary-500)) !important;
+    color: var(--btn-success-color, #ffffff) !important;
+    transform: translateY(-3px) !important;
+    box-shadow: var(--shadow-hover) !important;
+}
+
+/* 註冊頁的「建立帳號」按鈕與登入按鈕行為一致：
+   - hover 時不變成螢光色，保留原本 success 綠色
+   - 微微上浮並加上陰影作為互動反饋 */
+.login-wrapper #registerBtn{
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.login-wrapper #registerBtn:hover,
+.login-wrapper #registerBtn:focus,
+.login-wrapper #registerBtn:active{
+    background: var(--btn-success-bg, var(--primary-500)) !important;
+    color: var(--btn-success-color, #ffffff) !important;
+    transform: translateY(-3px) !important;
+    box-shadow: var(--shadow-hover) !important;
+}
