@@ -398,6 +398,36 @@ body.admin-menu-open{ overflow: hidden; }
 /* 指標標題。 */
 .admin-stat-label{ font-size: .85rem; font-weight: 600; color: #61708a; letter-spacing: .08em; text-transform: uppercase; }
 
+/* Mobile density overrides for admin: reduce heavy spacing and shadows on small screens */
+@media (max-width: 991.98px) {
+    :root{ --admin-main-gutter: 18px; }
+    body{
+        padding-top: 68px;
+        --admin-main-gutter: 16px;
+    }
+    body .main-content{
+        margin-top: calc(var(--admin-navbar-height) + 12px);
+        margin-left: 12px;
+        margin-right: 12px;
+        margin-bottom: 40px;
+        padding: 14px;
+        border-radius: 12px;
+        box-shadow: 0 8px 22px rgba(15,23,42,0.06);
+        backdrop-filter: none;
+        width: calc(100% - 24px);
+    }
+    .admin-profile-card, .admin-stat-card {
+        padding: 12px;
+        border-radius: 10px;
+        box-shadow: 0 8px 18px rgba(15,23,42,0.06);
+    }
+    .navbar{ height: 64px; }
+    .brand-signature::before{ width:28px; height:28px; border-radius:8px; }
+    .admin-stat-grid{ gap: 10px; }
+    /* Reduce table paddings for compact lists */
+    table.table td, table.table th { padding: 0.5rem 0.6rem; }
+}
+
 /* 常用捷徑卡片：快速連結到商品、訂單管理。 */
 .admin-quick-link{
     border: 1px solid rgba(148,163,184,0.22);

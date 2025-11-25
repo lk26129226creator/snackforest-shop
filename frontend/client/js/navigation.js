@@ -1752,9 +1752,7 @@
                     <span>商品</span>
                 </a>
                 <button type="button" class="client-tabbar-item client-tabbar-item-featured" data-tab-action="search" data-tab-key="search" aria-label="快速搜尋商品">
-                    <span class="client-tabbar-fab" aria-hidden="true">
-                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                    </span>
+                    <i class="client-tabbar-fab fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                     <span>搜尋</span>
                 </button>
                 <a href="cart.html" class="client-tabbar-item" data-tab-key="cart" aria-label="查看購物車">

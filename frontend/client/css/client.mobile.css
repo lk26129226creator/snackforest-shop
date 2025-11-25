@@ -216,43 +216,43 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     position: fixed;
     inset: auto 0 0 0;
     height: var(--client-tabbar-height);
-    padding: 10px clamp(18px, 6vw, 32px) calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 8px clamp(12px, 4vw, 20px) calc(8px + env(safe-area-inset-bottom, 0px));
     display: flex;
-    align-items: stretch;
+    align-items: center;
     justify-content: space-between;
     background: rgba(12, 32, 18, 0.94);
-    border-top: 1px solid rgba(148, 163, 184, 0.22);
-    backdrop-filter: blur(18px);
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
+    backdrop-filter: blur(8px);
     z-index: 1040;
-    box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.2);
+    box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.12);
 }
 
 .client-tabbar-item {
     flex: 1 1 0;
     min-width: 0;
-    display: inline-flex;
+    display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    color: rgba(226, 232, 240, 0.82);
-    font-size: 0.75rem;
+    gap: 4px;
+    color: rgba(226, 232, 240, 0.92);
+    font-size: 0.78rem;
     font-weight: 500;
     text-decoration: none;
     letter-spacing: 0.02em;
     position: relative;
-    transition: color 0.2s ease, transform 0.2s ease;
+    transition: color 0.18s ease, transform 0.18s ease;
     border: none;
     background: none;
-    padding: 0;
+    padding: 4px 6px;
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
 }
 
 .client-tabbar-item i {
-    font-size: 1.32rem;
-    transition: transform 0.25s ease;
+    font-size: 1.18rem;
+    transition: transform 0.18s ease;
 }
 
 .client-tabbar-item:focus-visible {
@@ -273,22 +273,20 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     transform: translateY(-2px) scale(1.08);
 }
 
-.client-tabbar-item-featured {
-    flex: 1 1 auto;
-    gap: 4px;
-}
+.client-tabbar-item-featured { flex: 1 1 auto; gap: 4px; }
 
 .client-tabbar-fab {
-    display: grid;
-    place-items: center;
-    width: 50px;
-    height: 50px;
-    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
     background: linear-gradient(135deg, var(--secondary-color, #4ade80), rgba(167, 243, 208, 0.95));
     color: #ffffff;
-    font-size: 1.4rem;
-    box-shadow: 0 14px 32px rgba(74, 124, 89, 0.28), 0 6px 14px rgba(134, 239, 172, 0.32);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    font-size: 1.05rem;
+    box-shadow: 0 8px 20px rgba(74, 124, 89, 0.18);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .client-tabbar-item-featured.is-active .client-tabbar-fab,
@@ -410,6 +408,62 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     gap: clamp(14px, 4vw, 20px);
     color: #f8fafc;
     z-index: 1;
+}
+
+/* Compact density overrides: reduce heavy shadows, paddings and large radii for smaller devices.
+   These are safe visual overrides that avoid changing HTML structure. */
+@media (max-width: 991.98px) {
+    .client-main {
+        padding: 12px;
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    }
+    .client-main > *:first-child { margin-top: 0; }
+
+    /* Reduce card body paddings and shadows for denser lists */
+    .card, .member-card, .order-card, .admin-stat-card {
+        border-radius: 10px;
+        box-shadow: 0 6px 14px rgba(15,23,42,0.06);
+    }
+    .card .card-body, .member-card .card-body {
+        padding: 12px;
+    }
+
+    /* Tame search overlay and nav search visual weight */
+    .client-nav-search {
+        padding: 0.5rem 0.75rem;
+        min-height: 44px;
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(15,23,42,0.08);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    /* Slimmer bottom tabbar and FAB */
+    .client-mobile-tabbar {
+        height: calc(var(--client-tabbar-height) - 12px);
+        padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px));
+        box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+        border-top-width: 0;
+    }
+    .client-tabbar-fab {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        font-size: 0.98rem;
+        box-shadow: 0 8px 18px rgba(74,124,89,0.12);
+    }
+
+    /* Smaller icons and labels to fit denser layouts */
+    .client-tabbar-item i { font-size: 1.02rem; }
+    .client-tabbar-item { font-size: 0.72rem; padding: 2px 4px; }
+
+    /* Reduce footer and container margins */
+    .client-footer { margin: 16px var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 16px); }
+
+    /* Simplify card header spacing in order list */
+    .order-card .card-header { padding: 10px 12px; }
+    .order-card .card-body { padding: 10px 12px; }
 }
 
 .client-search-overlay-header {

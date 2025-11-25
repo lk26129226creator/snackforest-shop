@@ -105,13 +105,35 @@ document.getElementById('registerForm').addEventListener('submit', async functio
             fb.className = 'alert alert-danger'; fb.textContent = msg; return;
         }
 
-        try { if (data.customerId) localStorage.setItem('customerId', String(data.customerId)); } catch(_){}
+        try { if (data.customerId) localStorage.setItem('customerId', String(data.customerId)); } catch(_){ }
         try { if (data.customerName || payload.name) localStorage.setItem('customerName', data.customerName || payload.name); } catch(_){ }
         // Save email/phone/address locally as temporary fallback for immediate profile view
         try { if (payload.email) localStorage.setItem('sf-client-email', payload.email); else localStorage.removeItem('sf-client-email'); } catch(_){}
         try { if (payload.phone) localStorage.setItem('sf-client-phone', payload.phone); else localStorage.removeItem('sf-client-phone'); } catch(_){}
         try { if (payload.address) localStorage.setItem('sf-client-address', payload.address); else localStorage.removeItem('sf-client-address'); } catch(_){}
-        try { localStorage.setItem('sf-client-role','customer'); } catch(_){}
+        try { localStorage.setItem('sf-client-role','customer'); } catch(_){ }
+
+        // Additionally, fetch the saved profile from backend to ensure server-side values are available
+        (async function syncProfileFromServer() {
+            try {
+                const id = data && data.customerId ? String(data.customerId) : (localStorage.getItem('customerId') || '');
+                if (!id) return;
+                // apiBase already contains '/api' suffix in this page's logic
+                const url = apiBase + '/customer-profile/' + encodeURIComponent(id);
+                const resp = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+                if (!resp.ok) return; // don't block redirect on failure
+                let json = null;
+                try { json = await resp.json(); } catch (_) { return; }
+                if (!json) return;
+                // Server may return fields as null; only set when present
+                try { if (json.email != null) localStorage.setItem('sf-client-email', String(json.email)); } catch(_){}
+                try { if (json.phone != null) localStorage.setItem('sf-client-phone', String(json.phone)); } catch(_){}
+                try { if (json.address != null) localStorage.setItem('sf-client-address', String(json.address)); } catch(_){}
+            } catch (e) {
+                // ignore sync errors; fallback local values already present
+                console.warn('profile sync failed', e);
+            }
+        })();
 
         // 顯示註冊成功懸浮提示，然後導到會員頁（延遲導向讓使用者看到提示）
         showRegisterSuccessToast({ message: '註冊成功！三秒後自動導向會員頁' });
