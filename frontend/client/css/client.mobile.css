@@ -20,7 +20,7 @@ body[data-client-mobile-nav="tabbar"] {
 body {
     --client-sidebar-width: 0px;             /* 行動裝置不預留側欄寬度 */
     padding-top: var(--client-navbar-height);
-    /* padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px); */
+    padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 12px);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -56,6 +56,11 @@ body.client-sidebar-expanded {
     border-radius: 20px;
     box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
     flex-grow: 1;
+}
+
+/* 確保主內容高度可以推擠頁尾到視窗底部（避免頁尾漂浮） */
+@media (max-width: 991.98px) {
+    .client-main { min-height: calc(100vh - var(--client-navbar-height) - var(--client-tabbar-height) - 24px); }
 }
 
 body.client-sidebar-overlay .client-main {
@@ -417,6 +422,9 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     color: #f8fafc;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
 }
+
+/* 若在某些裝置上出現奇怪位置的關閉按鈕（小叉），先隱藏它以免覆蓋其它互動元素 */
+.client-search-overlay-close { display: none !important; }
 
 .client-search-overlay-close i {
     font-size: 1.1rem;

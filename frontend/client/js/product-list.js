@@ -181,7 +181,7 @@
             const imageUrl = normalizeImageUrl(p.imageUrl);
             return `
             <div class="product-card card">
-                <a href="?id=${p.id}" class="text-decoration-none text-dark d-flex flex-column h-100 product-link">
+                <a href="product.html?id=${p.id}" class="text-decoration-none text-dark d-flex flex-column h-100 product-link">
                     <div class="product-image-wrapper"><img src="${imageUrl}" class="product-card-img" alt="${p.name}"></div>
                     <div class="card-body">
                         <h5 class="card-title">${p.name}</h5>
