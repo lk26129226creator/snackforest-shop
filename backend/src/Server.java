@@ -1172,11 +1172,6 @@ public class Server {
     }
 
     /**
-     * 臨時的 customers schema 檢視端點，回傳 DESCRIBE 與 SHOW CREATE TABLE 的結果（僅供除錯，部署後可移除）。
-     */
-    
-
-    /**
      * 商品 CRUD API 處理器（/api/products），依 HTTP 方法對應查詢、新增、更新與刪除。
      */
     static class ProductsHandler implements HttpHandler {
@@ -1461,6 +1456,7 @@ public class Server {
                 String password = req.optString("password", "").trim();
                 String phone = req.has("phone") && !req.isNull("phone") ? req.optString("phone", null) : null;
                 String address = req.has("address") && !req.isNull("address") ? req.optString("address", null) : null;
+                String avatarUrl = req.has("avatarUrl") && !req.isNull("avatarUrl") ? req.optString("avatarUrl", null) : null;
 
                 if (name.isEmpty() || email.isEmpty() || password.isEmpty()) {
                     sendErrorResponse(exchange, 400, "name, email and password are required", null);
@@ -1524,12 +1520,13 @@ public class Server {
                         return;
                     }
 
-                    // DAO.save 只會寫入 id, CustomerName, Account, PasswordHash, Salt；補寫 Email/Phone/Address/UpdatedAt
-                    try (PreparedStatement ps = conn.prepareStatement("UPDATE customers SET Email=?, Phone=?, Address=?, UpdatedAt=NOW() WHERE idCustomers=?")) {
+                    // DAO.save 只會寫入 id, CustomerName, Account, PasswordHash, Salt；補寫 Email/Phone/Address/AvatarUrl/UpdatedAt
+                    try (PreparedStatement ps = conn.prepareStatement("UPDATE customers SET Email=?, Phone=?, Address=?, AvatarUrl=?, UpdatedAt=NOW() WHERE idCustomers=?")) {
                         ps.setString(1, email);
                         ps.setString(2, phone);
                         ps.setString(3, address);
-                        ps.setInt(4, createdId);
+                        ps.setString(4, avatarUrl);
+                        ps.setInt(5, createdId);
                         ps.executeUpdate();
                     } catch (Exception ex) {
                         // 非致命：已建立帳號，但無法更新額外欄位

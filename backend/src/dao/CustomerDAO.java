@@ -239,4 +239,26 @@ public class CustomerDAO {
             return false;
         }
     }
+
+    /**
+     * 將明文密碼產生 salt 與 hash 並更新回資料庫，同時清空原本的 Password 欄位。
+     * 供資料庫遷移時使用。
+     *
+     * @param customerId 要更新的顧客編號
+     * @param plainPassword 明文密碼
+     * @throws SQLException
+     * @throws NoSuchAlgorithmException
+     */
+    public void hashAndStorePassword(int customerId, String plainPassword) throws SQLException, NoSuchAlgorithmException {
+        if (plainPassword == null) return;
+        String salt = generateSalt();
+        String hashed = hashPassword(plainPassword, salt);
+        String sql = "UPDATE customers SET PasswordHash = ?, Salt = ?, Password = NULL WHERE idCustomers = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, hashed);
+            ps.setString(2, salt);
+            ps.setInt(3, customerId);
+            ps.executeUpdate();
+        }
+    }
 }
