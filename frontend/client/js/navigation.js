@@ -1734,39 +1734,12 @@
      * @returns {HTMLElement|null}
      */
     function ensureMobileTabbar() {
-            let tabbar = document.querySelector('[data-client-mobile-tabbar]');
-            if (tabbar && tabbar.isConnected) {
-                return tabbar;
+            // 移除任何既存的 mobile tabbar（我們不再在頁面建立底部功能列）
+            const existing = document.querySelector('[data-client-mobile-tabbar]');
+            if (existing) {
+                try { existing.remove(); } catch (e) { /* ignore */ }
             }
-
-            tabbar = document.createElement('nav');
-            tabbar.className = 'client-mobile-tabbar';
-            tabbar.setAttribute('data-client-mobile-tabbar', '1');
-            tabbar.innerHTML = `
-                <a href="index.html" class="client-tabbar-item" data-tab-key="home" aria-label="回到首頁">
-                    <i class="fa-solid fa-house" aria-hidden="true"></i>
-                    <span>首頁</span>
-                </a>
-                <a href="product.html" class="client-tabbar-item" data-tab-key="products" aria-label="瀏覽全部商品">
-                    <i class="fa-solid fa-store" aria-hidden="true"></i>
-                    <span>商品</span>
-                </a>
-                <button type="button" class="client-tabbar-item client-tabbar-item-featured" data-tab-action="search" data-tab-key="search" aria-label="快速搜尋商品">
-                    <i class="client-tabbar-fab fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                    <span>搜尋</span>
-                </button>
-                <a href="cart.html" class="client-tabbar-item" data-tab-key="cart" aria-label="查看購物車">
-                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
-                    <span>購物車</span>
-                    <span class="client-tabbar-badge" data-cart-badge aria-hidden="true">0</span>
-                </a>
-                <a href="member.html" class="client-tabbar-item" data-tab-key="profile" aria-label="前往會員中心">
-                    <i class="fa-solid fa-user" aria-hidden="true"></i>
-                    <span>會員</span>
-                </a>
-            `;
-            document.body.appendChild(tabbar);
-            return tabbar;
+            return null;
         }
 
     /**
@@ -1903,7 +1876,7 @@
             }
             container.hidden = false;
             navRelocatedForMobile = true;
-            body.setAttribute('data-client-mobile-nav', 'tabbar');
+            // 不再使用底部 tabbar 樣式標記
         }
 
     /**

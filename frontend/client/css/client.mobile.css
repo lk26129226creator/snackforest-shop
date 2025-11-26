@@ -12,6 +12,15 @@ SnackForest - Mobile Styles (≤ 991.98px)
     --client-tabbar-height: 76px;            /* 底部標籤列高度 */
 }
 
+/* 隱藏底部 Tabbar（已移除底部導覽設計） */
+.client-mobile-tabbar,
+.client-tabbar-item,
+.client-tabbar-fab,
+.client-tabbar-badge {
+    display: none !important;
+    height: 0 !important;
+}
+
 body[data-client-mobile-nav="tabbar"] {
     --client-navbar-height: 92px;
 }
@@ -20,7 +29,8 @@ body[data-client-mobile-nav="tabbar"] {
 body {
     --client-sidebar-width: 0px;             /* 行動裝置不預留側欄寬度 */
     padding-top: var(--client-navbar-height);
-    padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 12px);
+    /* 移除 tabbar 導致的額外底部留白，僅保留安全區域 inset */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -41,7 +51,8 @@ body.client-sidebar-overlay,
 body.client-sidebar-expanded {
     --client-sidebar-width: 0px;
     --client-main-gutter: clamp(18px, 5vw, 28px);
-    padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px);
+    /* 移除 tabbar 相關底部留白，僅保留安全區域 inset */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .login-page-body {
@@ -67,7 +78,7 @@ body.client-sidebar-expanded {
 
 /* 確保主內容高度可以推擠頁尾到視窗底部（避免頁尾漂浮） */
 @media (max-width: 991.98px) {
-    .client-main { min-height: calc(100vh - var(--client-navbar-height) - var(--client-tabbar-height) - 24px); }
+    .client-main { min-height: calc(100vh - var(--client-navbar-height) - 24px); }
 }
 
 body.client-sidebar-overlay .client-main {
@@ -83,7 +94,7 @@ body.client-sidebar-overlay .client-main {
 
 .client-footer {
     width: calc(100% - (var(--client-main-gutter) * 2));
-    margin: 28px var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 28px);
+    margin: 28px var(--client-main-gutter) 28px;
 }
 
 /* --- 3. 導覽列與頂部工具列 --- */
@@ -111,7 +122,7 @@ body.client-sidebar-overlay .client-main {
 }
 
 .client-navbar-hamburger {
-    display: none;
+    display: inline-flex;
 }
 
 .client-topbar-left .brand-signature {
@@ -314,13 +325,11 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 .client-nav-search {
     display: flex;
     align-items: center;
-    width: 100%;
-    padding: 0.65rem 1rem;
-    border-radius: 18px;
-    min-height: var(--client-mobile-search-height);
-    background: rgba(12, 32, 18, 0.78);
-    border: 1px solid rgba(226, 232, 240, 0.16);
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.24);
+    height: 0 !important;
+    padding: 0 !important;
+    display: none !important;
+    background: transparent !important;
+    border-top: none !important;
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
 }
@@ -436,12 +445,13 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         -webkit-backdrop-filter: none;
     }
 
-    /* Slimmer bottom tabbar and FAB */
+    /* Slimmer bottom tabbar and FAB (hidden - legacy) */
     .client-mobile-tabbar {
-        height: calc(var(--client-tabbar-height) - 12px);
-        padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px));
-        box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
-        border-top-width: 0;
+        display: none !important;
+        height: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border-top-width: 0 !important;
     }
     .client-tabbar-fab {
         width: 40px;
@@ -456,7 +466,7 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     .client-tabbar-item { font-size: 0.72rem; padding: 2px 4px; }
 
     /* Reduce footer and container margins */
-    .client-footer { margin: 16px var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 16px); }
+    .client-footer { margin: 16px var(--client-main-gutter) 16px; }
 
     /* Simplify card header spacing in order list */
     .order-card .card-header { padding: 10px 12px; }
@@ -489,7 +499,7 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         max-width: 100%;
         border-radius: 0;
         overflow: visible;
-        padding-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px));
+        padding-bottom: env(safe-area-inset-bottom, 0px);
         position: relative;
     }
 
@@ -1067,7 +1077,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     }
 
     .client-main {
-        margin-bottom: calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 56px);
+        margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 56px);
         padding: clamp(18px, 6vw, 24px);
     }
 
@@ -1095,7 +1105,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     }
 
     .client-main {
-        margin: calc(var(--client-navbar-height) + 14px) var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 46px);
+        margin: calc(var(--client-navbar-height) + 14px) var(--client-main-gutter) calc(env(safe-area-inset-bottom, 0px) + 46px);
     }
 
     .client-mobile-tabbar {
