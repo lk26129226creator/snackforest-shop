@@ -565,6 +565,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         justify-content: center;
         color: #fff;
     }
+    /* Reserve footer height on mobile so the image doesn't overlap content above */
+    .client-footer { min-height: 60vh !important; }
 
     /* Make central search button visually identical to other tab items on mobile */
     .client-tabbar-fab {

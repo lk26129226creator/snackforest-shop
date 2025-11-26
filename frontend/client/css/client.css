@@ -1234,6 +1234,9 @@ body.client-sidebar-overlay .client-footer {
     border: none;
     box-shadow: none;
     background: transparent;
+    /* Reserve vertical space so the absolutely-positioned background image
+       does not overlap previous content. Matches .footer-bg img max-height. */
+    min-height: 360px;
 }
 
 /* background image wrapper placed behind footer content */
