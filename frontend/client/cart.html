@@ -163,41 +163,13 @@
             <!-- Cart items will be rendered here by cart.js -->
         </div>
         <div class="col-lg-4">
-            <div class="summary-card card">
+            <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title mb-4">訂單摘要</h5>
-                    <div id="cart-summary-container">
-                        <!-- Summary will be rendered here -->
+                    <h5 class="card-title mb-3">結帳</h5>
+                    <p class="text-muted">請確認購物車後，前往訂單摘要頁面確認收件資訊與付款。</p>
+                    <div class="d-grid mt-4">
+                        <button id="goto-order-summary-btn" class="btn btn-primary btn-lg">確認結帳</button>
                     </div>
-                    <hr>
-                    <form id="checkout-form">
-                        <h6 class="mb-3">運送與付款</h6>
-                        <div class="mb-3">
-                            <label for="shipping-method" class="form-label">運送方式</label>
-                            <select id="shipping-method" class="form-select" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="payment-method" class="form-label">付款方式</label>
-                            <select id="payment-method" class="form-select" required></select>
-                        </div>
-                        <hr>
-                        <h6 class="mb-3">收件人資訊</h6>
-                        <div class="mb-3">
-                            <label for="recipient-name" class="form-label">姓名</label>
-                            <input type="text" id="recipient-name" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="recipient-address" class="form-label">地址</label>
-                            <input type="text" id="recipient-address" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="recipient-phone" class="form-label">電話</label>
-                            <input type="tel" id="recipient-phone" class="form-control" required>
-                        </div>
-                        <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg" id="checkout-btn">確認結帳</button>
-                        </div>
-                    </form>
                 </div>
             </div>
         </div>

@@ -121,7 +121,37 @@
         if (itemsContainer) itemsContainer.addEventListener('click', handleCartClick);
         const checkoutForm = document.getElementById('checkout-form');
         if (checkoutForm) checkoutForm.addEventListener('submit', handleCheckout);
+        const gotoBtn = document.getElementById('goto-order-summary-btn');
+        if (gotoBtn) gotoBtn.addEventListener('click', createDraftAndRedirect);
         populateShippingAndPayment();
+    }
+
+    /**
+     * 建立訂單草稿（包含購物車商品與小計）並導向 `order-summary.html`。
+     */
+    function createDraftAndRedirect() {
+        const cart = window.getCart ? window.getCart() : [];
+        if (!cart || cart.length === 0) {
+            showCartEmptyOverlay();
+            return;
+        }
+        const subtotal = cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0);
+        const draft = {
+            items: cart,
+            total: subtotal + (cart.length > 0 ? 60 : 0),
+            shippingMethod: '',
+            paymentMethod: '',
+            recipientName: localStorage.getItem('sf_recipient_name') || '',
+            recipientAddress: localStorage.getItem('sf_recipient_address') || '',
+            recipientPhone: localStorage.getItem('sf_recipient_phone') || '',
+            customerId: localStorage.getItem('customerId') || 1
+        };
+        try {
+            sessionStorage.setItem('sf_order_draft', JSON.stringify(draft));
+        } catch (e) {
+            console.warn('無法儲存訂單草稿到 sessionStorage', e);
+        }
+        window.location.href = 'order-summary.html';
     }
 
     /**
@@ -177,6 +207,7 @@
         if (!container) return;
         const cart = window.getCart ? window.getCart() : [];
         if (!cart || cart.length === 0) {
+            // 購物車為空：改為內嵌空狀態卡片（不要自動彈出 overlay）
             container.innerHTML = `<div class="card text-center p-5"><div class="card-body"><h2 class="card-title">您的購物車是空的</h2><p class="card-text">快去選購！</p><a href="product.html" class="btn btn-primary">前往購物</a></div></div>`;
             renderCartSummary();
             return;
@@ -213,6 +244,8 @@
                     </div>
                 </div>`;
         }).join('');
+        // 若曾經顯示空購物車的 overlay，移除它。
+        hideCartEmptyOverlay();
         renderCartSummary();
     }
 
@@ -231,6 +264,39 @@
             <hr>
             <div class="d-flex justify-content-between fw-bold fs-5"><p>總計</p><p>${(subtotal + shipping).toFixed(2)}</p></div>
         `;
+    }
+
+    /**
+     * 顯示購物車為空的懸浮視窗。
+     */
+    function showCartEmptyOverlay() {
+        // 若已存在則不重複建立
+        if (document.querySelector('.cart-empty-overlay')) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'cart-empty-overlay';
+        overlay.innerHTML = `
+            <div class="cart-empty-dialog" role="dialog" aria-modal="true">
+                <img src="/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png" alt="logo">
+                <div class="cart-empty-body">
+                    <h3>購物車為空</h3>
+                    <p class="mb-3">您的購物車是空的，快去挑選喜歡的零食吧！</p>
+                    <div class="cart-empty-actions">
+                        <a href="product.html" class="btn btn-primary">前往購物</a>
+                        <button type="button" class="btn btn-outline-secondary" id="close-cart-empty">關閉</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        // bind close
+        overlay.querySelector('#close-cart-empty')?.addEventListener('click', hideCartEmptyOverlay);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) hideCartEmptyOverlay();
+        });
+    }
+
+    function hideCartEmptyOverlay(){
+        const el = document.querySelector('.cart-empty-overlay');
+        if (el) el.remove();
     }
 
     /**
@@ -287,6 +353,18 @@
             customerId: localStorage.getItem('customerId') || 1
         };
         try {
+            // 若為手機版，先將訂單資料暫存並導向訂單摘要頁，讓使用者在手機上確認後再完成結帳。
+            const isMobile = (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+            if (isMobile) {
+                try {
+                    sessionStorage.setItem('sf_order_draft', JSON.stringify(payload));
+                } catch (e) {
+                    console.warn('無法儲存訂單草稿到 sessionStorage', e);
+                }
+                window.location.href = 'order-summary.html';
+                return;
+            }
+
             const res = await fetch(API_BASE + '/order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
