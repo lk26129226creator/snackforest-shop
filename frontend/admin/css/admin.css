@@ -987,28 +987,6 @@ input[type="file"]{ cursor: pointer; }
 /* 列表為空時的提示區域。 */
 .site-featured-empty{ padding: 12px 2px; }
 
-/* 網站頁尾預覽：即時顯示設定結果。 */
-.site-footer-preview{
-    background: #1f2937;
-    color: #f8fafc;
-    border-radius: 0.85rem;
-    padding: 18px 20px;
-    min-height: 72px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-weight: 600;
-    line-height: 1.6;
-}
-
-/* 尚未設定內容時的預覽樣式。 */
-.site-footer-preview.text-muted{
-    background: #e9ecef;
-    color: #6c757d !important;
-    font-weight: 500;
-}
-
 /* 管理端共用區塊：商品、訂單、網站設定皆使用的容器。 */
 .admin-form-section{
     background-color: var(--card-bg);

@@ -56,7 +56,6 @@
         promotions: 'site-promotions-save',
         support: 'site-support-save',
         featured: 'site-featured-save',
-        footer: 'site-footer-save'
     };
 
     if (!state.siteConfig) {
@@ -275,40 +274,6 @@
     };
 
     /**
-     * 更新頁腳預覽區域，會依內容換行並處理空值提示。
-     * @param {string} text 頁腳輸入的文字內容。
-     */
-    site.updateFooterPreview = function (text) {
-        const preview = document.getElementById('site-footer-preview');
-        if (!preview) return;
-        const content = String(text || '').trim();
-        preview.innerHTML = '';
-        if (!content) {
-            preview.textContent = '頁腳目前沒有內容，儲存後將套用預設文字。';
-            preview.classList.add('text-muted');
-            return;
-        }
-        preview.classList.remove('text-muted');
-        const lines = content.split(/\r?\n/);
-        lines.forEach((line, index) => {
-            if (index > 0) preview.appendChild(document.createElement('br'));
-            preview.appendChild(document.createTextNode(line));
-        });
-    };
-
-    /**
-     * 渲染頁腳輸入欄位與預覽，若缺值則補預設資料。
-     * @param {Object} [footer]
-     */
-    site.renderFooter = function (footer) {
-        const defaults = site.getDefault().footer;
-        const data = Object.assign({}, defaults, footer || {});
-        const textarea = document.getElementById('site-footer-text');
-        if (textarea) textarea.value = data.text || '';
-        site.updateFooterPreview(data.text);
-    };
-
-    /**
      * 綁定各輸入欄位、按鈕與狀態，確保表單操作會同步更新 state。
      */
     site.initBindings = function () {
@@ -474,27 +439,6 @@
             featuredSave.addEventListener('click', (event) => {
                 event.preventDefault();
                 site.saveConfig('featured');
-            });
-        }
-
-        const footerText = document.getElementById('site-footer-text');
-        if (footerText && !footerText.dataset.bound) {
-            footerText.dataset.bound = '1';
-            footerText.addEventListener('input', (event) => {
-                site.ensureData();
-                const footer = state.siteConfig.data.footer || (state.siteConfig.data.footer = {});
-                footer.text = event.target.value;
-                site.setDirty('footer', true);
-                site.updateFooterPreview(footer.text);
-            });
-        }
-
-        const footerSave = document.getElementById('site-footer-save');
-        if (footerSave && !footerSave.dataset.bound) {
-            footerSave.dataset.bound = '1';
-            footerSave.addEventListener('click', (event) => {
-                event.preventDefault();
-                site.saveConfig('footer');
             });
         }
     };

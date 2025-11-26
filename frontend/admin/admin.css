@@ -381,28 +381,6 @@ input[type="file"]{ cursor: pointer; }
 /* 精選商品空狀態：增加垂直留白。 */
 .site-featured-empty{ padding: 12px 2px; }
 
-/* 預覽站台頁尾文案的樣式，與前台色系同步。 */
-.site-footer-preview{
-    background: #1f2937;
-    color: #f8fafc;
-    border-radius: 0.85rem;
-    padding: 18px 20px;
-    min-height: 72px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-weight: 600;
-    line-height: 1.6;
-}
-
-/* 頁尾預覽灰階樣式：提供未設定時的提示顏色。 */
-.site-footer-preview.text-muted{
-    background: #e9ecef;
-    color: #6c757d !important;
-    font-weight: 500;
-}
-
 /* 共用版塊：從全域樣式拆出，提供表單、表格一致外觀。 */
 .admin-form-section{
     background-color: var(--card-bg);

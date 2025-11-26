@@ -70,9 +70,6 @@ body.client-sidebar-expanded {
     .client-main { min-height: calc(100vh - var(--client-navbar-height) - var(--client-tabbar-height) - 24px); }
 }
 
-/* 讓 site-footer 固定在主佈局底部（若內容不足），但不要使用 position:fixed，保持可滾動性 */
-.site-footer { margin-top: auto; }
-
 body.client-sidebar-overlay .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
     margin: clamp(18px, 5vw, 26px) var(--client-main-gutter);
@@ -495,7 +492,15 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         content: '';
         position: absolute;
         inset: 0;
-        background-image: linear-gradient(180deg, rgba(14,34,18,0.9), rgba(11,25,16,0.9));
+        /* 使用背景圖作為主要裝飾，提供多重備援路徑（相對、絕對、/images、百分比編碼） */
+        background-image: 
+            url('../../images/branding/去背森林風頁腳.png'),
+            url('/frontend/images/branding/去背森林風頁腳.png'),
+            url('/images/branding/去背森林風頁腳.png'),
+            url('/frontend/images/branding/%E5%8E%BB%E8%83%8C%E6%A3%AE%E6%9E%97%E9%A2%A8%E9%A0%81%E8%85%B3.png');
+        background-size: cover;
+        background-position: center bottom;
+        background-repeat: no-repeat;
         z-index: 0;
     }
     .client-footer-mobile-inner {
@@ -507,10 +512,18 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         gap: 10px;
         align-items: center;
         justify-content: center;
-        background-image: url('/frontend/images/branding/去背森林風頁腳.png');
-        background-size: cover;
-        background-position: center bottom;
-        background-repeat: no-repeat;
+        /* 背景圖已由 ::before 提供，這裡保持內容層在上方 */
+        background: transparent;
+        z-index: 2;
+    }
+    .client-footer-mobile::after {
+        /* subtle overlay to ensure contrast */
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(6,18,12,0.42), rgba(6,18,12,0.32));
+        pointer-events: none;
+        z-index: 1;
     }
     .client-footer-mobile .social-row {
         display: flex;
@@ -836,10 +849,6 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 @media (max-width: 767.98px) {
     .client-main {
         margin-bottom: 0; /* 取消桌面的底部預留 */
-    }
-    .site-footer {
-        margin-top: 0; /* 緊貼內容底部 */
-        padding-bottom: calc(env(safe-area-inset-bottom, 0) + 16px); /* 支援 iOS 安全區域 */
     }
 }
 

@@ -26,38 +26,6 @@
     }
 
     /**
-     * 建立頁腳 DOM 並嘗試從站台設定載入客製化文案。
-     * @returns {Promise<void>}
-     */
-    async function renderFooter() {
-        const footer = document.getElementById('site-footer');
-        if (!footer) return;
-        footer.classList.add('site-footer');
-        if (!footer.querySelector('[data-footer-text]')) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'container text-center';
-            const paragraph = document.createElement('p');
-            paragraph.className = 'mb-0';
-            paragraph.setAttribute('data-footer-text', '');
-            paragraph.textContent = DEFAULT_TEXT;
-            wrapper.appendChild(paragraph);
-            footer.innerHTML = '';
-            footer.appendChild(wrapper);
-        }
-        try {
-            const cfg = await (typeof window.fetchSiteConfig === 'function'
-                ? window.fetchSiteConfig()
-                : Promise.resolve({}));
-            const footerCfg = cfg && typeof cfg === 'object' ? cfg.footer : null;
-            const text = footerCfg && typeof footerCfg.text === 'string' ? footerCfg.text : DEFAULT_TEXT;
-            applyFooterText(footer, text);
-        } catch (err) {
-            console.warn('載入頁腳設定失敗，使用預設文字', err);
-            applyFooterText(footer, DEFAULT_TEXT);
-        }
-    }
-
-    /**
      * DOM ready helper：確保頁腳在元素可用時才開始渲染。
      * @param {Function} fn 要執行的初始化函式。
      */
