@@ -398,55 +398,9 @@ body.admin-menu-open{ overflow: hidden; }
 /* 指標標題。 */
 .admin-stat-label{ font-size: .85rem; font-weight: 600; color: #61708a; letter-spacing: .08em; text-transform: uppercase; }
 
-/* Ensure admin uses unified client footer: hide legacy desktop footer and show new footer */
-.desktop-footer { display: none !important; }
-.client-footer-mobile { display: block !important; max-width: 1100px; margin: 0 auto; }
-.client-footer-mobile-inner { display:flex; gap:18px; align-items:center; justify-content:space-between; }
-.client-footer-mobile-inner { background-image: url('/frontend/images/branding/去背森林風頁腳.png'); background-size: cover; background-position: center bottom; }
-
-
-/* Mobile density overrides for admin: reduce heavy spacing and shadows on small screens */
-@media (max-width: 991.98px) {
-    :root{ --admin-main-gutter: 18px; }
-    body{
-        padding-top: 68px;
-        --admin-main-gutter: 16px;
-    }
-    body .main-content{
-        margin-top: calc(var(--admin-navbar-height) + 12px);
-        margin-left: 12px;
-        margin-right: 12px;
-        margin-bottom: 40px;
-        padding: 14px;
-        border-radius: 12px;
-        box-shadow: 0 8px 22px rgba(15,23,42,0.06);
-        backdrop-filter: none;
-        width: calc(100% - 24px);
-    }
-    .admin-profile-card, .admin-stat-card {
-        padding: 12px;
-        border-radius: 10px;
-        box-shadow: 0 8px 18px rgba(15,23,42,0.06);
-    }
-    .navbar{ height: 64px; }
-    .brand-signature::before{ width:28px; height:28px; border-radius:8px; }
-    .admin-stat-grid{ gap: 10px; }
-    /* Reduce table paddings for compact lists */
-    table.table td, table.table th { padding: 0.5rem 0.6rem; }
-}
-
-/* Mobile footer styles for admin (mirror client mobile footer) */
-@media (max-width: 991.98px) {
-    .client-footer-mobile { display: block; margin: 12px 12px 56px; border-radius: 12px; overflow: hidden; position: relative; color: #fff; }
-    .client-footer-mobile::before { content:''; position:absolute; inset:0; background-image: linear-gradient(180deg, rgba(14,34,18,0.9), rgba(11,25,16,0.9)); z-index:0; }
-    .client-footer-mobile-inner { position:relative; z-index:1; padding:12px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; background-size:cover; background-position:center bottom; background-repeat:no-repeat; }
-    .client-footer-mobile-inner { background-image: url('/frontend/images/branding/去背森林風頁腳.png'); }
-    .client-footer-mobile .social-row { display:flex; gap:14px; align-items:center; justify-content:center; }
-    .client-footer-mobile .social-row a { color:#fff; font-size:1.4rem; }
-    .client-footer-mobile .contact-row { display:flex; gap:10px; flex-direction:column; align-items:center; }
-    .client-footer-mobile .contact-row a { color: rgba(255,255,255,0.95); text-decoration:none; font-weight:600; }
-    .desktop-footer { display:none; }
-}
+/* Admin: no longer provide separate client footer styles here.
+   Footer and mobile tabbar styles are handled by client CSS files.
+   Keeping admin stylesheet focused on admin UI only. */
 
 /* 常用捷徑卡片：快速連結到商品、訂單管理。 */
 .admin-quick-link{

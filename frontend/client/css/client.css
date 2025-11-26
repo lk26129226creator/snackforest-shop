@@ -422,19 +422,7 @@ body.order-success-active {
 /* Hide legacy desktop footer text container and use unified footer box */
 .desktop-footer { display: none !important; }
 
-/* Make the mobile footer block visible on all sizes (now the primary footer) */
-.client-footer-mobile { display: block; }
-.client-footer-mobile { margin: 0 auto; max-width: 1100px; }
-.client-footer-mobile-inner { position: relative; z-index: 2; padding: 18px; display:flex; flex-direction:row; gap:20px; align-items:center; justify-content:space-between; }
-.client-footer-mobile-inner .social-row { display:flex; gap:18px; align-items:center; }
-.client-footer-mobile-inner .contact-row { display:flex; gap:24px; align-items:center; }
-.client-footer-mobile-inner .contact-row a { color: rgba(255,255,255,0.95); font-weight:600; }
-
-/* Desktop: center main copyright text under social/contact */
-@media (min-width: 992px) {
-    .client-footer-mobile-inner { padding: 22px 12px; }
-    .client-footer-mobile-inner .social-row a { font-size: 1.4rem; }
-}
+/* Mobile footer styles moved to `client.mobile.css` to avoid duplicate/legacy rules. */
 
 /* 登入表單外層：login.html 的 .login-wrapper。 */
 .login-wrapper { width: 100%; max-width: 440px; }
@@ -1268,10 +1256,11 @@ body.client-sidebar-overlay .client-footer {
 
 /* If the footer is short, keep the background visible at the bottom */
 .client-footer::after {
+    /* remove automatic spacer under footer image — keep zero height so image sits flush */
     content: '';
     display: block;
     width: 100%;
-    height: env(safe-area-inset-bottom, 24px);
+    height: 0;
 }
 
 /* Small screens: stack inner content */
