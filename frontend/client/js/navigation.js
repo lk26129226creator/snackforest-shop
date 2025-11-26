@@ -1663,6 +1663,10 @@
         const topbarCenter = topbarContainer ? topbarContainer.querySelector('.client-topbar-center') : null;
         const topbarRight = topbarContainer ? topbarContainer.querySelector('.client-topbar-right') : null;
         const profileContainer = sidebar.querySelector('[data-client-sidebar-profile]');
+        const topbarProfileContainer = topbarContainer ? topbarContainer.querySelector('[data-client-topbar-profile]') : null;
+        const topbarAvatarImg = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-avatar-img]') : null;
+        const topbarAvatarInitial = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-avatar-initial]') : null;
+        const topbarProfileLink = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-link]') : null;
         const profileLink = profileContainer ? profileContainer.querySelector('[data-client-profile-link]') : null;
         const avatarWrapper = profileContainer ? profileContainer.querySelector('[data-client-profile-avatar]') : null;
         const avatarImg = profileContainer ? profileContainer.querySelector('[data-client-profile-avatar-img]') : null;
@@ -2088,11 +2092,55 @@
             }
         }
 
+        /**
+         * 將會員資訊同步到頂部工具列的小型 avatar（若存在）。
+         */
+        function applyTopbarProfileState(state) {
+            if (!topbarProfileContainer) return;
+            const nextName = safeTrim(state && state.name);
+            const nextAvatarRaw = safeTrim(state && state.avatar);
+            const nextVersion = safeTrim(state && state.version);
+            const hasName = Boolean(nextName);
+            const hasAvatar = Boolean(nextAvatarRaw);
+
+            if (topbarProfileLink) {
+                const labelName = hasName ? nextName : '會員';
+                const label = hasName ? `前往 ${labelName} 的會員中心` : '前往會員中心';
+                topbarProfileLink.setAttribute('title', label);
+                topbarProfileLink.setAttribute('aria-label', label);
+            }
+
+            if (topbarAvatarInitial) {
+                const initials = extractInitials(hasName ? nextName : '會員');
+                topbarAvatarInitial.textContent = initials;
+            }
+
+            if (topbarAvatarImg) {
+                if (hasAvatar) {
+                    // try simple resolution + cache-buster similar to sidebar behavior
+                    let candidate = '';
+                    try { candidate = normalizeImageUrl(nextAvatarRaw) || nextAvatarRaw; } catch (_) { candidate = nextAvatarRaw; }
+                    try {
+                        const storedVersion = (function () { try { return safeTrim(window.localStorage.getItem(PROFILE_VERSION_KEY)); } catch (_) { return ''; } })();
+                        const token = nextVersion || storedVersion || '';
+                        const url = token ? appendCacheBuster(candidate, token) : candidate;
+                        topbarAvatarImg.alt = `${nextName || '會員'}頭像`;
+                        if (topbarAvatarImg.src !== url) topbarAvatarImg.src = url;
+                    } catch (_) {
+                        topbarAvatarImg.removeAttribute('src');
+                        topbarAvatarImg.alt = '';
+                    }
+                } else {
+                    topbarAvatarImg.removeAttribute('src');
+                    topbarAvatarImg.alt = '';
+                }
+            }
+        }
+
     /**
      * 從 localStorage 或事件覆寫的資料更新側欄會員資料顯示。
      */
     function updateSidebarProfile(override) {
-            if (!profileContainer) return;
             const stored = readStoredMemberMeta();
             const next = { ...stored };
 
@@ -2140,6 +2188,7 @@
             }
 
             applySidebarProfileState(next);
+            try { applyTopbarProfileState(next); } catch (_) { /* ignore if topbar not present */ }
         }
 
         updateSidebarProfileProxy = updateSidebarProfile;
@@ -2173,7 +2222,7 @@
             updateSidebarProfile(detail);
         };
 
-        if (profileContainer) {
+        if (profileContainer || topbarProfileContainer) {
             updateSidebarProfile();
             window.addEventListener('storage', handleProfileStorage);
             window.addEventListener(PROFILE_UPDATE_EVENT, handleProfileEvent);
