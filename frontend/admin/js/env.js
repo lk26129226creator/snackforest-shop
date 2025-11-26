@@ -84,9 +84,6 @@
             liveChatUrl: '',
             liveChatLabel: ''
         },
-        footer: {
-            text: '© 2025 SnackForest. 保留所有權利。'
-        }
     };
 
     Admin.config = config;

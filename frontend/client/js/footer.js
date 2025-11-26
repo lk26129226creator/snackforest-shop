@@ -43,7 +43,7 @@
             const inner = document.createElement('div');
             inner.className = 'client-footer-mobile-inner';
 
-            // 左側：品牌與連結
+            // 左側：僅顯示品牌 (已移除商品/購物車/會員的連結)
             const left = document.createElement('div');
             left.className = 'footer-left';
             const brand = document.createElement('a');
@@ -51,11 +51,6 @@
             brand.href = 'index.html';
             brand.textContent = 'SnackForest';
             left.appendChild(brand);
-
-            const links = document.createElement('div');
-            links.className = 'footer-links';
-            links.innerHTML = '<a href="product.html">商品</a> · <a href="cart.html">購物車</a> · <a href="member.html">會員</a>';
-            left.appendChild(links);
 
             // 右側：社群 + 聯絡
             const right = document.createElement('div');
@@ -71,7 +66,9 @@
             const contact = document.createElement('div');
             contact.className = 'contact-row';
             const mail = document.createElement('a'); mail.href = 'mailto:snackforest1688@gmail.com'; mail.textContent = 'snackforest1688@gmail.com';
+            const phone = document.createElement('a'); phone.href = 'tel:0909585898'; phone.textContent = '0909-585-898'; phone.style.fontWeight = '600';
             contact.appendChild(mail);
+            contact.appendChild(phone);
             right.appendChild(contact);
 
             inner.appendChild(left);
@@ -83,6 +80,15 @@
             textWrap.className = 'client-footer-text';
             textWrap.setAttribute('data-footer-text', '');
             mobile.appendChild(textWrap);
+
+            // add background image element so whole image is rendered (not cropped)
+            const bgWrap = document.createElement('div');
+            bgWrap.className = 'footer-bg';
+            const bgImg = document.createElement('img');
+            bgImg.alt = 'SnackForest footer background';
+            bgImg.src = '/frontend/images/branding/去背森林風頁腳.png';
+            bgWrap.appendChild(bgImg);
+            footer.appendChild(bgWrap);
 
             footer.appendChild(mobile);
 

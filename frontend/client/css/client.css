@@ -1236,7 +1236,7 @@ body.client-sidebar-overlay .client-footer {
    - Keeps mobile-friendly inner layout already defined above
 */
 .client-footer {
-    /* override container alignment to make footer full-bleed */
+    /* full-bleed footer using an absolutely positioned <img> so the entire image renders */
     margin: 0;
     width: 100%;
     max-width: 100%;
@@ -1245,12 +1245,12 @@ body.client-sidebar-overlay .client-footer {
     overflow: visible;
     border: none;
     box-shadow: none;
-    background-image: url('/frontend/images/branding/去背森林風頁腳.png');
-    background-position: center bottom;
-    background-repeat: no-repeat;
-    background-size: cover;
-    -webkit-background-size: cover;
+    background: transparent;
 }
+
+/* background image wrapper placed behind footer content */
+.client-footer .footer-bg { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; display: flex; justify-content: center; pointer-events: none; }
+.client-footer .footer-bg img { width: 100%; height: auto; max-height: 360px; object-fit: contain; display: block; }
 
 /* Ensure the visible inner block sits above the background image */
 .client-footer .client-footer-mobile-inner,
@@ -1263,6 +1263,7 @@ body.client-sidebar-overlay .client-footer {
     align-items: center;
     justify-content: space-between;
     gap: 20px;
+    background: transparent;
 }
 
 /* If the footer is short, keep the background visible at the bottom */

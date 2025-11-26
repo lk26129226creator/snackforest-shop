@@ -2095,7 +2095,6 @@ public class Server {
             .put("liveChatUrl", "")
             .put("liveChatLabel", ""))
                 .put("featuredProductIds", new JSONArray())
-                .put("footer", new JSONObject().put("text", "© 2025 SnackForest. 保留所有權利。"))
                 .toString();
 
         @Override
