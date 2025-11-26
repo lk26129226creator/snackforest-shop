@@ -420,30 +420,49 @@ body.order-success-active {
 .home-footer a:hover { color: #fff; text-decoration:underline; }
 
 .site-footer{
-    background: linear-gradient(180deg, var(--primary-700), var(--primary-600));
-    color: #eef6ec;
-    padding:40px 0;
-    margin-top:72px;
+    /* New unified footer: forest theme for desktop & mobile */
+    background: linear-gradient(180deg,#184b2f,#133a26);
+    color: #ffffff;
+    padding: 18px 0 28px;
+    margin-top: 28px;
+    position: relative;
+    overflow: hidden;
 }
 
-.site-footer .container{
-    max-width:1080px;
+.site-footer::before {
+    /* decorative forest silhouette (fallback to gradient if asset missing) */
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-image: url('/frontend/images/branding/去背森林風頁腳.png');
+    background-size: cover;
+    background-position: center bottom;
+    opacity: 0.12;
+    pointer-events: none;
 }
 
-.site-footer p{
-    margin:0;
-    font-size:0.95rem;
-    letter-spacing:0.02em;
-}
+.site-footer .container{ max-width: 1100px; }
 
-.site-footer a{
-    color:#cbd5f5;
-    text-decoration:none;
-}
+.site-footer p{ margin: 0; font-size: 0.98rem; letter-spacing: 0.02em; }
 
-.site-footer a:hover{
-    color:#fff;
-    text-decoration:underline;
+.site-footer a{ color: rgba(255,255,255,0.92); text-decoration: none; }
+.site-footer a:hover{ color: #e6ffe9; text-decoration: underline; }
+
+/* Hide legacy desktop footer text container and use unified footer box */
+.desktop-footer { display: none !important; }
+
+/* Make the mobile footer block visible on all sizes (now the primary footer) */
+.client-footer-mobile { display: block; }
+.client-footer-mobile { margin: 0 auto; max-width: 1100px; }
+.client-footer-mobile-inner { position: relative; z-index: 2; padding: 18px; display:flex; flex-direction:row; gap:20px; align-items:center; justify-content:space-between; }
+.client-footer-mobile-inner .social-row { display:flex; gap:18px; align-items:center; }
+.client-footer-mobile-inner .contact-row { display:flex; gap:24px; align-items:center; }
+.client-footer-mobile-inner .contact-row a { color: rgba(255,255,255,0.95); font-weight:600; }
+
+/* Desktop: center main copyright text under social/contact */
+@media (min-width: 992px) {
+    .client-footer-mobile-inner { padding: 22px 12px; }
+    .client-footer-mobile-inner .social-row a { font-size: 1.4rem; }
 }
 
 /* 登入表單外層：login.html 的 .login-wrapper。 */

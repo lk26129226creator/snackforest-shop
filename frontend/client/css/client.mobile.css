@@ -466,6 +466,63 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     .order-card .card-body { padding: 10px 12px; }
 }
 
+/* Make search submit button visually consistent with other topbar buttons */
+.client-nav-search button[type="submit"] {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #ffffff;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Mobile footer: hide desktop footer and show compact social/contact footer */
+.client-footer-mobile { display: none; }
+@media (max-width: 991.98px) {
+    .desktop-footer { display: none; }
+    .client-footer-mobile {
+        display: block;
+        margin: 12px var(--client-main-gutter) calc(var(--client-tabbar-height) + env(safe-area-inset-bottom, 0px) + 12px);
+        border-radius: 14px;
+        overflow: hidden;
+        position: relative;
+        color: #fff;
+    }
+    .client-footer-mobile::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(180deg, rgba(14,34,18,0.9), rgba(11,25,16,0.9));
+        z-index: 0;
+    }
+    .client-footer-mobile-inner {
+        position: relative;
+        z-index: 1;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        background-image: url('/frontend/images/branding/去背森林風頁腳.png');
+        background-size: cover;
+        background-position: center bottom;
+        background-repeat: no-repeat;
+    }
+    .client-footer-mobile .social-row {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        justify-content: center;
+    }
+    .client-footer-mobile .social-row a { color: #fff; font-size: 1.6rem; }
+    .client-footer-mobile .contact-row { display:flex; gap:12px; flex-direction:column; align-items:center; }
+    .client-footer-mobile .contact-row a { color: rgba(255,255,255,0.95); text-decoration:none; font-weight:600; }
+}
+
 .client-search-overlay-header {
     display: flex;
     align-items: center;
