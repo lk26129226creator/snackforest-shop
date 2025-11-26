@@ -5,14 +5,14 @@
 (function(){
     const files = [
         'js/env.js',
-        'js/footer.js',
+        'js/footer-fixed.js',
         'js/navigation.js',
         'js/utils.js',
         'js/session.js',
         'js/cart.js',
         'js/popover.js',
         'js/product-list.js',
-        'js/product-detail.js',
+        'js/product-detail-fixed.js',
         'js/cart-page.js',
         'js/home.js',
         'js/init.js'

@@ -6,7 +6,7 @@ SnackForest - Mobile Styles (≤ 991.98px)
 
 /* --- 1. 全域佈局變數 (Mobile Baseline) --- */
 :root {
-    --client-navbar-height: 132px;           /* 行動導覽列高度 (預設：全元件顯示) */
+    --client-navbar-height: 104px;           /* 行動導覽列高度 (調小以減少上下空間) */
     --client-main-gutter: clamp(18px, 5vw, 28px); /* 主內容左右留白 */
     --client-mobile-search-height: 54px;     /* 搜尋欄位固定高度 */
     --client-tabbar-height: 76px;            /* 底部標籤列高度 */

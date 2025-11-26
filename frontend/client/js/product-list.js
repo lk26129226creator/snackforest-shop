@@ -260,6 +260,9 @@
         toggleSections: toggleSectionsByQueryParam,
     };
 
+    // Compatibility: some legacy code calls fetchProductsAndRender
+    window.fetchProductsAndRender = initProductListPage;
+
     // Auto-initialize if on the correct page
     initProductListPage();
 })();
