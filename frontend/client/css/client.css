@@ -1383,10 +1383,12 @@ body.client-sidebar-overlay.client-sidebar-collapsed .client-sidebar {
 }
 
 .client-sidebar-profile {
-    padding: 0.35rem 0 0.95rem;
+    padding: 12px 0 0.95rem;
     margin-bottom: 0.35rem;
     border-bottom: 1px solid rgba(203, 213, 225, 0.6);
 }
+
+/* Topbar member card removed — sidebar profile used for navigation */
 
 .client-sidebar-profile .client-sidebar-profile-link {
     gap: 0.85rem;

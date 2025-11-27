@@ -145,48 +145,7 @@ body.client-sidebar-overlay .client-main {
     gap: 10px;
 }
 
-/* 顯示並微調頂部小型 avatar 的外觀 */
-.client-topbar-avatar {
-    display: inline-flex;
-    align-items: center;
-    margin-right: 6px;
-    /* expand to take remaining space in topbar and push card to the right */
-    flex: 1 1 0;
-    justify-content: flex-end;
-}
-
-/* Make the topbar member card match the sidebar profile appearance on mobile */
-.client-topbar-avatar .client-sidebar-profile { padding: 0; margin: 0; }
-.client-topbar-avatar .client-sidebar-profile-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding: 0.65rem 0.9rem;
-    border-radius: 18px;
-    background: linear-gradient(135deg, rgba(74, 124, 89, 0.16), rgba(163, 177, 138, 0.12));
-    border: 1px solid rgba(74, 124, 89, 0.16);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-    color: #1f2937;
-    /* let the card grow horizontally up to a reasonable max width */
-    width: 100%;
-    max-width: 420px;
-}
-.client-topbar-avatar .client-sidebar-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    overflow: hidden;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(145deg, rgba(74, 124, 89, 0.18), rgba(74, 124, 89, 0.32));
-    color: var(--primary-600);
-    font-weight: 700;
-    font-size: 1.05rem;
-    box-shadow: inset 0 1px 3px rgba(255,255,255,0.6);
-}
-.client-topbar-avatar .client-sidebar-avatar-img { width:100%; height:100%; object-fit:cover; display:block; }
-.client-topbar-avatar .client-sidebar-avatar-initial { font-size:1.05rem; line-height:1; }
+/* Topbar member avatar removed — sidebar profile is used. */
 
 /* 在行動版頂欄位置僅顯示會員 (avatar / 會員中心)，隱藏客服與購物車小按鈕 */
 .client-topbar-right .client-support,
@@ -644,6 +603,11 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     .client-tabbar-item-featured { gap: 4px; }
 }
 
+/* Ensure topbar member card and sidebar profile are visible on mobile with high specificity */
+@media (max-width: 991.98px) {
+    .client-sidebar-profile .client-sidebar-profile-link { display: flex !important; }
+}
+
 .client-search-overlay-header {
     display: flex;
     align-items: center;
@@ -842,17 +806,30 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     opacity: 1;
     visibility: visible;
 }
-
 .client-sidebar-profile {
-    padding-top: 4px;
-    margin-bottom: 10px;
+    /* move profile down so it isn't hidden behind the fixed topbar/hamburger */
+    padding-top: 120px;
+    /* remove desktop border and reduce bottom gap on mobile so only one separator remains */
+    margin-bottom: 6px;
+    border-bottom: none !important;
+}
+
+/* Make the sidebar member card fill the sidebar width on mobile (left-aligned) */
+.client-sidebar-profile .client-sidebar-profile-link {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.9rem 0.9rem; /* keep same vertical rhythm while filling full width */
+    border-radius: 18px;
 }
 
 .client-sidebar-mobile-actions {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding-top: 12px;
+    gap: 12px;
+    /* tighten the top gap so the single separator sits closer to nav items */
+    padding-top: 6px;
     border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
@@ -918,7 +895,8 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 .client-sidebar-nav {
-    margin-top: 14px;
+    /* reduce spacing from actions to nav so there isn't a large blank area */
+    margin-top: 6px;
 }
 
 .client-sidebar-footer {
