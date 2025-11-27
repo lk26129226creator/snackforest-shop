@@ -1664,8 +1664,11 @@
         const topbarRight = topbarContainer ? topbarContainer.querySelector('.client-topbar-right') : null;
         const profileContainer = sidebar.querySelector('[data-client-sidebar-profile]');
         const topbarProfileContainer = topbarContainer ? topbarContainer.querySelector('[data-client-topbar-profile]') : null;
+        const topbarAvatarWrapper = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-avatar]') : null;
         const topbarAvatarImg = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-avatar-img]') : null;
         const topbarAvatarInitial = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-avatar-initial]') : null;
+        const topbarProfilePrimary = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-primary]') : null;
+        const topbarProfileSecondary = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-secondary]') : null;
         const topbarProfileLink = topbarProfileContainer ? topbarProfileContainer.querySelector('[data-client-profile-link]') : null;
         const profileLink = profileContainer ? profileContainer.querySelector('[data-client-profile-link]') : null;
         const avatarWrapper = profileContainer ? profileContainer.querySelector('[data-client-profile-avatar]') : null;
@@ -2110,26 +2113,38 @@
                 topbarProfileLink.setAttribute('aria-label', label);
             }
 
+            if (topbarProfilePrimary) {
+                topbarProfilePrimary.textContent = hasName ? `歡迎 ${nextName} 會員` : primaryDefaultText;
+            }
+
+            if (topbarProfileSecondary) {
+                topbarProfileSecondary.textContent = secondaryDefaultText || '會員中心';
+            }
+
             if (topbarAvatarInitial) {
                 const initials = extractInitials(hasName ? nextName : '會員');
                 topbarAvatarInitial.textContent = initials;
             }
 
+            if (topbarAvatarWrapper) {
+                topbarAvatarWrapper.classList.toggle('has-image', hasAvatar);
+            }
+
             if (topbarAvatarImg) {
                 if (hasAvatar) {
-                    // try simple resolution + cache-buster similar to sidebar behavior
-                    let candidate = '';
-                    try { candidate = normalizeImageUrl(nextAvatarRaw) || nextAvatarRaw; } catch (_) { candidate = nextAvatarRaw; }
-                    try {
-                        const storedVersion = (function () { try { return safeTrim(window.localStorage.getItem(PROFILE_VERSION_KEY)); } catch (_) { return ''; } })();
-                        const token = nextVersion || storedVersion || '';
-                        const url = token ? appendCacheBuster(candidate, token) : candidate;
+                    let candidates = [];
+                    try { const normalized = normalizeImageUrl(nextAvatarRaw); if (normalized) candidates.push(normalized); } catch (_) { if (nextAvatarRaw) candidates.push(nextAvatarRaw); }
+                    try { const storedResolved = safeTrim(window.localStorage.getItem(MEMBER_AVATAR_RESOLVED_KEY)); if (storedResolved && !candidates.includes(storedResolved)) candidates.push(storedResolved); } catch (_) {}
+                    (function tryLoad(idx) {
+                        if (idx >= candidates.length) { topbarAvatarImg.removeAttribute('src'); topbarAvatarImg.alt = ''; return; }
+                        let url = candidates[idx];
+                        try { const storedVersion = (function () { try { return safeTrim(window.localStorage.getItem(PROFILE_VERSION_KEY)); } catch (_) { return ''; } })(); const token = nextVersion || storedVersion || ''; if (token) url = appendCacheBuster(candidates[idx], token); } catch (_) { url = candidates[idx]; }
                         topbarAvatarImg.alt = `${nextName || '會員'}頭像`;
-                        if (topbarAvatarImg.src !== url) topbarAvatarImg.src = url;
-                    } catch (_) {
-                        topbarAvatarImg.removeAttribute('src');
-                        topbarAvatarImg.alt = '';
-                    }
+                        if (topbarAvatarImg.src === url) return;
+                        topbarAvatarImg.onerror = () => { topbarAvatarImg.onerror = null; tryLoad(idx + 1); };
+                        topbarAvatarImg.onload = () => { topbarAvatarImg.onerror = null; topbarAvatarImg.onload = null; };
+                        topbarAvatarImg.src = url;
+                    })(0);
                 } else {
                     topbarAvatarImg.removeAttribute('src');
                     topbarAvatarImg.alt = '';

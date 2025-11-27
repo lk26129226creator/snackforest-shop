@@ -199,25 +199,8 @@
             if (popover?.bindProductCard) popover.bindProductCard(card);
         });
 
-        // SPA: intercept product links to avoid full page reload and use history API
-        list.querySelectorAll('.product-link').forEach(a => {
-            a.addEventListener('click', (e) => {
-                e.preventDefault();
-                try {
-                    const href = a.getAttribute('href') || '';
-                    const url = new URL(href, window.location.href);
-                    // push search param (e.g. ?id=123) and trigger detail init
-                    history.pushState({}, '', url.search);
-                    toggleSectionsByQueryParam(new URLSearchParams(url.search));
-                    if (typeof window.initProductDetail === 'function') {
-                        window.initProductDetail();
-                    }
-                } catch (err) {
-                    // fallback to normal navigation if anything fails
-                    window.location.href = a.href;
-                }
-            });
-        });
+        // Do not intercept product links here — allow normal navigation to `product.html?id=...`
+        // This ensures clicking a product opens the standalone product page instead of an overlay.
     }
 
     function renderPagination() {
