@@ -54,8 +54,14 @@
     function toggleSectionsByQueryParam(urlParams) {
         const hasId = urlParams.has('id');
         const { listingSection, detailSection } = state.elements;
-        if (listingSection) listingSection.style.display = hasId ? 'none' : 'block';
-        if (detailSection) detailSection.style.display = hasId ? 'block' : 'none';
+        if (listingSection) {
+            if (hasId) listingSection.classList.add('sf-hidden');
+            else listingSection.classList.remove('sf-hidden');
+        }
+        if (detailSection) {
+            if (hasId) detailSection.classList.remove('sf-hidden');
+            else detailSection.classList.add('sf-hidden');
+        }
         // Only change the document title when on the standalone product page or viewing a product detail.
         // Avoid overriding the homepage title when this module is loaded as part of the home page.
         try {
