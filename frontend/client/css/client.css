@@ -1734,6 +1734,31 @@ body.client-sidebar-expanded:not(.client-sidebar-overlay) .client-sidebar-footer
     transition: transform 0.3s ease;
 }
 
+/* 修正：確保商品卡片及分類卡片會填滿其網格欄位（避免內容被置中成為細長條） */
+.product-card {
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+.product-card > a.product-link {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+}
+.product-card .card-body {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 分類卡片也應填滿欄位 */
+.category-card {
+    width: 100%;
+    box-sizing: border-box;
+}
+
 /* 購物車與 popover 的數量調整列：client/cart.html、client/js/cart-page.js。 */
 .cart-qty-group {
     display: inline-flex;
