@@ -150,6 +150,9 @@ body.client-sidebar-overlay .client-main {
     display: inline-flex;
     align-items: center;
     margin-right: 6px;
+    /* expand to take remaining space in topbar and push card to the right */
+    flex: 1 1 0;
+    justify-content: flex-end;
 }
 
 /* Make the topbar member card match the sidebar profile appearance on mobile */
@@ -164,6 +167,9 @@ body.client-sidebar-overlay .client-main {
     border: 1px solid rgba(74, 124, 89, 0.16);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
     color: #1f2937;
+    /* let the card grow horizontally up to a reasonable max width */
+    width: 100%;
+    max-width: 420px;
 }
 .client-topbar-avatar .client-sidebar-avatar {
     width: 56px;

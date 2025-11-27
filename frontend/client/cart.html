@@ -106,10 +106,21 @@
                         </div>
                     </div>
                 </div>
-                <a href="member.html" class="btn btn-sm client-member-btn d-inline-flex align-items-center" aria-label="會員中心">
-                    <i class="fa-solid fa-user-check me-2" aria-hidden="true"></i>
-                    <span>會員中心</span>
-                </a>
+                <!-- Topbar member card (match sidebar) -->
+                <div class="client-topbar-avatar" data-client-topbar-profile>
+                    <div class="client-sidebar-profile">
+                        <a class="client-sidebar-link client-sidebar-profile-link" href="member.html" data-client-menu-close data-client-profile-link aria-label="會員中心">
+                            <span class="client-sidebar-avatar" data-client-profile-avatar aria-hidden="true">
+                                <img class="client-sidebar-avatar-img" data-client-profile-avatar-img src="" alt="" loading="lazy">
+                                <span class="client-sidebar-avatar-initial" data-client-profile-avatar-initial>會</span>
+                            </span>
+                            <span class="client-sidebar-profile-text">
+                                <span class="client-sidebar-profile-primary" data-client-profile-primary>歡迎登入會員</span>
+                                <span class="client-sidebar-profile-secondary" data-client-profile-secondary>會員中心</span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
