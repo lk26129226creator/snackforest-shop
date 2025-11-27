@@ -92,18 +92,18 @@
                     ${meta.categoryName ? `<span class="mobile-product-card__category">${meta.categoryName}</span>` : ''}
                 </div>
             </div>`;
-        return `<div class="col-6"><a class="mobile-product-card" href="${href}">${cardContent}</a></div>`;
+        // 直接回傳一個可點擊的卡片節點，避免把 Bootstrap 的 col 包在 grid 中造成額外包覆層
+        return `<a class="mobile-product-card" href="${href}">${cardContent}</a>`;
     }
 
     function renderCategoryItem(category) {
         const name = getFirstValue(category, ['name', 'categoryname']) || '分類';
         const href = `product.html?category=${encodeURIComponent(name)}`;
+        // 直接輸出 category-card 作為 grid 的子項，避免多層 col 包覆
         return `
-            <div class="col-6 col-md-4 col-lg">
-                <div class="category-card" role="button" tabindex="0" aria-label="${name}分類" data-href="${href}">
-                    <div class="icon"><i class="fa-solid ${resolveCategoryIcon(name)}" aria-hidden="true"></i></div>
-                    <div class="name">${name}</div>
-                </div>
+            <div class="category-card" role="button" tabindex="0" aria-label="${name}分類" data-href="${href}">
+                <div class="icon"><i class="fa-solid ${resolveCategoryIcon(name)}" aria-hidden="true"></i></div>
+                <div class="name">${name}</div>
             </div>`;
     }
 
@@ -318,7 +318,8 @@
 
         if (nextMode === 'mobile-products') {
             await renderGrid(grid, {
-                className: 'row g-2 home-categories-grid mobile-product-grid',
+                // 使用自訂 mobile grid class，避免加入 Bootstrap 的 row/col 造成多層包裹
+                className: 'home-categories-grid mobile-product-grid',
                 fetchUrl: `${API_BASE}/products`,
                 processItems: items => items.map(normalizeProduct).filter(Boolean).slice(0, 6),
                 renderItem: renderMobileProductItem,
@@ -327,7 +328,8 @@
             });
         } else {
             await renderGrid(grid, {
-                className: 'row g-3 home-categories-grid category-grid row-cols-lg-5',
+                // 直接使用 category-grid（CSS 已以 grid 方式處理欄位），避免 row/col 冗餘
+                className: 'home-categories-grid category-grid',
                 fetchUrl: `${API_BASE}/categories`,
                 processItems: items => items.slice(0, 5),
                 renderItem: renderCategoryItem,
@@ -370,17 +372,16 @@
 
             grid.innerHTML = productsToRender.map(meta => {
                 const href = `product.html?id=${encodeURIComponent(meta.id)}`;
+                // 將 featured-card 直接作為 grid 的子項，避免多餘的 col 包裹
                 return `
-                    <div class="col-6 col-md-4 col-lg-3">
-                        <div class="card featured-card">
-                            <a href="${href}" class="d-block">
-                                <img src="${meta.imageUrl}" alt="${meta.name}" class="card-img-top">
-                            </a>
-                            <div class="card-body">
-                                <div class="fw-semibold text-truncate" title="${meta.name}">${meta.name}</div>
-                                <div class="price mt-1">${formatPrice(meta.price)}</div>
-                                <div class="mt-2"><a href="${href}" class="btn btn-sm btn-primary">查看</a></div>
-                            </div>
+                    <div class="card featured-card">
+                        <a href="${href}" class="d-block">
+                            <img src="${meta.imageUrl}" alt="${meta.name}" class="card-img-top">
+                        </a>
+                        <div class="card-body">
+                            <div class="fw-semibold text-truncate" title="${meta.name}">${meta.name}</div>
+                            <div class="price mt-1">${formatPrice(meta.price)}</div>
+                            <div class="mt-2"><a href="${href}" class="btn btn-sm btn-primary">查看</a></div>
                         </div>
                     </div>`;
                 }).join('');

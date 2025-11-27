@@ -1759,6 +1759,30 @@ body.client-sidebar-expanded:not(.client-sidebar-overlay) .client-sidebar-footer
     box-sizing: border-box;
 }
 
+/* 首頁各大區塊之間使用單一淺色分隔線（僅作用於 client 的 main 下的直接 section） */
+.client-main > section {
+    border-bottom: 1px solid rgba(15,23,42,0.04);
+    padding-bottom: 1.25rem; /* 與現有 margin 搭配，保留視覺間距 */
+    margin-bottom: 1.25rem;
+}
+.client-main > section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* NOTE: 原先的強制覆寫已被移除；在確定已佈署根本修正後可一併清理更多臨時調整。 */
+
+/* 若先前有 place-items / justify-items 被設定為 center，強制覆蓋為 stretch */
+.product-grid,
+.category-grid,
+.featured-grid,
+#home-featured-grid,
+#home-categories-grid {
+    justify-items: stretch !important;
+    align-items: stretch !important;
+}
+
 /* 購物車與 popover 的數量調整列：client/cart.html、client/js/cart-page.js。 */
 .cart-qty-group {
     display: inline-flex;
