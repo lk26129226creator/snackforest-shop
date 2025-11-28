@@ -1989,10 +1989,8 @@
                 profileSecondary.textContent = secondaryDefaultText || '會員中心';
                 if (nextId) {
                     profileSecondary.setAttribute('data-member-id', nextId);
-                    profileSecondary.setAttribute('title', `會員編號 #${nextId}`);
                 } else {
                     profileSecondary.removeAttribute('data-member-id');
-                    profileSecondary.removeAttribute('title');
                 }
             }
 

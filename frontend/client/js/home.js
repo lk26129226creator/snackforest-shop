@@ -310,9 +310,10 @@
         const grid = categorySectionMeta?.gridEl;
         if (!grid) return;
 
-        const nextMode = layoutOverride || (shouldUseMobileProductLayout() ? 'mobile-products' : 'categories');
+        // 一律使用 categories 版面，移除行動精選 (mobile-products)
+        const nextMode = layoutOverride || 'categories';
         if (grid.dataset.layout === nextMode) return;
-        
+
         grid.dataset.layout = nextMode;
         updateCategorySectionHeading(nextMode);
 
@@ -396,10 +397,6 @@
         applySiteConfig();
         loadCategories();
         loadFeaturedProducts();
-
-        if (mobileProductMediaQuery) {
-            mobileProductMediaQuery.addEventListener?.('change', () => loadCategories());
-        }
     }
 
     window.initHomePage = initHomePage;
