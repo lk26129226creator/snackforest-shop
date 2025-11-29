@@ -5,7 +5,6 @@
 (function(){
     const files = [
         'js/env.js',
-        'js/footer-fixed.js',
         'js/navigation.js',
         'js/utils.js',
         'js/session.js',

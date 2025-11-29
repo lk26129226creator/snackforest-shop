@@ -62,12 +62,12 @@
         state.siteConfig = {
             data: null,
             original: null,
-            dirty: { hero: false, benefits: false, promotions: false, support: false, featured: false, footer: false },
+            dirty: { hero: false, benefits: false, promotions: false, support: false, featured: false },
             bound: false,
             saving: false
         };
     } else {
-        state.siteConfig.dirty = Object.assign({ hero: false, benefits: false, promotions: false, support: false, featured: false, footer: false }, state.siteConfig.dirty || {});
+        state.siteConfig.dirty = Object.assign({ hero: false, benefits: false, promotions: false, support: false, featured: false }, state.siteConfig.dirty || {});
         state.siteConfig.bound = !!state.siteConfig.bound;
         state.siteConfig.saving = !!state.siteConfig.saving;
     }
@@ -88,9 +88,7 @@
             const mergedSupport = Object.assign({}, defaults.support, state.siteConfig.data.support);
             state.siteConfig.data.support = mergedSupport;
         }
-        if (!state.siteConfig.data.footer) {
-            state.siteConfig.data.footer = Object.assign({}, defaults.footer);
-        }
+        // footer data intentionally not injected here — footer feature removed
         return state.siteConfig.data;
     };
 
@@ -165,16 +163,13 @@
             liveChatUrl: String(supportRaw.liveChatUrl ?? supportRaw.chatUrl ?? base.support?.liveChatUrl ?? '').trim(),
             liveChatLabel: String(supportRaw.liveChatLabel ?? supportRaw.liveChatText ?? supportRaw.chatLabel ?? base.support?.liveChatLabel ?? '').trim()
         };
-        const footer = Object.assign({}, base.footer, raw?.footer || {});
-        footer.text = String(footer.text ?? '').trim();
-        if (!footer.text) footer.text = base.footer.text;
+        // footer removed from sanitized payload
         return {
             hero,
             benefits: cleanedBenefits,
             promotions,
             support,
-            featuredProductIds: featured,
-            footer
+            featuredProductIds: featured
         };
     };
 
@@ -200,7 +195,7 @@
      * @param {boolean} dirty 是否有未儲存變更。
      */
     site.setDirty = function (section, dirty) {
-        state.siteConfig.dirty = state.siteConfig.dirty || { hero: false, benefits: false, promotions: false, support: false, featured: false, footer: false };
+        state.siteConfig.dirty = state.siteConfig.dirty || { hero: false, benefits: false, promotions: false, support: false, featured: false };
         state.siteConfig.dirty[section] = !!dirty;
         site.updateButtonState(section);
     };
@@ -532,8 +527,8 @@
         site.renderPromotions(current.promotions);
         site.renderSupport(current.support);
         site.renderFeaturedList();
-        site.renderFooter(current.footer);
-        const sections = ['hero', 'benefits', 'promotions', 'support', 'featured', 'footer'];
+        // footer rendering removed
+        const sections = ['hero', 'benefits', 'promotions', 'support', 'featured'];
         if (resetDirty) {
             sections.forEach((section) => site.setDirty(section, false));
         } else {
@@ -1052,17 +1047,13 @@
         const featured = Array.from(new Set((state.siteConfig.data.featuredProductIds || [])
             .map((id) => Number(id))
             .filter((id) => Number.isFinite(id))));
-        const footerDefaults = site.getDefault().footer;
-        const footerText = String(state.siteConfig.data.footer?.text ?? '').trim();
-        const footer = {
-            text: footerText || footerDefaults.text || ''
-        };
+        // footer removed from admin site configuration UI
         const supportDefaults = site.getDefault().support || {};
         const supportData = Object.assign({}, supportDefaults, state.siteConfig.data.support || {});
         Object.keys(supportData).forEach((key) => {
             supportData[key] = String(supportData[key] ?? '').trim();
         });
-        return { hero, benefits, promotions, support: supportData, featuredProductIds: featured, footer };
+        return { hero, benefits, promotions, support: supportData, featuredProductIds: featured };
     };
 
     /**
@@ -1084,7 +1075,7 @@
             state.siteConfig.data = site.cloneConfig(payload);
             state.siteConfig.original = site.cloneConfig(payload);
             writeCachedConfig(state.siteConfig.data);
-            ['hero', 'benefits', 'promotions', 'support', 'featured', 'footer'].forEach((part) => site.setDirty(part, false));
+            ['hero', 'benefits', 'promotions', 'support', 'featured'].forEach((part) => site.setDirty(part, false));
             site.clearStatus();
             if (Admin.core && typeof Admin.core.notifySuccess === 'function') {
                 Admin.core.notifySuccess('網站設定已儲存');

@@ -1478,17 +1478,7 @@
             info.liveChatLabel = String(cfg.support.liveChatLabel || cfg.support.liveChatText || cfg.support.chatLabel || '').trim();
         }
 
-        const footerText = cfg && cfg.footer && typeof cfg.footer.text === 'string' ? cfg.footer.text : '';
-        if (footerText) {
-            if (!info.email) {
-                const emailMatch = footerText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-                if (emailMatch) info.email = emailMatch[0];
-            }
-            if (!info.phone) {
-                const phoneMatch = footerText.match(/(0\d{1,3}[\s-]?\d{3,4}[\s-]?\d{3,4}|09\d{2}[\s-]?\d{3}[\s-]?\d{3})/);
-                if (phoneMatch) info.phone = phoneMatch[0];
-            }
-        }
+        // footer text fallback removed — use support config or defaults only
 
         if (!info.email) info.email = 'snackforest1688@gmail.com';
         if (!info.phone) info.phone = '0909-585-898';

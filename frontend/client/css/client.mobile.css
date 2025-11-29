@@ -92,10 +92,7 @@ body.client-sidebar-overlay .client-main {
     margin-top: 0;
 }
 
-.client-footer {
-    width: calc(100% - (var(--client-main-gutter) * 2));
-    margin: 28px var(--client-main-gutter) 28px;
-}
+/* Client footer styles removed from mobile CSS */
 
 /* --- 3. 導覽列與頂部工具列 --- */
 .navbar {
@@ -473,8 +470,7 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     .client-tabbar-item i { font-size: 1.02rem; }
     .client-tabbar-item { font-size: 0.72rem; padding: 2px 4px; }
 
-    /* Reduce footer and container margins */
-    .client-footer { margin: 16px var(--client-main-gutter) 16px; }
+    /* Client footer styles removed from mobile CSS */
 
     /* Simplify card header spacing in order list */
     .order-card .card-header { padding: 10px 12px; }
@@ -500,16 +496,6 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     .desktop-footer { display: none; }
     .client-footer-mobile { display: none !important; }
 
-    /* Make unified .client-footer full-bleed on mobile */
-    .client-footer {
-        margin: 0;
-        width: 100%;
-        max-width: 100%;
-        border-radius: 0;
-        overflow: visible;
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-        position: relative;
-    }
 
     /* Make main content full-bleed as well so page items touch edges */
     .client-main {
@@ -549,42 +535,7 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         box-sizing: border-box !important;
     }
 
-    /* Expand the background wrapper to viewport width and center it */
-    .client-footer .footer-bg {
-        position: absolute;
-        left: 50%;
-        right: auto;
-        bottom: 0;
-        z-index: 1;
-        transform: translateX(-50%);
-        width: 100vw;
-        max-width: 100vw;
-        display: flex;
-        justify-content: center;
-        pointer-events: none;
-    }
-    .client-footer .footer-bg img {
-        width: 100vw;
-        height: auto;
-        max-height: 60vh; /* allow image to scale larger on mobile; adjust if needed */
-        object-fit: contain;
-        display: block;
-    }
-
-    /* Ensure content sits above the background image */
-    .client-footer .client-footer-mobile-inner {
-        position: relative;
-        z-index: 2;
-        padding: 20px 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-    }
-    /* Reserve footer height on mobile so the image doesn't overlap content above */
-    .client-footer { min-height: 60vh !important; }
+    /* Client footer background and mobile layout removed */
 
     /* Make central search button visually identical to other tab items on mobile */
     .client-tabbar-fab {

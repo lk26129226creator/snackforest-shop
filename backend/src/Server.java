@@ -2780,4 +2780,6 @@ public class Server {
             sendErrorResponse(exchange, 405, "Method Not Allowed", null);
         }
     }
+
+    // Footer SVG generator removed — footer features cleaned up.
 }

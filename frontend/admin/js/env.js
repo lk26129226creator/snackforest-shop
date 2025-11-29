@@ -106,7 +106,7 @@
         data: null,
         original: null,
         // 逐一標記各區段是否有異動，方便決定是否需要儲存。
-        dirty: { hero: false, benefits: false, featured: false, promotions: false, support: false, footer: false },
+        dirty: { hero: false, benefits: false, featured: false, promotions: false, support: false },
         loading: false,
         saving: false,
         bound: false
