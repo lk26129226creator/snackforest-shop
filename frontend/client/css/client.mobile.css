@@ -425,9 +425,9 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
    These are safe visual overrides that avoid changing HTML structure. */
 @media (max-width: 991.98px) {
     .client-main {
-        padding: 12px;
-        border-radius: 12px;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+        padding: 10px; /* 縮小內距 */
+        border-radius: 10px; /* 縮小圓角 */
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); /* 減輕陰影 */
     }
     .client-main > *:first-child { margin-top: 0; }
 
@@ -435,9 +435,11 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     .card, .member-card, .order-card, .admin-stat-card {
         border-radius: 10px;
         box-shadow: 0 6px 14px rgba(15,23,42,0.06);
+        border-radius: 8px; /* 縮小卡片圓角 */
+        box-shadow: 0 4px 12px rgba(15,23,42,0.05); /* 減輕陰影 */
     }
     .card .card-body, .member-card .card-body {
-        padding: 12px;
+        padding: 10px; /* 縮小卡片內距 */
     }
 
     /* Tame search overlay and nav search visual weight */
@@ -446,6 +448,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         min-height: 44px;
         border-radius: 12px;
         box-shadow: 0 6px 18px rgba(15,23,42,0.08);
+        border-radius: 10px; /* 縮小圓角 */
+        box-shadow: 0 4px 14px rgba(15,23,42,0.07); /* 減輕陰影 */
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
     }
@@ -457,6 +461,7 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         padding: 0 !important;
         box-shadow: none !important;
         border-top-width: 0 !important;
+        display: none !important; /* 保持隱藏 */
     }
     .client-tabbar-fab {
         width: 40px;
@@ -464,6 +469,11 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         border-radius: 10px;
         font-size: 0.98rem;
         box-shadow: 0 8px 18px rgba(74,124,89,0.12);
+        width: 38px; /* 縮小按鈕 */
+        height: 38px; /* 縮小按鈕 */
+        border-radius: 8px; /* 縮小圓角 */
+        font-size: 0.95rem;
+        box-shadow: 0 6px 16px rgba(74,124,89,0.1); /* 減輕陰影 */
     }
 
     /* Smaller icons and labels to fit denser layouts */
@@ -475,6 +485,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     /* Simplify card header spacing in order list */
     .order-card .card-header { padding: 10px 12px; }
     .order-card .card-body { padding: 10px 12px; }
+    .order-card .card-header { padding: 8px 10px; } /* 縮小訂單卡片標頭內距 */
+    .order-card .card-body { padding: 8px 10px; } /* 縮小訂單卡片內容內距 */
 }
 
 /* Make search submit button visually consistent with other topbar buttons */
