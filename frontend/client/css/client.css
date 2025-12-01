@@ -18,15 +18,14 @@ SnackForest - 全局樣式表 (顏色已還原)
     --border-color: #dee2e6;       /* 邊框顏色 (保留) */
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
-    --border-radius: 0.75rem;      /* 圓角 (新) */
+    --border-radius: 0.5rem;      /* 更小圓角以利緊湊感 */
     --font-sans-serif: 'Poppins', 'Noto Sans TC', sans-serif;
     --background-color: #f7f9f8;
-    --client-sidebar-width-collapsed: 100px; /* 客戶端側欄收合寬度 */
-    --client-sidebar-width-expanded: 312px; /* 客戶端側欄展開寬度 */
-    --client-navbar-height: 88px;           /* 導覽列高度 (同步頂端固定列)，調整為較寬的上下間距 */
-    --client-main-max-width: 1240px;        /* 主內容區最大寬度 */
-    --client-main-max-width: 1400px;        /* 主內容區最大寬度 (wider) */
-    --client-main-gutter: 20px;             /* 主內容左右邊距 (narrower gutters) */
+    --client-sidebar-width-collapsed: 80px; /* 側欄收合更小 */
+    --client-sidebar-width-expanded: 260px; /* 側欄展開較窄 */
+    --client-navbar-height: 72px;           /* 導覽列高度縮小 */
+    --client-main-max-width: 980px;         /* 主內容區最大寬度縮小，讓版面更集中 */
+    --client-main-gutter: 12px;             /* 縮小左右內距 */
     /* 質感升級：擴充色票與陰影層級 */
     --primary-700: #234a2b;
     --primary-600: #2f5f3a;
@@ -377,7 +376,7 @@ body.order-success-active {
 }
 .home-carousel-wrapper #homeCarousel .carousel-item img {
     width: 100%;
-    height: 380px;
+    height: 260px; /* 減少輪播高度 */
     object-fit: cover;
 }
 .home-carousel-wrapper .carousel-control-prev,
@@ -460,7 +459,7 @@ body.order-success-active {
 .featured-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
 .featured-card { border:none; border-radius: .75rem; overflow:hidden; box-shadow: 0 6px 18px rgba(0,0,0,.06); transition: transform .18s ease, box-shadow .18s ease; }
 .featured-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0,0,0,.12); }
-.featured-card img { width:100%; height:220px; object-fit:cover; }
+.featured-card img { width:100%; height:160px; object-fit:cover; }
 .featured-card .price { color: var(--primary-600); font-weight:700; }
 
 /* 首頁頁尾：client/index.html 的 .home-footer 區塊。 */
@@ -1197,8 +1196,8 @@ body.client-sidebar-overlay {
 .client-main {
     width: var(--client-main-width);
     max-width: 100%;
-    margin-top: calc(var(--client-navbar-height) + 12px);
-    margin-bottom: 32px;
+    margin-top: calc(var(--client-navbar-height) + 8px);
+    margin-bottom: 18px;
     margin-left: calc(
         var(--client-sidebar-width)
         + max(
@@ -1211,7 +1210,7 @@ body.client-sidebar-overlay {
         calc((100% - var(--client-sidebar-width) - var(--client-main-width)) / 2)
     );
     /* Layout adjustments: reduce vertical padding and keep full-bleed */
-    padding: 12px 0;
+    padding: 8px 0;
     transition: none;
     will-change: auto;
 }
@@ -1630,8 +1629,8 @@ body.client-sidebar-expanded:not(.client-sidebar-overlay) .client-sidebar-footer
     對應頁面：client/index.html 精選商品、client/product.html 商品列表。 */
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem; /* 縮小網格間距 */
 }
 
 .product-card .card-body {
@@ -2008,21 +2007,21 @@ input[type=number] {
 /* --- 商品卡圖片調整：提高高度並完整呈現 ---
     對應頁面：client/product.html 及 client/index.html 的商品卡圖像。 */
 .product-card {
-    min-height: 460px; /* 讓卡片變高以完整呈現圖片 */
+    min-height: 340px; /* 降低卡片高度，讓列表更緊湊 */
 }
 .product-card .product-image-wrapper {
-    height: 320px; /* 放大圖片可用高度 */
+    height: 200px; /* 縮小圖片高度 */
     display: flex;
     align-items: center;
     justify-content: center;
     background: #fafafa;
-    padding: 8px;
+    padding: 6px;
 }
 .product-card .product-card-img {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* 讓圖片完整顯示 */
-    transition: transform 0.25s ease;
+    object-fit: cover; /* 保持裁切以節省高度 */
+    transition: transform 0.18s ease;
 }
 
 

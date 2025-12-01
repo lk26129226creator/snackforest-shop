@@ -6,7 +6,7 @@ SnackForest - Mobile Styles (≤ 991.98px)
 
 /* --- 1. 全域佈局變數 (Mobile Baseline) --- */
 :root {
-    --client-navbar-height: 104px;           /* 行動導覽列高度 (調小以減少上下空間) */
+    --client-navbar-height: 84px;           /* 行動導覽列高度，進一步縮小 */
     --client-main-gutter: clamp(18px, 5vw, 28px); /* 主內容左右留白 */
     --client-mobile-search-height: 54px;     /* 搜尋欄位固定高度 */
     --client-tabbar-height: 76px;            /* 底部標籤列高度 */
@@ -69,10 +69,10 @@ body.client-sidebar-expanded {
 
 .client-main {
     width: calc(100% - (var(--client-main-gutter) * 2));
-    margin: clamp(18px, 5vw, 26px) var(--client-main-gutter);
-    padding: clamp(18px, 5vw, 26px);
-    border-radius: 20px;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+    margin: clamp(10px, 4vw, 16px) var(--client-main-gutter);
+    padding: 10px; /* 更緊湊 */
+    border-radius: 10px;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
     flex-grow: 1;
 }
 
@@ -1015,7 +1015,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 .product-card .product-image-wrapper {
-    height: 220px;
+    height: 140px; /* 縮小行動版商品圖片高度 */
 }
 
 .product-card .card-body {
