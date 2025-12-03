@@ -737,6 +737,7 @@
     function hydratePromoTicker(cfg) {
         const promoEl = document.getElementById('client-topbar-promo');
         if (!promoEl) return;
+        
         const textEl = promoEl.querySelector('[data-promo-text]');
         if (!textEl) return;
 

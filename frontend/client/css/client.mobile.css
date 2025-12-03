@@ -12,7 +12,12 @@ SnackForest - Mobile Styles (≤ 991.98px)
     --client-tabbar-height: 76px;            /* 底部標籤列高度 */
 }
 
-/* 隱藏底部 Tabbar（已移除底部導覽設計） */
+/*
+    Legacy / Tabbar 註解：
+    - 早期設計包含底部 tabbar，現在改為隱藏以免干擾行動版畫面。
+    - 如果要重新啟用底部導覽，請調整 `--client-tabbar-height`、.client-mobile-tabbar 的 `height` 與 padding。
+    - `body[data-client-mobile-nav="tabbar"]` 會在特定狀態下覆寫 `--client-navbar-height`（見下方）。
+*/
 .client-mobile-tabbar,
 .client-tabbar-item,
 .client-tabbar-fab,
@@ -26,9 +31,23 @@ body[data-client-mobile-nav="tabbar"] {
 }
 
 /* --- 2. 畫布與主版面 --- */
+/*
+    畫布與主版面說明：
+    - 這裡控制頁面整體的排版節奏（gutter、main 區寬、top padding 等）。
+    - 關鍵變數：`--client-main-gutter`（左右間距）、`--client-sidebar-width`（側欄寬度）、
+        `--client-navbar-height`（頂欄高度，影響 `body` 的 padding-top 與多處 calc()）。
+    - 調整建議：若修改某一變數，請搜尋全檔案使用該變數的地方（例如 `calc(100vh - var(--client-navbar-height) - 24px)`），
+        以確認所有間距與位置都一致。
+*/
+/*
+    預留頂部空間說明：
+    - `body` 的 `padding-top` 使用 `--client-navbar-height`，目的是為了讓固定在頂部的 `.navbar` 不會蓋住頁面內容。
+    - 若要調整行動版上方導覽列高度（例如改成 48px），請同時在變數或行動 media query 中覆寫此變數，
+        以保持內容間距同步。
+*/
 body {
-    --client-sidebar-width: 0px;             /* 行動裝置不預留側欄寬度 */
-    padding-top: var(--client-navbar-height);
+        --client-sidebar-width: 0px;             /* 行動裝置不預留側欄寬度 */
+        padding-top: var(--client-navbar-height);
     /* 移除 tabbar 導致的額外底部留白，僅保留安全區域 inset */
     padding-bottom: env(safe-area-inset-bottom, 0px);
     display: flex;
@@ -78,7 +97,18 @@ body.client-sidebar-expanded {
 
 /* 確保主內容高度可以推擠頁尾到視窗底部（避免頁尾漂浮） */
 @media (max-width: 991.98px) {
-    .client-main { min-height: calc(100vh - var(--client-navbar-height) - 24px); }
+        /*
+            手機版主內容高度計算：
+            - 使用 `calc(100vh - var(--client-navbar-height) - 24px)` 確保主內容高度會推擠頁尾到視窗底部，
+                避免 footer 漂浮或出現過多底部空白。
+            - 若修改 `--client-navbar-height`，這裡會自動跟著更新。
+        */
+        .client-main { min-height: calc(100vh - var(--client-navbar-height) - 24px); }
+        /* 在窄視窗下隱藏頂欄中間與右側次要工具，讓左側品牌與漢堡選單為主 */
+        .client-topbar-center,
+        .client-topbar-right {
+                display: none !important;
+        }
 }
 
 body.client-sidebar-overlay .client-main {
@@ -93,11 +123,31 @@ body.client-sidebar-overlay .client-main {
 }
 
 /* Client footer styles removed from mobile CSS */
+/*
+    Footer / 主內容行為：
+    - 行動版將 footer 的行為簡化，使用 `.client-main` 的 min-height 與 margin/padding 控制頁面高度。
+    - 若 footer 出現漂浮（不黏底）問題，優先檢查 `.client-main` 的 `min-height` 與 `body` 的 `padding-bottom`。
+*/
 
 /* --- 3. 導覽列與頂部工具列 --- */
+/*
+    Topbar (Navbar) 指南：
+    - 核心：`.navbar` 的高度由 `--client-navbar-height` 控制（通常在 `:root` 或 media query 中設定）。
+    - 常見調整：品牌字級（.brand-signature）、漢堡按鈕大小（.client-navbar-hamburger）、右側工具群顯示/隱藏。
+    - 注意：多處採用 `min-height`、`padding` 與 `line-height` 配合使用；若導覽列看起來太高，請檢查：
+            1) `--client-navbar-height` 是否在更高優先權的檔案或 script 中被覆寫；
+            2) `.navbar` 內部元素（button、img、.brand-signature）是否有額外 margin/padding。
+*/
+/*
+    Navbar 行為說明：
+    - `.navbar` 使用 `min-height: var(--client-navbar-height)` 以便根據變數自動調整高度。
+    - 若要在行動版縮小頂欄，請覆寫 `--client-navbar-height`（放在此檔或更具體的 media query 中），
+        並一併調整 `body` 的 `padding-top`（該檔已使用變數，因此通常只需改變變數即可）。
+    - 使用 `min-height` 而非固定 `height` 可以避免內部元素被強制截斷。
+*/
 .navbar {
     min-height: var(--client-navbar-height);
-    padding: 8px 0 8px; /* 減少上下內距讓頂部不那麼擠 */
+    padding: 0; /* 減少上下內距讓頂部不那麼擠 */
 }
 
 .navbar .container-fluid {
@@ -141,8 +191,6 @@ body.client-sidebar-overlay .client-main {
     flex-wrap: wrap;
     gap: 10px;
 }
-
-/* Topbar member avatar removed — sidebar profile is used. */
 
 /* 在行動版頂欄位置僅顯示會員 (avatar / 會員中心)，隱藏客服與購物車小按鈕 */
 .client-topbar-right .client-support,
@@ -225,6 +273,11 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 }
 
 /* --- 3-1. 底部標籤導覽列 --- */
+/*
+    底部 Tabbar：
+    - 目前預設隱藏；若要啟用請設定 `.client-mobile-tabbar { display: flex; }` 並調整 `--client-tabbar-height`。
+    - 注意 safe-area inset（包裝 notch / 底部安全區）：使用 `env(safe-area-inset-bottom)` 來增加底部 padding。
+*/
 .client-mobile-tabbar {
     position: fixed;
     inset: auto 0 0 0;
@@ -262,6 +315,12 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     appearance: none;
     -webkit-appearance: none;
 }
+
+/*
+    Tabbar item: 單一 tab 項目的樣式。
+    - 在本專案此區塊預設為隱藏（legacy），但保留樣式以便未來啟用。
+    - 若啟用 tabbar，注意調整 font-size、gap 與 padding 以確保觸控目標大小。
+*/
 
 .client-tabbar-item i {
     font-size: 1.18rem;
@@ -327,6 +386,12 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 }
 
 /* --- 4. 搜尋列與快速操作 --- */
+/*
+    搜尋列註解：
+    - `.client-nav-search` 為頂欄內的搜尋元件，行動版預設隱藏或縮小以節省空間。
+    - 若想要在 mobile 顯示搜尋欄，調整 `.client-nav-search { display:flex; min-height: 44px; padding: ... }`。
+    - 搜尋結果面板（`.client-nav-search-results`）會在行動版以 full-width 顯示，注意背景與文字對比。
+*/
 .client-nav-search {
     display: flex;
     align-items: center;
@@ -407,8 +472,10 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     left: 0;
     right: 0;
     bottom: 0;
-    /* Prevent panel from exceeding viewport height on small devices */
-    max-height: calc(100vh - 72px);
+        /* Prevent panel from exceeding viewport height on small devices
+             - 注意：此處使用硬編碼的 72px（預期為頂欄高度），建議改為使用變數 `var(--client-navbar-height)`
+                 以便當你調整頂欄高度時，搜尋面板也會自動同步。 */
+        max-height: calc(100vh - 72px);
     padding: clamp(18px, 6vw, 32px) clamp(18px, 6vw, 28px);
     padding-bottom: calc(clamp(22px, 7vw, 32px) + env(safe-area-inset-bottom, 0px));
     border-radius: 28px 28px 0 0;
@@ -741,6 +808,12 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 
 
 /* --- 5. 側欄浮層 --- */
+/*
+    側欄浮層（Mobile Sidebar）說明：
+    - 側欄在行動裝置通常以覆蓋層方式顯示（transform: translateX），使用 `body.client-sidebar-expanded` 切換狀態。
+    - `padding-top: 120px`（在 .client-sidebar-profile）是為了避免被固定頂欄遮蓋；若你調整頂欄高度，此值也要同步。
+    - 若想讓側欄與頂欄無縫接合，可考慮把 `.client-sidebar` 的 `top` 設為 `var(--client-navbar-height)`。
+*/
 .client-sidebar {
     top: 0;
     height: 100vh;
@@ -867,6 +940,11 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 /* --- 6. 首頁英雄區與區塊 --- */
+/*
+    Hero / 首頁主視覺：
+    - 主要控制 hero 區塊的 padding、對齊與響應式圖片高度（例：home-carousel 的圖片高度）。
+    - 若想要讓 hero 在小螢幕更緊湊，調整 `padding: clamp(...)` 的下限與上限或直接在 media query 中覆寫。
+*/
 .home-hero {
     padding: clamp(1.75rem, 6vw, 2.75rem);
     text-align: center;
@@ -911,6 +989,11 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 /* --- 7. 內容分區 --- */
+/*
+    內容分區（Grid / Cards）：
+    - 說明哪些 class 控制卡片尺寸、欄位數（例如 product-grid、category-grid）以及如何在手機上改為兩欄或一欄。
+    - 若要改變卡片間距，調整 `gap` 或 `.client-main` 的 padding/margin。
+*/
 .benefits-row > [class*="col-"] {
     flex: 0 0 100%;
     max-width: 100%;
@@ -922,8 +1005,8 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 .category-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(2, 1fr); /* 預設兩欄，更緊湊 */
+    gap: 1rem;
 }
 
 #home-categories-grid.mobile-product-grid {
@@ -1006,8 +1089,8 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(2, 1fr); /* 預設兩欄，更緊湊 */
+    gap: 1rem;
 }
 
 .product-card {
@@ -1036,6 +1119,11 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 /* --- 8. 表單與共用元件 --- */
+/*
+    表單元件：
+    - 此區設定表單控制元件的最小高度與字級，確保觸控目標大小在行動裝置上合適（例如 `min-height: 46px`）。
+    - 若需要更大按鈕或更緊湊的表單，可修改這裡或添加更具體 selector 覆寫。
+*/
 .form-control,
 .form-select {
     min-height: 46px;
@@ -1046,6 +1134,11 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 /* --- 9. 內縮視窗 (商品快覽) --- */
+/*
+    商品快覽 / Popover：
+    - 控制快覽彈出視窗的最大高度、內距與圓角，避免在小螢幕超出視窗。
+    - `max-height` 與 `inset` 的調整可以讓彈窗在不同裝置上保有適當顯示。
+*/
 #product-hover-popover {
     inset: 8px;
     border-radius: 0.5rem;
@@ -1056,6 +1149,11 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 /* --- 10. 中尺寸行動裝置 (≤ 768px) --- */
+/*
+    中尺寸裝置說明：
+    - 針對平板與大型手機的微調區塊（例如改變 `--client-navbar-height`、carousel 高度與 grid 行為）。
+    - 若要針對特定機型微調，請在這裡新增更精準的 media query（例如 max-width: 820px）。
+*/
 @media (max-width: 768px) {
     :root {
         --client-navbar-height: 120px;
@@ -1089,11 +1187,21 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 /* --- 11. 小型行動裝置 (≤ 576px) --- */
+/*
+    小型裝置說明：
+    - 主要縮小字級與按鈕大小，並在最窄裝置上改變部分間距以避免換行與佔位過大。
+    - 注意 `body[data-client-mobile-nav="sidebar"]` 可能會覆寫 `--client-navbar-height`，此為切換導覽模式的快捷方式。
+*/
 @media (max-width: 576px) {
     :root {
         --client-tabbar-height: 70px;
     }
 
+    /*
+      小螢幕 main margin 說明：
+      - 這裡在最窄裝置上給 `.client-main` 一個上方 margin，確保內容不會被固定頂欄遮蓋。
+      - 使用 `calc(var(--client-navbar-height) + 14px)` 可以讓你只改變 `--client-navbar-height` 即可同步調整所有頁面間距。
+    */
     .client-main {
         margin: calc(var(--client-navbar-height) + 14px) var(--client-main-gutter) calc(env(safe-area-inset-bottom, 0px) + 46px);
     }
@@ -1177,6 +1285,11 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 /* --- 12. 超小尺寸手機 (≤ 420px) --- */
+/*
+    超小手機註解：
+    - 在非常窄的螢幕上，會進一步調整 gutter 與字級，並保留 touch target 可用性。
+    - 若需要在超小裝置降低頂欄高度，請在此 media query 中覆寫 `--client-navbar-height`。
+*/
 @media (max-width: 420px) {
     :root {
         --client-main-gutter: clamp(16px, 7vw, 22px);
