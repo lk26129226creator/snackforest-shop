@@ -136,6 +136,11 @@
             return;
         }
         const subtotal = cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0);
+        const rawCustomerId = localStorage.getItem('customerId');
+        const customerIdNumeric = rawCustomerId ? Number(rawCustomerId) : null;
+        if (rawCustomerId && Number.isNaN(customerIdNumeric)) {
+            console.warn('cart-page: invalid customerId in localStorage', rawCustomerId);
+        }
         const draft = {
             items: cart,
             total: subtotal + (cart.length > 0 ? 60 : 0),
@@ -144,7 +149,8 @@
             recipientName: localStorage.getItem('sf_recipient_name') || '',
             recipientAddress: localStorage.getItem('sf_recipient_address') || '',
             recipientPhone: localStorage.getItem('sf_recipient_phone') || '',
-            customerId: localStorage.getItem('customerId') || 1
+            // store numeric customerId when present; keep null for guests so backend can decide default behavior
+            customerId: customerIdNumeric
         };
         try {
             sessionStorage.setItem('sf_order_draft', JSON.stringify(draft));

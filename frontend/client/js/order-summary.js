@@ -103,10 +103,16 @@
             }
 
             const subtotal = draft.items.reduce((s,i) => s + (i.price||0)*(i.quantity||0), 0);
+            // ensure customerId is numeric when present
             const payload = Object.assign({}, draft, {
                 recipientName, recipientAddress, recipientPhone, shippingMethod, paymentMethod,
-                total: subtotal + (draft.items && draft.items.length ? 60 : 0)
+                total: subtotal + (draft.items && draft.items.length ? 60 : 0),
+                customerId: draft.customerId ? Number(draft.customerId) : undefined
             });
+            if (payload.customerId !== undefined && Number.isNaN(payload.customerId)) {
+                console.warn('order-summary: invalid customerId in draft', draft.customerId);
+                payload.customerId = undefined;
+            }
 
             const res = await fetch(API_BASE + '/order', {
                 method: 'POST',
@@ -115,6 +121,7 @@
             });
             if (!res.ok) throw new Error('建立訂單失敗: ' + res.status);
             const data = await res.json();
+            console.debug('order-summary: createOrder response', res.status, data);
 
             try{ sessionStorage.removeItem('sf_order_draft'); }catch(e){}
             try{ window.clearCart && window.clearCart(); }catch(e){}
