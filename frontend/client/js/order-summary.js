@@ -54,7 +54,7 @@
                     shipSel.innerHTML = '';
                     (Array.isArray(data) ? data : []).forEach(s => {
                         const opt = document.createElement('option');
-                        // use id as value (backend expects id when DB uses FK)
+                        // 使用 id 作為 value（後端在使用 FK 時會期待數字 id）
                         opt.value = s.id == null ? (s.name || s.methodName || '') : String(s.id);
                         opt.textContent = s.name || s.methodName || '';
                         shipSel.appendChild(opt);
@@ -106,7 +106,7 @@
             }
 
             const subtotal = draft.items.reduce((s,i) => s + (i.price||0)*(i.quantity||0), 0);
-            // include both id and name for compatibility: send id as shippingMethodId/paymentMethodId and also include name
+            // 為了相容性同時包含 id 與名稱：送出 shippingMethodId/paymentMethodId（數字）以及顯示名稱
             const shippingMethodId = Number.isNaN(Number(shippingMethod)) ? null : Number(shippingMethod);
             const paymentMethodId = Number.isNaN(Number(paymentMethod)) ? null : Number(paymentMethod);
             const payload = Object.assign({}, draft, {

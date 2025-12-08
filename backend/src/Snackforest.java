@@ -1025,25 +1025,25 @@ public class Snackforest {
             try (PreparedStatement orderStmt = checkoutConn.prepareStatement(orderSql, Statement.RETURN_GENERATED_KEYS)) {
                 orderStmt.setInt(1, currentCustomer.getId());
                 orderStmt.setBigDecimal(2, total);
-                // support either id or name for shipping/payment
+                // 支援以 id 或名稱輸入運送/付款；寫入資料庫時以 INT 或 NULL 寫入 FK 欄位
                 if (shipping != null) {
                     try {
                         orderStmt.setInt(3, Integer.parseInt(shipping));
                     } catch (NumberFormatException nfe) {
-                        orderStmt.setString(3, shipping);
+                        orderStmt.setNull(3, java.sql.Types.INTEGER);
                     }
                 } else {
-                    orderStmt.setNull(3, java.sql.Types.VARCHAR);
+                    orderStmt.setNull(3, java.sql.Types.INTEGER);
                 }
 
                 if (payment != null) {
                     try {
                         orderStmt.setInt(4, Integer.parseInt(payment));
                     } catch (NumberFormatException nfe) {
-                        orderStmt.setString(4, payment);
+                        orderStmt.setNull(4, java.sql.Types.INTEGER);
                     }
                 } else {
-                    orderStmt.setNull(4, java.sql.Types.VARCHAR);
+                    orderStmt.setNull(4, java.sql.Types.INTEGER);
                 }
 
                 orderStmt.setString(5, recipient.get("name"));

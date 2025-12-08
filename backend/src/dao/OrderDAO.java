@@ -45,18 +45,19 @@ public class OrderDAO {
             try (PreparedStatement orderStmt = conn.prepareStatement(orderSql, Statement.RETURN_GENERATED_KEYS)) {
                 orderStmt.setInt(1, order.getCustomerId());
                 orderStmt.setBigDecimal(2, order.getTotalAmount());
-                // Shipping/Payment columns may be FK ints or text depending on schema.
-                // Try to write as INT when the provided value is parseable as integer, otherwise write as string.
+                // 運送/付款欄位可能為 FK（整數）或文字，視資料庫 schema 而定。
+                // 嘗試把提供的值解析為整數並以 INT 寫入；若解析失敗則以 NULL 寫入（對應 FK 欄位）
                 String ship = order.getShippingMethod();
                 if (ship != null) {
                     try {
                         int shipId = Integer.parseInt(ship);
                         orderStmt.setInt(3, shipId);
                     } catch (NumberFormatException nfe) {
-                        orderStmt.setString(3, ship);
+                        // If cannot parse to int, set NULL for INT FK column to avoid type errors
+                        orderStmt.setNull(3, java.sql.Types.INTEGER);
                     }
                 } else {
-                    orderStmt.setNull(3, java.sql.Types.VARCHAR);
+                    orderStmt.setNull(3, java.sql.Types.INTEGER);
                 }
 
                 String pay = order.getPaymentMethod();
@@ -65,10 +66,10 @@ public class OrderDAO {
                         int payId = Integer.parseInt(pay);
                         orderStmt.setInt(4, payId);
                     } catch (NumberFormatException nfe) {
-                        orderStmt.setString(4, pay);
+                        orderStmt.setNull(4, java.sql.Types.INTEGER);
                     }
                 } else {
-                    orderStmt.setNull(4, java.sql.Types.VARCHAR);
+                    orderStmt.setNull(4, java.sql.Types.INTEGER);
                 }
 
                 orderStmt.setString(5, order.getRecipientName());

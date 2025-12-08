@@ -1118,11 +1118,42 @@ public class Server {
 
                 java.math.BigDecimal total = req.has("total") ? java.math.BigDecimal.valueOf(req.getDouble("total")) : computedTotal;
 
-                // Accept either id (shippingMethodId/paymentMethodId) or name (shippingMethod/paymentMethod).
+                // 接受 id（shippingMethodId/paymentMethodId）或名稱（shippingMethod/paymentMethod）兩種形式。
                 int shippingMethodId = req.optInt("shippingMethodId", 0);
                 int paymentMethodId = req.optInt("paymentMethodId", 0);
                 String shippingMethod = shippingMethodId > 0 ? String.valueOf(shippingMethodId) : req.optString("shippingMethod", req.optString("shippingMethodName", ""));
                 String paymentMethod = paymentMethodId > 0 ? String.valueOf(paymentMethodId) : req.optString("paymentMethod", req.optString("paymentMethodName", ""));
+
+                // 若未提供數字 id，嘗試以名稱查出對應的 id，以滿足 FK INT 欄位需求。
+                if (shippingMethodId == 0 && shippingMethod != null && !shippingMethod.isEmpty()) {
+                    try {
+                        List<model.ShippingMethod> methods = new dao.ShippingMethodDAO(conn).getAll();
+                        for (model.ShippingMethod m : methods) {
+                            String name = m.getMethodName();
+                            if (name != null && name.equalsIgnoreCase(shippingMethod)) {
+                                shippingMethod = String.valueOf(m.getId());
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        // ignore lookup failure and keep original value; OrderDAO will attempt best-effort
+                    }
+                }
+
+                if (paymentMethodId == 0 && paymentMethod != null && !paymentMethod.isEmpty()) {
+                    try {
+                        List<model.PaymentMethod> methods = new dao.PaymentMethodDAO(conn).getAll();
+                        for (model.PaymentMethod m : methods) {
+                            String name = m.getMethodName();
+                            if (name != null && name.equalsIgnoreCase(paymentMethod)) {
+                                paymentMethod = String.valueOf(m.getId());
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        // ignore lookup failure and keep original value
+                    }
+                }
                 String recipientName = req.optString("recipientName", req.optString("recipient", ""));
                 String recipientAddress = req.optString("recipientAddress", req.optString("address", ""));
                 String recipientPhone = req.optString("recipientPhone", req.optString("phone", ""));
