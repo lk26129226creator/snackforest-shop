@@ -108,6 +108,17 @@
                 total: subtotal + (draft.items && draft.items.length ? 60 : 0)
             });
 
+            // Ensure customerId is included when available (from draft, localStorage or global)
+            try{
+                if (!payload.customerId) {
+                    const cid = (localStorage && (localStorage.getItem('customerId') || localStorage.getItem('sf-client-id') || localStorage.getItem('sfClientId'))) || window.SF_CLIENT_ID || window.cid || null;
+                    if (cid) {
+                        const parsed = parseInt(cid, 10);
+                        if (!Number.isNaN(parsed)) payload.customerId = parsed; else payload.customerId = cid;
+                    }
+                }
+            }catch(e){ /* ignore */ }
+
             const res = await fetch(API_BASE + '/order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
