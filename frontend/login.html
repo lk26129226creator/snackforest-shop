@@ -77,8 +77,9 @@
             <div id="msg" class="alert alert-danger mt-3 d-none" role="alert"></div>
         </div>
 </main>
+    <p class="text-center text-muted mt-3">© <span id="y"></span> SnackForest</p>
 
-<script src="client/js/env.js"></script>
+    <script src="client/js/env.js"></script>
 <script>
 function setLoading(loading){
     const btn = document.getElementById('loginBtn');
@@ -201,7 +202,7 @@ document.getElementById('showPwd').addEventListener('change', function(){
     const pwd = document.getElementById('password');
     pwd.type = this.checked ? 'text' : 'password';
 });
-document.getElementById('y').textContent = new Date().getFullYear();
+document.getElementById('y')?.textContent = new Date().getFullYear();
 </script>
 <script>
 // Guest entry behavior: clear client login keys, mark guest, and navigate to client home
