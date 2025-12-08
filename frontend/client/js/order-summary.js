@@ -138,7 +138,15 @@
             const data = await res.json();
 
             try{ sessionStorage.removeItem('sf_order_draft'); }catch(e){}
-            try{ window.clearCart && window.clearCart(); }catch(e){}
+            try{
+                if (window.clearCart && typeof window.clearCart === 'function') {
+                    window.clearCart();
+                } else {
+                    // fallback: directly remove storage key and notify listeners
+                    try { localStorage.removeItem('sf_cart'); } catch(_){}
+                    try { window.dispatchEvent(new CustomEvent('cart:updated', { detail: { count: 0 } })); } catch(_){}
+                }
+            }catch(e){}
 
             try{
                 const notice = { id: `order-${Date.now()}`, orderId: data.orderId, total: payload.total || 0, recipientName: payload.recipientName || '', createdAt: new Date().toISOString() };
