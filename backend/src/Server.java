@@ -1153,7 +1153,14 @@ public class Server {
                 model.Order order = new model.Order(customerId, total,
                     shippingMethod, paymentMethod, recipientName, recipientAddress, recipientPhone);
 
-                int orderId = orderDAO.save(order, cart);
+                int orderId;
+                try {
+                    orderId = orderDAO.save(order, cart);
+                } catch (SQLException se) {
+                    // 在回應中包含 SQLException 的訊息以方便在前端 network panel 診斷（僅為偵錯用途）
+                    sendErrorResponse(exchange, 500, "Database error creating order", se);
+                    return;
+                }
                 JSONObject resp = new JSONObject();
                 if (orderId > 0) {
                     resp.put("orderId", orderId);
