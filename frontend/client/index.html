@@ -597,7 +597,11 @@
             if(memberSection) memberSection.style.display = 'block';
             // member.js exposes loadProfile via window.loadAvatar / loadProfile; call loadProfile if exists
             if(typeof window.loadAvatar === 'function') {
-                try { window.loadAvatar(); } catch(_){}
+                try { window.loadAvatar(); } catch(_){ }
+            }
+            // Ensure orders are loaded when showing member section in SPA
+            if (typeof window.loadOrders === 'function') {
+                try { window.loadOrders({ force: true }); } catch(_) {}
             }
         } else {
             // default: home (do nothing because home sections are visible by default)
