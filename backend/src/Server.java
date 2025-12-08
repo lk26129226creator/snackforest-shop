@@ -2811,8 +2811,8 @@ public class Server {
                 // 將同樣資料同步寫回 customers 資料表，維持前台/後台資料一致。
                 try (Connection conn = DBConnect.getConnection()) {
                     Server.ensureCustomerColumns(conn);
-                    String sql = "UPDATE customers SET CustomerName = COALESCE(?, CustomerName), " +
-                            "Email = ?, Phone = ?, Address = ?, AvatarUrl = ?, UpdatedAt = NOW() WHERE idCustomers = ?";
+                        String sql = "UPDATE customers SET CustomerName = COALESCE(?, CustomerName), " +
+                            "Email = COALESCE(?, Email), Phone = COALESCE(?, Phone), Address = COALESCE(?, Address), AvatarUrl = ?, UpdatedAt = NOW() WHERE idCustomers = ?";
                     try (PreparedStatement ps = conn.prepareStatement(sql)) {
                         ps.setString(1, displayName);
                         ps.setString(2, email);
