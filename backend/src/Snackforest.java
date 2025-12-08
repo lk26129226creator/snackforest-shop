@@ -1020,7 +1020,8 @@ public class Snackforest {
             checkoutConn = DBConnect.getConnection();
             checkoutConn.setAutoCommit(false);
 
-            String orderSql = "INSERT INTO orders (idCustomers, OrderDate, TotalAmount, ShippingMethod, PaymentMethod, RecipientName, RecipientAddress, RecipientPhone, Remark) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?)";
+            // 使用 FK 欄位名稱 ShippingMethodId / PaymentMethodId，符合資料表 FK 設計
+            String orderSql = "INSERT INTO orders (idCustomers, OrderDate, TotalAmount, ShippingMethodId, PaymentMethodId, RecipientName, RecipientAddress, RecipientPhone, Remark) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?)";
             int orderId;
             try (PreparedStatement orderStmt = checkoutConn.prepareStatement(orderSql, Statement.RETURN_GENERATED_KEYS)) {
                 orderStmt.setInt(1, currentCustomer.getId());

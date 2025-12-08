@@ -40,7 +40,8 @@ public class OrderDAO {
             conn.setAutoCommit(false);
 
             // 2. 新增訂單主檔，並取得自動產生的訂單編號
-            String orderSql = "INSERT INTO orders (idCustomers, OrderDate, TotalAmount, ShippingMethod, PaymentMethod, RecipientName, RecipientAddress, RecipientPhone) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?)";
+            // 使用 FK 欄位名稱 ShippingMethodId / PaymentMethodId，避免資料表在使用 Id 欄位時未被寫入
+            String orderSql = "INSERT INTO orders (idCustomers, OrderDate, TotalAmount, ShippingMethodId, PaymentMethodId, RecipientName, RecipientAddress, RecipientPhone) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?)";
             int orderId;
             try (PreparedStatement orderStmt = conn.prepareStatement(orderSql, Statement.RETURN_GENERATED_KEYS)) {
                 orderStmt.setInt(1, order.getCustomerId());
