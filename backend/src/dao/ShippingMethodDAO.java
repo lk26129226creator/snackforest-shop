@@ -42,4 +42,25 @@ public class ShippingMethodDAO {
         }
         return methods;
     }
+
+    /**
+     * 根據名稱（不區分大小寫）查詢單一配送方式，找不到時回傳 null。
+     *
+     * @param name 配送方式名稱
+     * @return 對應的 ShippingMethod 或 null
+     * @throws SQLException 資料庫存取錯誤時拋出
+     */
+    public ShippingMethod findByName(String name) throws SQLException {
+        if (name == null) return null;
+        String sql = "SELECT idshipping_methods, shipping_methodsName FROM shipping_methods WHERE LOWER(shipping_methodsName) = LOWER(?) LIMIT 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new ShippingMethod(rs.getInt("idshipping_methods"), rs.getString("shipping_methodsName"));
+                }
+            }
+        }
+        return null;
+    }
 }

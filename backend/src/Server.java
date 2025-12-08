@@ -1127,31 +1127,23 @@ public class Server {
                 // 若未提供數字 id，嘗試以名稱查出對應的 id，以滿足 FK INT 欄位需求。
                 if (shippingMethodId == 0 && shippingMethod != null && !shippingMethod.isEmpty()) {
                     try {
-                        List<model.ShippingMethod> methods = new dao.ShippingMethodDAO(conn).getAll();
-                        for (model.ShippingMethod m : methods) {
-                            String name = m.getMethodName();
-                            if (name != null && name.equalsIgnoreCase(shippingMethod)) {
-                                shippingMethod = String.valueOf(m.getId());
-                                break;
-                            }
+                        model.ShippingMethod sm = new dao.ShippingMethodDAO(conn).findByName(shippingMethod);
+                        if (sm != null) {
+                            shippingMethod = String.valueOf(sm.getId());
                         }
                     } catch (Exception e) {
-                        // ignore lookup failure and keep original value; OrderDAO will attempt best-effort
+                        // 查詢失敗則保留原值，由 OrderDAO 處理（或最後寫為 NULL）
                     }
                 }
 
                 if (paymentMethodId == 0 && paymentMethod != null && !paymentMethod.isEmpty()) {
                     try {
-                        List<model.PaymentMethod> methods = new dao.PaymentMethodDAO(conn).getAll();
-                        for (model.PaymentMethod m : methods) {
-                            String name = m.getMethodName();
-                            if (name != null && name.equalsIgnoreCase(paymentMethod)) {
-                                paymentMethod = String.valueOf(m.getId());
-                                break;
-                            }
+                        model.PaymentMethod pm = new dao.PaymentMethodDAO(conn).findByName(paymentMethod);
+                        if (pm != null) {
+                            paymentMethod = String.valueOf(pm.getId());
                         }
                     } catch (Exception e) {
-                        // ignore lookup failure and keep original value
+                        // 查詢失敗則保留原值，由 OrderDAO 處理（或最後寫為 NULL）
                     }
                 }
                 String recipientName = req.optString("recipientName", req.optString("recipient", ""));

@@ -42,4 +42,25 @@ public class PaymentMethodDAO {
         }
         return methods;
     }
+
+    /**
+     * 根據名稱查詢付款方式（不區分大小寫），若找不到則回傳 null。
+     *
+     * @param name 付款方式名稱
+     * @return 對應的 PaymentMethod 或 null
+     * @throws SQLException 資料庫存取錯誤時拋出
+     */
+    public PaymentMethod findByName(String name) throws SQLException {
+        if (name == null) return null;
+        String sql = "SELECT idPaymentMethod, MethodName FROM payment_methods WHERE LOWER(MethodName) = LOWER(?) LIMIT 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new PaymentMethod(rs.getInt("idPaymentMethod"), rs.getString("MethodName"));
+                }
+            }
+        }
+        return null;
+    }
 }
