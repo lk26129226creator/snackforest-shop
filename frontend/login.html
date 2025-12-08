@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="client/css/client.css">
 <link rel="stylesheet" href="client/css/client.mobile.css" media="(max-width: 991.98px)">
 <link rel="icon" type="image/png" href="/frontend/images/branding/%E9%9B%B6%E9%A3%9F%E6%A3%AE%E6%9E%97LOGO.png">
+</head>
 <style>
 /* Guest entry button: blue underlined link, right-aligned on both desktop and mobile */
 #guest-entry-btn{
@@ -201,7 +202,8 @@ document.getElementById('showPwd').addEventListener('change', function(){
     const pwd = document.getElementById('password');
     pwd.type = this.checked ? 'text' : 'password';
 });
-document.getElementById('y')?.textContent = new Date().getFullYear();
+// Optional chaining cannot be used as an assignment target — assign safely:
+(function(){ const el = document.getElementById('y'); if (el) el.textContent = new Date().getFullYear(); })();
 </script>
 <script>
 // Guest entry behavior: clear client login keys, mark guest, and navigate to client home
