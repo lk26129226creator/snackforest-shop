@@ -45,8 +45,32 @@ public class OrderDAO {
             try (PreparedStatement orderStmt = conn.prepareStatement(orderSql, Statement.RETURN_GENERATED_KEYS)) {
                 orderStmt.setInt(1, order.getCustomerId());
                 orderStmt.setBigDecimal(2, order.getTotalAmount());
-                orderStmt.setString(3, order.getShippingMethod());
-                orderStmt.setString(4, order.getPaymentMethod());
+                // Shipping/Payment columns may be FK ints or text depending on schema.
+                // Try to write as INT when the provided value is parseable as integer, otherwise write as string.
+                String ship = order.getShippingMethod();
+                if (ship != null) {
+                    try {
+                        int shipId = Integer.parseInt(ship);
+                        orderStmt.setInt(3, shipId);
+                    } catch (NumberFormatException nfe) {
+                        orderStmt.setString(3, ship);
+                    }
+                } else {
+                    orderStmt.setNull(3, java.sql.Types.VARCHAR);
+                }
+
+                String pay = order.getPaymentMethod();
+                if (pay != null) {
+                    try {
+                        int payId = Integer.parseInt(pay);
+                        orderStmt.setInt(4, payId);
+                    } catch (NumberFormatException nfe) {
+                        orderStmt.setString(4, pay);
+                    }
+                } else {
+                    orderStmt.setNull(4, java.sql.Types.VARCHAR);
+                }
+
                 orderStmt.setString(5, order.getRecipientName());
                 orderStmt.setString(6, order.getRecipientAddress());
                 orderStmt.setString(7, order.getRecipientPhone());

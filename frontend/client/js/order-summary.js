@@ -54,7 +54,8 @@
                     shipSel.innerHTML = '';
                     (Array.isArray(data) ? data : []).forEach(s => {
                         const opt = document.createElement('option');
-                        opt.value = s.name || s.methodName || '';
+                        // use id as value (backend expects id when DB uses FK)
+                        opt.value = s.id == null ? (s.name || s.methodName || '') : String(s.id);
                         opt.textContent = s.name || s.methodName || '';
                         shipSel.appendChild(opt);
                     });
@@ -67,7 +68,7 @@
                     paySel.innerHTML = '';
                     (Array.isArray(pdata) ? pdata : []).forEach(p => {
                         const opt = document.createElement('option');
-                        opt.value = p.name || p.methodName || '';
+                        opt.value = p.id == null ? (p.name || p.methodName || '') : String(p.id);
                         opt.textContent = p.name || p.methodName || '';
                         paySel.appendChild(opt);
                     });
@@ -93,8 +94,10 @@
             const recipientName = document.getElementById('recipient-name').value || '';
             const recipientAddress = document.getElementById('recipient-address').value || '';
             const recipientPhone = document.getElementById('recipient-phone').value || '';
-            const shippingMethod = document.getElementById('shipping-method').value || '';
-            const paymentMethod = document.getElementById('payment-method').value || '';
+            const shippingSelect = document.getElementById('shipping-method');
+            const paymentSelect = document.getElementById('payment-method');
+            const shippingMethod = shippingSelect.value || '';
+            const paymentMethod = paymentSelect.value || '';
             if (!recipientName || !recipientAddress || !recipientPhone || !shippingMethod || !paymentMethod){
                 alert('所有欄位皆為必填');
                 btn.disabled = false;
@@ -103,10 +106,28 @@
             }
 
             const subtotal = draft.items.reduce((s,i) => s + (i.price||0)*(i.quantity||0), 0);
+            // include both id and name for compatibility: send id as shippingMethodId/paymentMethodId and also include name
+            const shippingMethodId = Number.isNaN(Number(shippingMethod)) ? null : Number(shippingMethod);
+            const paymentMethodId = Number.isNaN(Number(paymentMethod)) ? null : Number(paymentMethod);
             const payload = Object.assign({}, draft, {
-                recipientName, recipientAddress, recipientPhone, shippingMethod, paymentMethod,
+                recipientName, recipientAddress, recipientPhone,
+                shippingMethod: shippingSelect.options[shippingSelect.selectedIndex] ? shippingSelect.options[shippingSelect.selectedIndex].textContent : '',
+                paymentMethod: paymentSelect.options[paymentSelect.selectedIndex] ? paymentSelect.options[paymentSelect.selectedIndex].textContent : '',
+                shippingMethodId: shippingMethodId,
+                paymentMethodId: paymentMethodId,
                 total: subtotal + (draft.items && draft.items.length ? 60 : 0)
             });
+
+            // Ensure customerId is included when available (from draft, localStorage or global)
+            try{
+                if (!payload.customerId) {
+                    const cid = (localStorage && (localStorage.getItem('customerId') || localStorage.getItem('sf-client-id') || localStorage.getItem('sfClientId'))) || window.SF_CLIENT_ID || window.cid || null;
+                    if (cid) {
+                        const parsed = parseInt(cid, 10);
+                        if (!Number.isNaN(parsed)) payload.customerId = parsed; else payload.customerId = cid;
+                    }
+                }
+            }catch(e){ /* ignore */ }
 
             const res = await fetch(API_BASE + '/order', {
                 method: 'POST',

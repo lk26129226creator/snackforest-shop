@@ -1118,8 +1118,11 @@ public class Server {
 
                 java.math.BigDecimal total = req.has("total") ? java.math.BigDecimal.valueOf(req.getDouble("total")) : computedTotal;
 
-                String shippingMethod = req.optString("shippingMethod", req.optString("shippingMethodName", ""));
-                String paymentMethod = req.optString("paymentMethod", req.optString("paymentMethodName", ""));
+                // Accept either id (shippingMethodId/paymentMethodId) or name (shippingMethod/paymentMethod).
+                int shippingMethodId = req.optInt("shippingMethodId", 0);
+                int paymentMethodId = req.optInt("paymentMethodId", 0);
+                String shippingMethod = shippingMethodId > 0 ? String.valueOf(shippingMethodId) : req.optString("shippingMethod", req.optString("shippingMethodName", ""));
+                String paymentMethod = paymentMethodId > 0 ? String.valueOf(paymentMethodId) : req.optString("paymentMethod", req.optString("paymentMethodName", ""));
                 String recipientName = req.optString("recipientName", req.optString("recipient", ""));
                 String recipientAddress = req.optString("recipientAddress", req.optString("address", ""));
                 String recipientPhone = req.optString("recipientPhone", req.optString("phone", ""));

@@ -1025,8 +1025,27 @@ public class Snackforest {
             try (PreparedStatement orderStmt = checkoutConn.prepareStatement(orderSql, Statement.RETURN_GENERATED_KEYS)) {
                 orderStmt.setInt(1, currentCustomer.getId());
                 orderStmt.setBigDecimal(2, total);
-                orderStmt.setString(3, shipping);
-                orderStmt.setString(4, payment);
+                // support either id or name for shipping/payment
+                if (shipping != null) {
+                    try {
+                        orderStmt.setInt(3, Integer.parseInt(shipping));
+                    } catch (NumberFormatException nfe) {
+                        orderStmt.setString(3, shipping);
+                    }
+                } else {
+                    orderStmt.setNull(3, java.sql.Types.VARCHAR);
+                }
+
+                if (payment != null) {
+                    try {
+                        orderStmt.setInt(4, Integer.parseInt(payment));
+                    } catch (NumberFormatException nfe) {
+                        orderStmt.setString(4, payment);
+                    }
+                } else {
+                    orderStmt.setNull(4, java.sql.Types.VARCHAR);
+                }
+
                 orderStmt.setString(5, recipient.get("name"));
                 orderStmt.setString(6, recipient.get("address"));
                 orderStmt.setString(7, recipient.get("phone"));
