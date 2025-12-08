@@ -1,6 +1,9 @@
 (() => {
 	// 把 member.html 的內嵌腳本抽到這裡，僅在會員區塊存在時運行。
-	if (!document.getElementById('main-content') || !document.querySelector('.member-tabs')) return;
+	// 為避免同一頁面中出現重複 id 的情況（index.html 嵌入 member.html），
+	// 我們以 `#member-section` 為優先 root 範圍，若不存在則回退到 `document`。
+	const ROOT = document.getElementById('member-section') || document;
+	if (!ROOT.querySelector('#main-content') && !ROOT.querySelector('.member-tabs')) return;
 
 	const rawApiBase = window.SF_API_BASE ? String(window.SF_API_BASE) : '';
 	const hintedApiOrigin = window.SF_API_ORIGIN ? String(window.SF_API_ORIGIN) : '';
@@ -75,26 +78,26 @@
 		window.cid = null; window.SF_CLIENT_ID = null;
 	}
 
-	const feedbackPanel = document.getElementById('profile-feedback');
-	const profileForm = document.getElementById('profile-form');
-	const profileNameInput = document.getElementById('profile-name');
-	const profileEmailInput = document.getElementById('profile-email');
-	const profilePhoneInput = document.getElementById('profile-phone');
-	const profileAddressInput = document.getElementById('profile-address');
-	const profileIdInput = document.getElementById('profile-id');
-	const profileUpdatedEl = document.getElementById('profile-updated');
-	const profileResetBtn = document.getElementById('profile-reset');
-	const avatar = document.getElementById('profile-avatar');
-	const avatarImg = document.getElementById('profile-avatar-img');
-	const avatarInitial = document.getElementById('profile-avatar-initial');
-	const avatarFileInput = document.getElementById('avatar-file');
-	const btnRefresh = document.getElementById('btn-refresh');
-	const btnShowMore = document.getElementById('btn-show-more');
-	const filterKeyword = document.getElementById('filter-keyword');
-	const filterStatus = document.getElementById('filter-status');
-	const filterRange = document.getElementById('filter-range');
-	const ordersTab = document.getElementById('orders-tab');
-	const ordersPanel = document.getElementById('orders-panel');
+	const feedbackPanel = ROOT.querySelector('#profile-feedback');
+	const profileForm = ROOT.querySelector('#profile-form');
+	const profileNameInput = ROOT.querySelector('#profile-name');
+	const profileEmailInput = ROOT.querySelector('#profile-email');
+	const profilePhoneInput = ROOT.querySelector('#profile-phone');
+	const profileAddressInput = ROOT.querySelector('#profile-address');
+	const profileIdInput = ROOT.querySelector('#profile-id');
+	const profileUpdatedEl = ROOT.querySelector('#profile-updated');
+	const profileResetBtn = ROOT.querySelector('#profile-reset');
+	const avatar = ROOT.querySelector('#profile-avatar');
+	const avatarImg = ROOT.querySelector('#profile-avatar-img');
+	const avatarInitial = ROOT.querySelector('#profile-avatar-initial');
+	const avatarFileInput = ROOT.querySelector('#avatar-file');
+	const btnRefresh = ROOT.querySelector('#btn-refresh');
+	const btnShowMore = ROOT.querySelector('#btn-show-more');
+	const filterKeyword = ROOT.querySelector('#filter-keyword');
+	const filterStatus = ROOT.querySelector('#filter-status');
+	const filterRange = ROOT.querySelector('#filter-range');
+	const ordersTab = ROOT.querySelector('#orders-tab');
+	const ordersPanel = ROOT.querySelector('#orders-panel');
 
 	let currentProfile = null;
 	let allOrders = [];
@@ -324,18 +327,18 @@
 	function parseDate(v) { if (v == null) return null; try { if (typeof v === 'number') return new Date(v); const d = new Date(String(v)); return Number.isNaN(d.getTime()) ? null : d; } catch (_) { return null; } }
 	function fmtDate(v) { const d = parseDate(v); return d ? d.toLocaleString('zh-TW') : ''; }
 	function resolveStatus(order) { const raw = (order.status || '').toString().toLowerCase(); if (raw.includes('ship')) return { key: 'shipped', text: '已出貨' }; if (raw.includes('complete') || raw.includes('finish')) return { key: 'completed', text: '已完成' }; return { key: 'processing', text: '處理中' }; }
-	function computeStats(list) { const totalCount = list.length; const totalAmount = list.reduce((sum, order) => sum + toNumber(order.totalAmount), 0); const latest = list.reduce((acc, order) => { const current = parseDate(order.orderDate); if (!current) return acc; if (!acc || current > acc) return current; return acc; }, null); const countEl = document.getElementById('stat-orders-count'); const totalEl = document.getElementById('stat-total-amount'); const lastEl = document.getElementById('stat-last-order'); if (countEl) countEl.textContent = String(totalCount); if (totalEl) totalEl.textContent = fmtPrice(totalAmount); if (lastEl) lastEl.textContent = latest ? latest.toLocaleString('zh-TW') : '--'; }
+	function computeStats(list) { const totalCount = list.length; const totalAmount = list.reduce((sum, order) => sum + toNumber(order.totalAmount), 0); const latest = list.reduce((acc, order) => { const current = parseDate(order.orderDate); if (!current) return acc; if (!acc || current > acc) return current; return acc; }, null); const countEl = ROOT.querySelector('#stat-orders-count'); const totalEl = ROOT.querySelector('#stat-total-amount'); const lastEl = ROOT.querySelector('#stat-last-order'); if (countEl) countEl.textContent = String(totalCount); if (totalEl) totalEl.textContent = fmtPrice(totalAmount); if (lastEl) lastEl.textContent = latest ? latest.toLocaleString('zh-TW') : '--'; }
 	function matchKeyword(order, keyword) { if (!keyword) return true; const term = keyword.trim().toLowerCase(); if (!term) return true; if (String(order.id).toLowerCase().includes(term)) return true; if (Array.isArray(order.details)) { return order.details.some((detail) => (detail.productName || '').toString().toLowerCase().includes(term)); } return false; }
 	function statusMatch(order, key) { if (!key) return true; return resolveStatus(order).key === key; }
 	function inRange(order, days) { if (!days) return true; const d = parseDate(order.orderDate); if (!d) return false; const diff = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24); return diff <= Number(days); }
-	function renderEmpty() { const container = document.getElementById('orders-container'); if (!container) return; container.innerHTML = `<div class="orders-empty text-center text-muted py-5"><div class="fs-1 mb-3"><i class="fa-regular fa-folder-open"></i></div><p class="mb-0">目前沒有符合條件的訂單</p></div>`; }
-	function renderOrders(list) { const container = document.getElementById('orders-container'); const btnMore = document.getElementById('btn-show-more'); if (!container || !btnMore) return; container.innerHTML = ''; if (!list.length) { renderEmpty(); btnMore.classList.add('d-none'); computeStats([]); return; } computeStats(list); const slice = list.slice(0, visibleCount); btnMore.classList.toggle('d-none', slice.length >= list.length); slice.forEach((order) => { const details = Array.isArray(order.details) ? order.details : []; const total = toNumber(order.totalAmount); const status = resolveStatus(order); const card = document.createElement('div'); card.className = 'card order-card'; const rows = details.map((detail) => `<tr><td>${detail.productName || ''}</td><td class="text-center">${detail.quantity || 0}</td><td class="text-end">${fmtPrice(detail.priceAtTimeOfPurchase || detail.price || 0)}</td></tr>`).join(''); const tableHtml = details.length ? `<div class="table-responsive"><table class="table table-sm align-middle order-items-table mb-0"><thead><tr><th>商品</th><th class="text-center">數量</th><th class="text-end">單價</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="text-muted small">此訂單無明細</div>'; const collapseId = `order-${order.id}`; card.innerHTML = `<div class="card-header order-header d-flex justify-content-between align-items-center"><div><div class="fw-semibold">訂單編號 #${order.id}</div><div class="text-muted small">${fmtDate(order.orderDate)}</div></div><div class="text-end"><div class="fw-bold text-primary">${fmtPrice(total)}</div><span class="badge badge-status ${status.key}">${status.text}</span></div></div><div class="card-body"><div class="d-flex justify-content-between align-items-center mb-3"><div class="small text-muted">配送：${order.shippingMethod || ''} / 付款：${order.paymentMethod || ''}</div><button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">查看明細</button></div><div class="collapse show" id="${collapseId}"><div class="row g-3"><div class="col-lg-8">${tableHtml}</div><div class="col-lg-4"><div class="border rounded p-3 bg-light"><div class="small text-muted mb-2">收件資訊</div><div class="mb-1">姓名：${order.recipientName || ''}</div><div class="mb-1">電話：${order.recipientPhone || ''}</div><div class="mb-0">地址：${order.recipientAddress || ''}</div></div></div></div></div></div>`; container.appendChild(card); }); }
-	function showLoadingSkeleton() { const container = document.getElementById('orders-container'); if (!container) return; container.innerHTML = `<div class="card p-4"><div class="skeleton mb-2 skel-h18-w220"></div><div class="skeleton mb-2 skel-h12-w160"></div><div class="skeleton skel-h64"></div></div>`; }
+	function renderEmpty() { const container = ROOT.querySelector('#orders-container'); if (!container) return; container.innerHTML = `<div class="orders-empty text-center text-muted py-5"><div class="fs-1 mb-3"><i class="fa-regular fa-folder-open"></i></div><p class="mb-0">目前沒有符合條件的訂單</p></div>`; }
+	function renderOrders(list) { const container = ROOT.querySelector('#orders-container'); const btnMore = ROOT.querySelector('#btn-show-more'); if (!container || !btnMore) return; container.innerHTML = ''; if (!list.length) { renderEmpty(); btnMore.classList.add('d-none'); computeStats([]); return; } computeStats(list); const slice = list.slice(0, visibleCount); btnMore.classList.toggle('d-none', slice.length >= list.length); slice.forEach((order) => { const details = Array.isArray(order.details) ? order.details : []; const total = toNumber(order.totalAmount); const status = resolveStatus(order); const card = document.createElement('div'); card.className = 'card order-card'; const rows = details.map((detail) => `<tr><td>${detail.productName || ''}</td><td class="text-center">${detail.quantity || 0}</td><td class="text-end">${fmtPrice(detail.priceAtTimeOfPurchase || detail.price || 0)}</td></tr>`).join(''); const tableHtml = details.length ? `<div class="table-responsive"><table class="table table-sm align-middle order-items-table mb-0"><thead><tr><th>商品</th><th class="text-center">數量</th><th class="text-end">單價</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="text-muted small">此訂單無明細</div>'; const collapseId = `order-${order.id}`; card.innerHTML = `<div class="card-header order-header d-flex justify-content-between align-items-center"><div><div class="fw-semibold">訂單編號 #${order.id}</div><div class="text-muted small">${fmtDate(order.orderDate)}</div></div><div class="text-end"><div class="fw-bold text-primary">${fmtPrice(total)}</div><span class="badge badge-status ${status.key}">${status.text}</span></div></div><div class="card-body"><div class="d-flex justify-content-between align-items-center mb-3"><div class="small text-muted">配送：${order.shippingMethod || ''} / 付款：${order.paymentMethod || ''}</div><button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">查看明細</button></div><div class="collapse show" id="${collapseId}"><div class="row g-3"><div class="col-lg-8">${tableHtml}</div><div class="col-lg-4"><div class="border rounded p-3 bg-light"><div class="small text-muted mb-2">收件資訊</div><div class="mb-1">姓名：${order.recipientName || ''}</div><div class="mb-1">電話：${order.recipientPhone || ''}</div><div class="mb-0">地址：${order.recipientAddress || ''}</div></div></div></div></div></div>`; container.appendChild(card); }); }
+	function showLoadingSkeleton() { const container = ROOT.querySelector('#orders-container'); if (!container) return; container.innerHTML = `<div class="card p-4"><div class="skeleton mb-2 skel-h18-w220"></div><div class="skeleton mb-2 skel-h12-w160"></div><div class="skeleton skel-h64"></div></div>`; }
 	function currentFiltered() { const list = allOrders.slice(); return list.filter((order) => matchKeyword(order, keywordValue) && statusMatch(order, statusValue) && inRange(order, rangeValue)); }
 	function applyFilters(resetVisible) { if (resetVisible) visibleCount = 10; renderOrders(currentFiltered()); }
 	async function loadOrders(options = {}) { if (isLoadingOrders) return; const force = options && options.force === true; // 若此 script 在首頁（index.html）被載入，member 區塊可能是以 `sf-hidden` 隱藏 — 避免在隱藏區塊渲染造成視覺上空白
 		try {
-			const memberSection = document.getElementById('member-section');
+			const memberSection = ROOT.querySelector('#member-section');
 			if (!force && memberSection && memberSection.classList.contains('sf-hidden')) {
 				// 不在可見的 member 區塊時略過載入，除非 caller 明確要求 force
 				isLoadingOrders = false;
@@ -343,7 +346,7 @@
 				return;
 			}
 		} catch (_) {}
-		if (!force && hasLoadedOrders) { applyFilters(false); return; } isLoadingOrders = true; const container = document.getElementById('orders-container'); if (container) showLoadingSkeleton(); if (!window.api || typeof window.api.getOrders !== 'function') { computeStats([]); renderOrders([]); isLoadingOrders = false; hasLoadedOrders = false; return; } try { const res = await window.api.getOrders(); if (!res.success) throw new Error(res.error || '無法取得訂單'); let list = Array.isArray(res.data) ? res.data : []; if (role === 'customer' && cid != null) { list = list.filter((order) => String(order.customerId) === String(cid)); } list.sort((a, b) => { const da = parseDate(a.orderDate)?.getTime() || 0; const db = parseDate(b.orderDate)?.getTime() || 0; return db - da; }); allOrders = list; hasLoadedOrders = true; applyFilters(true); } catch (err) { console.error('載入訂單失敗', err); if (container) container.innerHTML = `<div class="alert alert-danger">${err.message || '載入訂單失敗'}</div>`; computeStats([]); hasLoadedOrders = false; } isLoadingOrders = false; }
+		if (!force && hasLoadedOrders) { applyFilters(false); return; } isLoadingOrders = true; const container = ROOT.querySelector('#orders-container'); if (container) showLoadingSkeleton(); if (!window.api || typeof window.api.getOrders !== 'function') { computeStats([]); renderOrders([]); isLoadingOrders = false; hasLoadedOrders = false; return; } try { const res = await window.api.getOrders(); if (!res.success) throw new Error(res.error || '無法取得訂單'); let list = Array.isArray(res.data) ? res.data : []; if (role === 'customer' && cid != null) { list = list.filter((order) => String(order.customerId) === String(cid)); } list.sort((a, b) => { const da = parseDate(a.orderDate)?.getTime() || 0; const db = parseDate(b.orderDate)?.getTime() || 0; return db - da; }); allOrders = list; hasLoadedOrders = true; applyFilters(true); } catch (err) { console.error('載入訂單失敗', err); if (container) container.innerHTML = `<div class="alert alert-danger">${err.message || '載入訂單失敗'}</div>`; computeStats([]); hasLoadedOrders = false; } isLoadingOrders = false; }
 	if (filterKeyword) { filterKeyword.addEventListener('input', (event) => { keywordValue = event.target.value || ''; applyFilters(true); }); }
 	if (filterStatus) { filterStatus.addEventListener('change', (event) => { statusValue = event.target.value || ''; applyFilters(true); }); }
 	if (filterRange) { filterRange.addEventListener('change', (event) => { rangeValue = event.target.value || ''; applyFilters(true); }); }
