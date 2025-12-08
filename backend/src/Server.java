@@ -1111,9 +1111,21 @@ public class Server {
                     computedTotal = computedTotal.add(java.math.BigDecimal.valueOf((long)price * qty));
                 }
 
+                // 解析 customerId：接受數字或字串數字
                 int customerId = 1; // Default customer
                 if (req.has("customerId")) {
-                    customerId = req.getInt("customerId");
+                    try {
+                        // 優先以 int 讀取
+                        customerId = req.getInt("customerId");
+                    } catch (Exception e) {
+                        // 若不是數字型態，嘗試以字串解析
+                        String cidStr = req.optString("customerId", "");
+                        try {
+                            if (cidStr != null && !cidStr.isEmpty()) customerId = Integer.parseInt(cidStr);
+                        } catch (NumberFormatException nfe) {
+                            // keep default customerId if parse failed
+                        }
+                    }
                 }
 
                 java.math.BigDecimal total = req.has("total") ? java.math.BigDecimal.valueOf(req.getDouble("total")) : computedTotal;
@@ -1146,21 +1158,32 @@ public class Server {
                         // 查詢失敗則保留原值，由 OrderDAO 處理（或最後寫為 NULL）
                     }
                 }
-                String recipientName = req.optString("recipientName", req.optString("recipient", ""));
-                String recipientAddress = req.optString("recipientAddress", req.optString("address", ""));
-                String recipientPhone = req.optString("recipientPhone", req.optString("phone", ""));
+                String recipientName = req.optString("recipientName", req.optString("recipient", "")).trim();
+                String recipientAddress = req.optString("recipientAddress", req.optString("address", "")).trim();
+                String recipientPhone = req.optString("recipientPhone", req.optString("phone", "")).trim();
+
+                // 基本輸入驗證：必要欄位缺少時回 400，並提供可讀錯誤訊息
+                if (items == null || items.length() == 0) {
+                    sendErrorResponse(exchange, 400, "Missing items in order request", null);
+                    return;
+                }
+                if (recipientName.isEmpty() || recipientAddress.isEmpty() || recipientPhone.isEmpty()) {
+                    sendErrorResponse(exchange, 400, "Recipient name/address/phone are required", null);
+                    return;
+                }
+
+                // 檢查運送/付款是否至少提供 id 或名稱
+                boolean hasShipping = (shippingMethodId > 0) || (shippingMethod != null && !shippingMethod.isEmpty());
+                boolean hasPayment = (paymentMethodId > 0) || (paymentMethod != null && !paymentMethod.isEmpty());
+                if (!hasShipping || !hasPayment) {
+                    sendErrorResponse(exchange, 400, "Shipping method and payment method are required", null);
+                    return;
+                }
 
                 model.Order order = new model.Order(customerId, total,
                     shippingMethod, paymentMethod, recipientName, recipientAddress, recipientPhone);
 
-                int orderId;
-                try {
-                    orderId = orderDAO.save(order, cart);
-                } catch (SQLException se) {
-                    // 在回應中包含 SQLException 的訊息以方便在前端 network panel 診斷（僅為偵錯用途）
-                    sendErrorResponse(exchange, 500, "Database error creating order", se);
-                    return;
-                }
+                int orderId = orderDAO.save(order, cart);
                 JSONObject resp = new JSONObject();
                 if (orderId > 0) {
                     resp.put("orderId", orderId);
