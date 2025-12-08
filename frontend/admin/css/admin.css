@@ -15,6 +15,14 @@
     --admin-sidebar-width-expanded: 240px;
     --primary-color: #4a7c59;
     --secondary-color: #6a994e;
+    /* 補上色票供 shared.css 使用，避免按鈕變成白底 */
+    --primary-500: #4a7c59;
+    --primary-600: #3f6b4f;
+    --primary-700: #32593f;
+    --btn-success-bg: var(--primary-500);
+    --btn-success-color: #ffffff;
+    --btn-warning-bg: #ffc107;
+    --btn-danger-bg: #dc3545;
     --accent-color: #a3b18a;
     --text-color: #333333;
     --border-color: #dee2e6;

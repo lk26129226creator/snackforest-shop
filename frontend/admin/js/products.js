@@ -60,10 +60,10 @@
                     <button class="btn btn-sm btn-outline-secondary" onclick="viewProductImages(${p.id})">查看圖片</button>
                 </td>`;
         });
-        const wrapper = document.createElement('div');
-        wrapper.className = 'table-responsive';
-        wrapper.appendChild(table);
-        container.appendChild(wrapper);
+        // 為了減少不必要的多層包裹，只保留一層：將 table 直接加入到 container，
+        // 並把 `table-responsive` 樣式應用到 container 上以保留響應式行為。
+        container.classList.add('table-responsive');
+        container.appendChild(table);
     };
 
     /**
@@ -99,11 +99,20 @@
                 productionDate: form.elements['p-production-date'] ? form.elements['p-production-date'].value : '',
                 expiryDate: form.elements['p-expiry-date'] ? form.elements['p-expiry-date'].value : ''
             };
-            await fetch(config.endpoints.product, {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn ? submitBtn.innerHTML : null;
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '新增中...'; }
+            const res = await fetch(config.endpoints.product, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            if (!res.ok) {
+                const txt = await res.text().catch(() => '');
+                throw new Error(`新增商品失敗：${res.status} ${txt}`);
+            }
+            // 伺服器會回傳 201 與新建立的 id
+            const respJson = await res.json().catch(() => ({}));
             form.reset();
             state.newProductImages = [];
             images.renderPreviewsFromArray([], 'p-image-preview-container', false);
@@ -113,12 +122,15 @@
             if (Admin.data && typeof Admin.data.loadProducts === 'function') {
                 Admin.data.loadProducts({ force: true });
             }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalText; }
         } catch (err) {
             if (Admin.core && typeof Admin.core.handleError === 'function') {
                 Admin.core.handleError(err, '新增商品失敗');
             } else {
                 alert('新增商品失敗: ' + err.message);
             }
+            // 重新啟用按鈕（若有）
+            try { const btn = form.querySelector('button[type="submit"]'); if (btn) { btn.disabled = false; btn.innerHTML = btn.getAttribute('data-original-text') || '新增商品'; } } catch(_) {}
         }
     };
 
@@ -152,6 +164,9 @@
         if (!form) return;
         const id = form.elements['edit-p-id'].value;
         try {
+            const saveBtn = document.getElementById('save-edit-product-btn');
+            const originalText = saveBtn ? saveBtn.innerHTML : null;
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '儲存中...'; }
             const imageUrls = await images.collectImageUrls(state.editProductImages);
             const payload = {
                 id: Number(id),
@@ -164,11 +179,15 @@
                 productionDate: form.elements['edit-p-production-date'] ? form.elements['edit-p-production-date'].value : '',
                 expiryDate: form.elements['edit-p-expiry-date'] ? form.elements['edit-p-expiry-date'].value : ''
             };
-            await fetch(`${config.endpoints.product}/${id}`, {
+            const res = await fetch(`${config.endpoints.product}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            if (!res.ok) {
+                const txt = await res.text().catch(() => '');
+                throw new Error(`更新商品失敗：${res.status} ${txt}`);
+            }
             if (state.modals.editProduct) state.modals.editProduct.hide();
             if (Admin.core && typeof Admin.core.notifySuccess === 'function') {
                 Admin.core.notifySuccess('商品已更新');
@@ -176,12 +195,15 @@
             if (Admin.data && typeof Admin.data.loadProducts === 'function') {
                 Admin.data.loadProducts({ force: true });
             }
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = originalText; }
         } catch (err) {
             if (Admin.core && typeof Admin.core.handleError === 'function') {
                 Admin.core.handleError(err, '更新商品失敗');
             } else {
                 alert('更新商品失敗: ' + err.message);
             }
+            // 若有儲存按鈕，恢復狀態
+            try { const sb = document.getElementById('save-edit-product-btn'); if (sb) { sb.disabled = false; sb.innerHTML = sb.getAttribute('data-original-text') || '儲存變更'; } } catch(_) {}
         }
     };
 
@@ -192,7 +214,11 @@
     products.deleteProduct = async function (id) {
         if (!confirm(`確定要刪除商品 #${id} 嗎?`)) return;
         try {
-            await fetch(`${config.endpoints.product}/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${config.endpoints.product}/${id}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const txt = await res.text().catch(() => '');
+                throw new Error(`刪除商品失敗：${res.status} ${txt}`);
+            }
             if (Admin.core && typeof Admin.core.notifySuccess === 'function') {
                 Admin.core.notifySuccess('商品已刪除');
             }
