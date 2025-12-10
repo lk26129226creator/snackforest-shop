@@ -1,0 +1,51 @@
+/* 管理端顏色與共用變數（集中管理）
+   - 此檔只供管理端使用，保留於 frontend/admin/css
+   - Admin 載入此檔後，再載入 shared.css（shared.css 使用這些變數）
+*/
+:root{
+    /* 管理端專用樣式變數：側邊欄寬度、背景色與按鈕主題。 */
+    --admin-bg: #f3f7f4;
+    --card-bg: #ffffff;
+    --muted: #6c757d;
+    --accent: var(--primary-color);
+    --accent-soft: rgba(74,124,89,0.08);
+    --admin-navbar-height: 64px;
+    --admin-sidebar-width-collapsed: 72px;
+    --admin-sidebar-width-expanded: 240px;
+    --primary-color: #4a7c59;
+    --secondary-color: #6a994e;
+    --primary-500: #4a7c59;
+    --primary-600: #3f6b4f;
+    --primary-700: #32593f;
+    --accent-color: #a3b18a;
+    --text-color: #333333;
+    --border-color: #dee2e6;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
+    --border-radius: 0.5rem;
+    --font-sans-serif: 'Poppins', 'Noto Sans TC', sans-serif;
+    --background-color: var(--admin-bg);
+    --admin-gradient-start: #f6faf6;
+    --admin-gradient-end: #f3f7f4;
+    --admin-highlight: rgba(74, 124, 89, 0.15);
+    --glass-bg: rgba(255, 255, 255, 0.86);
+    --glass-blur: saturate(180%) blur(18px);
+    --btn-success-bg: var(--primary-500);
+    --btn-success-color: #ffffff;
+    --btn-warning-bg: #ffc107;
+    --btn-danger-bg: #dc3545;
+    /* spacing / sizing */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --container-max-width: 1280px;
+    --container-padding: 16px;
+    /* radii */
+    --radius-sm: 6px;
+    --radius: 12px;
+    --radius-card: 14px;
+    --radius-lg: 20px;
+}

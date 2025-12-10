@@ -1,42 +1,8 @@
 /* SnackForest 管理端專用樣式 */
 /* 對應頁面：frontend/admin/index.html 與相關腳本模組。 */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap');
+@import url('./colors.css');
 @import url('./shared.css');
-
-:root{
-    /* 管理端專用樣式變數：側邊欄寬度、背景色與按鈕主題。 */
-    --admin-bg: #f3f7f4; /* 調整為淺森林綠底 */
-    --card-bg: #ffffff;
-    --muted: #6c757d;
-    --accent: var(--primary-color);
-    --accent-soft: rgba(74,124,89,0.08);
-    --admin-navbar-height: 64px;
-    --admin-sidebar-width-collapsed: 72px;
-    --admin-sidebar-width-expanded: 240px;
-    --primary-color: #4a7c59;
-    --secondary-color: #6a994e;
-    /* 補上色票供 shared.css 使用，避免按鈕變成白底 */
-    --primary-500: #4a7c59;
-    --primary-600: #3f6b4f;
-    --primary-700: #32593f;
-    --btn-success-bg: var(--primary-500);
-    --btn-success-color: #ffffff;
-    --btn-warning-bg: #ffc107;
-    --btn-danger-bg: #dc3545;
-    --accent-color: #a3b18a;
-    --text-color: #333333;
-    --border-color: #dee2e6;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
-    --border-radius: 0.5rem;
-    --font-sans-serif: 'Poppins', 'Noto Sans TC', sans-serif;
-    --background-color: var(--admin-bg);
-    --admin-gradient-start: #f6faf6;
-    --admin-gradient-end: #f3f7f4;
-    --admin-highlight: rgba(74, 124, 89, 0.15);
-    --glass-bg: rgba(255, 255, 255, 0.86);
-    --glass-blur: saturate(180%) blur(18px);
-}
 
 body{
     /* index.html 主框架：與 admin.js 搭配控制側邊欄展開。 */
@@ -49,7 +15,7 @@ body{
     line-height: 1.7;
     padding-top: calc(var(--admin-navbar-height) + 8px);
     --admin-sidebar-width: var(--admin-sidebar-width-collapsed);
-    --admin-main-max-width: 1280px;
+    --admin-main-max-width: var(--container-max-width);
     --admin-main-gutter: 48px;
 }
 
@@ -91,7 +57,7 @@ h1, h2, h3, h4, h5, h6{
     bottom: 28px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-3);
     z-index: 1400;
     pointer-events: none;
 }
@@ -103,8 +69,8 @@ h1, h2, h3, h4, h5, h6{
     background: rgba(212, 233, 219, 0.95);
     border: 1px solid rgba(129, 178, 154, 0.9);
     color: #234a2b;
-    border-radius: 14px;
-    padding: 14px 18px;
+    border-radius: var(--radius-card);
+    padding: var(--space-3) var(--space-4);
     box-shadow: 0 18px 36px rgba(26, 43, 31, 0.18);
     display: flex;
     align-items: flex-start;
@@ -310,8 +276,8 @@ body .main-content{
         var(--admin-main-gutter),
         calc((100% - var(--admin-sidebar-width) - var(--admin-main-width)) / 2)
     );
-    padding: 12px;
-    border-radius: 12px;
+    padding: var(--container-padding);
+    border-radius: var(--radius);
     background: var(--glass-bg);
     box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
     backdrop-filter: var(--glass-blur);
@@ -326,8 +292,8 @@ body.admin-sidebar-overlay .main-content{
     margin: calc(var(--admin-navbar-height) + 20px) 16px 56px;
     margin-left: 16px;
     width: calc(100% - 32px);
-    padding: 20px;
-    border-radius: 20px;
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
     backdrop-filter: none;
     box-shadow: 0 14px 32px rgba(15,23,42,0.12);
 }
@@ -357,7 +323,7 @@ body.admin-menu-open{ overflow: hidden; }
 /* 管理首頁資料卡：儀表板右上角的管理者資訊。 */
 .admin-profile-card{
     border: 1px solid rgba(74,124,89,0.08);
-    border-radius: 1.25rem;
+    border-radius: var(--radius-lg);
     background: #ffffff;
     box-shadow: 0 22px 44px rgba(15, 23, 42, 0.08);
     padding: 1.8rem 2rem;
@@ -366,7 +332,7 @@ body.admin-menu-open{ overflow: hidden; }
 .admin-profile-avatar{
     width: 60px;
     height: 60px;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     background: linear-gradient(135deg, rgba(74,124,89,0.12), rgba(74,124,89,0.28));
     display: flex;
     align-items: center;
@@ -386,7 +352,7 @@ body.admin-menu-open{ overflow: hidden; }
 .admin-stat-grid{
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
+    gap: var(--space-4);
 }
 /* 單張統計卡片：顯示訂單數、營收等指標。 */
 .admin-stat-card{
@@ -848,14 +814,14 @@ body.admin-sidebar-overlay .admin-sidebar-backdrop{
     /* moved to `./shared.css` */
 }
 
-/* 優化表格儲存格的間距 */
-.table td, .table th{ vertical-align: middle; }
+/* 優化表格儲存格的間距（限定管理端） */
+.admin-section .table td, .admin-section .table th{ vertical-align: middle; }
 
-/* 讓小尺寸螢幕上的檔案選擇器更易操作 */
-input[type="file"]{ cursor: pointer; }
+/* 讓小尺寸螢幕上的檔案選擇器更易操作（限定管理端） */
+.admin-section input[type="file"]{ cursor: pointer; }
 
-/* 表格列的輕量滑過效果 */
-.table-hover tbody tr:hover{ background: rgba(13,110,253,0.03); }
+/* 表格列的輕量滑過效果（限定於管理端區塊，避免影響其他入口） */
+.admin-section .table-hover tbody tr:hover{ background: rgba(13,110,253,0.03); }
 
 /* 精選商品排序：網站設定頁面的拖拉操作。 */
 #site-featured-list .featured-row-item{ transition: background-color 0.18s ease, box-shadow 0.18s ease; }
