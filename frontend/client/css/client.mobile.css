@@ -166,6 +166,7 @@ body.client-sidebar-overlay .client-main {
     justify-content: flex-start;
     align-items: center;
     gap: 0.75rem;
+    padding-top: 10px;
 }
 
 .client-navbar-hamburger {
@@ -951,6 +952,25 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     text-align: center;
 }
 
+/* Hero 內容比例調整 (手機版) */
+#hero-title, .home-hero .hero-title {
+    font-size: 1.5rem !important;
+}
+
+#hero-subtitle, .home-hero .hero-sub {
+    font-size: 0.95rem !important;
+}
+
+#hero-cta-primary, .home-hero .btn {
+    font-size: 0.9rem !important;
+    padding: 0.5rem 1.2rem !important;
+}
+
+#hero-image, .home-hero .hero-illustration {
+    max-width: 180px !important;
+    height: auto !important;
+}
+
 .home-hero .row {
     row-gap: 1.5rem;
 }
@@ -981,8 +1001,8 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 .home-carousel-wrapper {
-    margin: 0 calc(var(--client-main-gutter) * -1);
-    border-radius: 0;
+    margin: 0 0 1rem 0;
+    border-radius: 12px;
 }
 
 .home-carousel-wrapper #homeCarousel .carousel-item img {
