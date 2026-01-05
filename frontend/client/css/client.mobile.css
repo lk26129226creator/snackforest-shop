@@ -934,7 +934,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
 .client-sidebar-nav {
     /* reduce spacing from actions to nav so there isn't a large blank area */
-    margin-top: 0.5rem; /* 縮小間距，因為上方已有會員連結 */
+    margin-top: 2rem; /* 增加間距，讓導覽選單往下移 */
 }
 
 .client-sidebar-footer {
