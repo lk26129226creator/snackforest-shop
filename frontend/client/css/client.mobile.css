@@ -946,7 +946,8 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     - 若想要讓 hero 在小螢幕更緊湊，調整 `padding: clamp(...)` 的下限與上限或直接在 media query 中覆寫。
 */
 .home-hero {
-    padding: clamp(1.75rem, 6vw, 2.75rem);
+    padding: 1.25rem 1rem;
+    margin-bottom: 1.5rem !important; /* 強制縮小 mb-5 的下方間距 */
     text-align: center;
 }
 
@@ -1187,7 +1188,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
     /* 隱藏上方固定欄的搜尋框與按鈕，並確保不佔用空間 */
     #client-nav-search,
-    .navbar button[type="button"] {
+    .navbar button[type="button"]:not(.client-navbar-hamburger) {
         display: none !important;
     }
     /* 確保漢堡選單按鈕不被誤藏 (若它是 button 標籤) */
