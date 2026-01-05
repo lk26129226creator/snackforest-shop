@@ -838,6 +838,9 @@ body.client-sidebar-expanded .client-sidebar {
 .client-sidebar-backdrop {
     display: block;
     background: rgba(15, 23, 42, 0.24);
+    /* 強制預設隱藏遮罩，避免遮擋首頁內容 */
+    opacity: 0;
+    visibility: hidden;
 }
 
 body.client-sidebar-expanded .client-sidebar-backdrop {
@@ -845,7 +848,9 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     visibility: visible;
 }
 .client-sidebar-profile {
-    display: none !important;
+    display: block !important; /* 恢復顯示會員連結 */
+    padding-top: 0 !important; /* 移除過大的上方留白 */
+    margin-bottom: 0.5rem;
 }
 
 /* Make the sidebar member card fill the sidebar width on mobile (left-aligned) */
@@ -929,7 +934,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
 .client-sidebar-nav {
     /* reduce spacing from actions to nav so there isn't a large blank area */
-    margin-top: 2.5rem; /* 增加間距，避免內容太靠上被導覽列遮擋 */
+    margin-top: 0.5rem; /* 縮小間距，因為上方已有會員連結 */
 }
 
 .client-sidebar-footer {
@@ -1253,7 +1258,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
       - 使用 `calc(var(--client-navbar-height) + 14px)` 可以讓你只改變 `--client-navbar-height` 即可同步調整所有頁面間距。
     */
     .client-main {
-        margin: calc(var(--client-navbar-height) + 14px) var(--client-main-gutter) calc(env(safe-area-inset-bottom, 0px) + 46px);
+        margin: 10px var(--client-main-gutter) calc(env(safe-area-inset-bottom, 0px) + 46px); /* 移除重複的導覽列高度計算 */
     }
 
     .client-mobile-tabbar {
