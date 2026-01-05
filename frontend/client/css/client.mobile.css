@@ -929,7 +929,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
 .client-sidebar-nav {
     /* reduce spacing from actions to nav so there isn't a large blank area */
-    margin-top: 6px;
+    margin-top: 2.5rem; /* 增加間距，避免內容太靠上被導覽列遮擋 */
 }
 
 .client-sidebar-footer {
