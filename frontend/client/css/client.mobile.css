@@ -816,8 +816,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     - 若想讓側欄與頂欄無縫接合，可考慮把 `.client-sidebar` 的 `top` 設為 `var(--client-navbar-height)`。
 */
 .client-sidebar {
-    top: 0;
-    height: 100vh;
+    top: var(--client-navbar-height);
+    height: calc(100vh - var(--client-navbar-height));
     width: min(78vw, 300px);
     max-width: calc(100vw - 72px);
     transform: translateX(-100%);
@@ -845,7 +845,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 .client-sidebar-profile {
     /* move profile down so it isn't hidden behind the fixed topbar/hamburger */
-    padding-top: 120px;
+    padding-top: 0;
     /* remove desktop border and reduce bottom gap on mobile so only one separator remains */
     margin-bottom: 6px;
     border-bottom: none !important;
@@ -947,9 +947,10 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     - 若想要讓 hero 在小螢幕更緊湊，調整 `padding: clamp(...)` 的下限與上限或直接在 media query 中覆寫。
 */
 .home-hero {
-    padding: 1.25rem 1rem;
+    padding: 1.25rem 1rem 4.5rem 1rem; /* 增加下方內距以容納絕對定位的按鈕 */
     margin-bottom: 1.5rem !important; /* 強制縮小 mb-5 的下方間距 */
-    text-align: center;
+    text-align: left; /* 改為靠左對齊 */
+    position: relative;
 }
 
 /* Hero 內容比例調整 (手機版) */
@@ -967,26 +968,40 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 #hero-image, .home-hero .hero-illustration {
-    max-width: 180px !important;
+    max-width: 100% !important; /* 讓圖片自適應 50% 欄位寬度 */
     height: auto !important;
 }
 
 .home-hero .row {
-    row-gap: 1.5rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+/* 強制文字與圖片各佔一半寬度 */
+.home-hero .row > [class*="col-"] {
+    flex: 0 0 50%;
+    max-width: 50%;
+    padding-right: 0.5rem;
 }
 
 .home-hero .hero-media {
-    margin-top: 0.75rem;
+    margin-top: 0;
+    display: flex;
+    justify-content: center;
+    padding-left: 0.5rem;
 }
 
 .home-hero .hero-illustration {
-    max-width: min(320px, 90%);
+    max-width: 100%;
 }
 
 .home-hero .d-flex.gap-2.flex-wrap {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.65rem;
+    position: absolute;
+    bottom: 1.25rem;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
 }
 
 .home-hero .d-flex.gap-2.flex-wrap .btn {
