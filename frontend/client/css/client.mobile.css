@@ -817,7 +817,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 */
 .client-sidebar {
     top: var(--client-navbar-height);
-    height: calc(100vh - var(--client-navbar-height));
+    bottom: 0;
+    height: auto !important;
     width: min(78vw, 300px);
     max-width: calc(100vw - 72px);
     transform: translateX(-100%);
@@ -941,6 +942,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     - 主要控制 hero 區塊的 padding、對齊與響應式圖片高度（例：home-carousel 的圖片高度）。
     - 若想要讓 hero 在小螢幕更緊湊，調整 `padding: clamp(...)` 的下限與上限或直接在 media query 中覆寫。
 */
+@media (max-width: 991.98px) {
 .home-hero {
     padding: 1.25rem 1rem; /* 還原內距，避免過多留白 */
     margin-bottom: 1.5rem !important; /* 強制縮小 mb-5 的下方間距 */
@@ -971,6 +973,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     display: flex;
     flex-direction: row;
     align-items: stretch; /* 讓左右欄位等高，以便將按鈕推至底部 */
+    margin-top: 1rem; /* 增加頂部間距，讓內容稍微往下，避免太貼近上方 */
 }
 
 /* 強制文字與圖片各佔一半寬度 */
@@ -1006,6 +1009,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
 .home-hero .d-flex.gap-2.flex-wrap .btn {
     width: 100%;
+}
 }
 
 /* Mobile-specific: 移除主內容底部額外空間，避免滾動到最下方時出現頁腳下方空白 */
@@ -1192,7 +1196,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 */
 @media (max-width: 768px) {
     :root {
-        --client-navbar-height: 60px;
+        --client-navbar-height: 72px; /* 增加高度以容納 padding-top: 10px 的調整，避免遮擋內容 */
         --client-tabbar-height: 74px;
     }
 
