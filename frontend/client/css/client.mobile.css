@@ -850,6 +850,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 .client-sidebar-profile {
     display: block !important; /* 恢復顯示會員連結 */
     padding-top: 0 !important; /* 移除過大的上方留白 */
+    margin-top: 1.5rem;
     margin-bottom: 0.5rem;
 }
 
