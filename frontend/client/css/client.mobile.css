@@ -816,8 +816,8 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
     - 若想讓側欄與頂欄無縫接合，可考慮把 `.client-sidebar` 的 `top` 設為 `var(--client-navbar-height)`。
 */
 .client-sidebar {
-    top: var(--client-navbar-height);
-    height: calc(100vh - var(--client-navbar-height));
+    top: 0;
+    height: 100vh;
     width: min(78vw, 300px);
     max-width: calc(100vw - 72px);
     transform: translateX(-100%);
@@ -845,7 +845,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 .client-sidebar-profile {
     /* move profile down so it isn't hidden behind the fixed topbar/hamburger */
-    padding-top: 0;
+    padding-top: 120px;
     /* remove desktop border and reduce bottom gap on mobile so only one separator remains */
     margin-bottom: 6px;
     border-bottom: none !important;
@@ -947,7 +947,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     - 若想要讓 hero 在小螢幕更緊湊，調整 `padding: clamp(...)` 的下限與上限或直接在 media query 中覆寫。
 */
 .home-hero {
-    padding: 1.25rem 1rem 4.5rem 1rem; /* 增加下方內距以容納絕對定位的按鈕 */
+    padding: 1.25rem 1rem; /* 還原內距，避免過多留白 */
     margin-bottom: 1.5rem !important; /* 強制縮小 mb-5 的下方間距 */
     text-align: left; /* 改為靠左對齊 */
     position: relative;
@@ -975,7 +975,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 .home-hero .row {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: stretch; /* 讓左右欄位等高，以便將按鈕推至底部 */
 }
 
 /* 強制文字與圖片各佔一半寬度 */
@@ -983,6 +983,12 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     flex: 0 0 50%;
     max-width: 50%;
     padding-right: 0.5rem;
+}
+
+/* 讓左側文字欄位變成 Flex 容器，以便控制按鈕位置 */
+.home-hero .row > [class*="col-"]:first-child {
+    display: flex;
+    flex-direction: column;
 }
 
 .home-hero .hero-media {
@@ -997,11 +1003,10 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 }
 
 .home-hero .d-flex.gap-2.flex-wrap {
-    position: absolute;
-    bottom: 1.25rem;
-    left: 1rem;
-    right: 1rem;
-    width: auto;
+    position: static; /* 取消絕對定位，避免遮擋文字 */
+    margin-top: auto; /* 將按鈕推至欄位底部 */
+    width: 100%;
+    padding-top: 0.5rem; /* 增加與上方文字的間距 */
 }
 
 .home-hero .d-flex.gap-2.flex-wrap .btn {
