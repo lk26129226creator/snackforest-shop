@@ -1156,7 +1156,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 */
 @media (max-width: 768px) {
     :root {
-        --client-navbar-height: 120px;
+        --client-navbar-height: 60px;
         --client-tabbar-height: 74px;
     }
 
@@ -1183,6 +1183,16 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
     h2 {
         font-size: 1.5rem;
+    }
+
+    /* 隱藏上方固定欄的搜尋框與按鈕，並確保不佔用空間 */
+    #client-nav-search,
+    .navbar button[type="button"] {
+        display: none !important;
+    }
+    /* 確保漢堡選單按鈕不被誤藏 (若它是 button 標籤) */
+    .client-navbar-hamburger {
+        display: inline-flex !important;
     }
 }
 
@@ -1321,11 +1331,17 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     }
 
     .product-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
     }
 
     #home-categories-grid.mobile-product-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .product-card .product-image-wrapper {
+        height: 140px;
     }
 
     .home-carousel-wrapper #homeCarousel .carousel-item img {
