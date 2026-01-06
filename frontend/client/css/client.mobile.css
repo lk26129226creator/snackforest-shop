@@ -574,7 +574,6 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 .client-footer-mobile { display: none !important; }
 @media (max-width: 991.98px) {
     .desktop-footer { display: none; }
-    .client-footer-mobile { display: none !important; }
 
 
     /* Make main content full-bleed as well so page items touch edges */
@@ -588,50 +587,6 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 
     /* Small gap between fixed topbar and page objects across all pages; add side padding too */
     .client-main { padding: 10px 12px 0 12px !important; }
-
-    /* Product listing: make category select and search input sit side-by-side on mobile
-       Targets the first row inside #listing-section (uses .row.mb-3 in HTML structure). */
-    /* Make category select and search input sit side-by-side. Use stronger selector and
-       conservative ratios so gutters don't cause wrapping. Falls back to wrap if needed. */
-    #listing-section .row.mb-3 {
-        display: flex !important;
-        gap: 10px !important;
-        align-items: center !important;
-        flex-wrap: wrap !important;
-    }
-    #listing-section .row.mb-3 > .col-md-3 {
-        flex: 0 0 35% !important;
-        max-width: 35% !important;
-    }
-    #listing-section .row.mb-3 > .col-md-9 {
-        flex: 0 0 65% !important;
-        max-width: 65% !important;
-    }
-    /* Ensure form controls fill their column */
-    #listing-section .row.mb-3 select,
-    #listing-section .row.mb-3 input[type="text"],
-    #listing-section .row.mb-3 .form-control {
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Client footer background and mobile layout removed */
-
-    /* Make central search button visually identical to other tab items on mobile */
-    .client-tabbar-fab {
-        /* remove elevated FAB styling on mobile */
-        width: auto !important;
-        height: auto !important;
-        padding: 0 !important;
-        border-radius: 0 !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        color: inherit !important;
-        font-size: 1.02rem !important;
-        display: inline-block !important;
-        vertical-align: middle !important;
-    }
-    .client-tabbar-item-featured { gap: 4px; }
 }
 
 /* Ensure topbar member card and sidebar profile are visible on mobile with high specificity */
@@ -935,7 +890,7 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
 .client-sidebar-nav {
     /* reduce spacing from actions to nav so there isn't a large blank area */
-    margin-top: 2rem; /* 增加間距，讓導覽選單往下移 */
+    margin-top: 0.5rem; /* 縮小間距，讓導覽選單往上移 */
 }
 
 .client-sidebar-footer {
