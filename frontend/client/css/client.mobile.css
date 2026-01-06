@@ -9,7 +9,6 @@ SnackForest - Mobile Styles (≤ 991.98px)
     --client-navbar-height: 84px;           /* 行動導覽列高度，進一步縮小 */
     --client-main-gutter: clamp(18px, 5vw, 28px); /* 主內容左右留白 */
     --client-mobile-search-height: 54px;     /* 搜尋欄位固定高度 */
-    --client-tabbar-height: 76px;            /* 底部標籤列高度 */
 }
 
 /*
@@ -24,10 +23,6 @@ SnackForest - Mobile Styles (≤ 991.98px)
 .client-tabbar-badge {
     display: none !important;
     height: 0 !important;
-}
-
-body[data-client-mobile-nav="tabbar"] {
-    --client-navbar-height: 92px;
 }
 
 /* --- 2. 畫布與主版面 --- */
@@ -61,10 +56,6 @@ html, body { height: 100%; }
 /* 隱藏非預期位置直接放在 body 下的 close 按鈕（常見於斷裂的 toast markup）
    只針對直接 child 的 btn-close，以免影響 modal/popover 內的按鈕 */
 body > .btn-close { display: none !important; }
-
-body.client-search-open {
-    overflow: hidden;
-}
 
 body.client-sidebar-overlay,
 body.client-sidebar-expanded {
@@ -199,301 +190,19 @@ body.client-sidebar-overlay .client-main {
     display: none !important;
 }
 
-.client-topbar-mobile-logout {
-    order: 2;
-    flex: 1 1 100%;
-    display: none;
-    justify-content: flex-end;
-}
-
-.client-topbar-mobile-logout[hidden] {
-    display: none !important;
-}
-
-body[data-client-mobile-nav="tabbar"] .client-topbar-mobile-logout {
-    display: flex;
-}
-
-.client-mobile-logout-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1.1rem;
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
-    color: #ffffff;
-    font-weight: 600;
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24);
-    text-decoration: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.client-mobile-logout-btn:hover,
-.client-mobile-logout-btn:focus-visible {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.28);
-}
-
-.client-mobile-logout-btn i {
-    font-size: 0.95rem;
-}
-
-.client-mobile-logout-btn:disabled {
-    opacity: 0.6;
-    box-shadow: none;
-    transform: none;
-}
-
 .client-support-btn,
 .client-member-btn {
     width: auto;
 }
 
-body[data-client-mobile-nav="tabbar"] .client-topbar-container {
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0.75rem;
-}
-
-body[data-client-mobile-nav="tabbar"] .client-topbar-left {
-    flex: 0 0 auto;
-    justify-content: flex-start;
-    gap: 0.75rem;
-}
-
-body[data-client-mobile-nav="tabbar"] .client-topbar-left .client-topbar-promo {
-    display: none;
-}
-
-body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-center,
-body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
-    display: none !important;
-}
-
-/* --- 3-1. 底部標籤導覽列 --- */
-/*
-    底部 Tabbar：
-    - 目前預設隱藏；若要啟用請設定 `.client-mobile-tabbar { display: flex; }` 並調整 `--client-tabbar-height`。
-    - 注意 safe-area inset（包裝 notch / 底部安全區）：使用 `env(safe-area-inset-bottom)` 來增加底部 padding。
-*/
-.client-mobile-tabbar {
-    position: fixed;
-    inset: auto 0 0 0;
-    height: var(--client-tabbar-height);
-    padding: 8px clamp(12px, 4vw, 20px) calc(8px + env(safe-area-inset-bottom, 0px));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: rgba(12, 32, 18, 0.94);
-    border-top: 1px solid rgba(148, 163, 184, 0.12);
-    backdrop-filter: blur(8px);
-    z-index: 1040;
-    box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.12);
-}
-
-.client-tabbar-item {
-    flex: 1 1 0;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    color: rgba(226, 232, 240, 0.92);
-    font-size: 0.78rem;
-    font-weight: 500;
-    text-decoration: none;
-    letter-spacing: 0.02em;
-    position: relative;
-    transition: color 0.18s ease, transform 0.18s ease;
-    border: none;
-    background: none;
-    padding: 4px 6px;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-}
-
-/*
-    Tabbar item: 單一 tab 項目的樣式。
-    - 在本專案此區塊預設為隱藏（legacy），但保留樣式以便未來啟用。
-    - 若啟用 tabbar，注意調整 font-size、gap 與 padding 以確保觸控目標大小。
-*/
-
-.client-tabbar-item i {
-    font-size: 1.18rem;
-    transition: transform 0.18s ease;
-}
-
-.client-tabbar-item:focus-visible {
-    outline: 2px solid rgba(148, 196, 165, 0.55);
-    outline-offset: 4px;
-}
-
-.client-tabbar-item:hover,
-.client-tabbar-item:focus-visible {
-    color: #ffffff;
-}
-
-.client-tabbar-item.is-active {
-    color: #ffffff;
-}
-
-.client-tabbar-item.is-active i {
-    transform: translateY(-2px) scale(1.08);
-}
-
-.client-tabbar-item-featured { flex: 1 1 auto; gap: 4px; }
-
-.client-tabbar-fab {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--secondary-color, #4ade80), rgba(167, 243, 208, 0.95));
-    color: #ffffff;
-    font-size: 1.05rem;
-    box-shadow: 0 8px 20px rgba(74, 124, 89, 0.18);
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.client-tabbar-item-featured.is-active .client-tabbar-fab,
-.client-tabbar-item-featured:hover .client-tabbar-fab {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 18px 38px rgba(74, 124, 89, 0.32), 0 8px 18px rgba(134, 239, 172, 0.38);
-}
-
-.client-tabbar-badge {
-    position: absolute;
-    top: 6px;
-    right: calc(50% - 2px);
-    transform: translateX(50%);
-    display: none;
-    min-width: 20px;
-    padding: 2px 6px;
-    border-radius: 999px;
-    background: #ef4444;
-    color: #ffffff;
-    font-size: 0.65rem;
-    font-weight: 600;
-    line-height: 1;
-    justify-content: center;
-    align-items: center;
-}
-
-/* --- 4. 搜尋列與快速操作 --- */
-/*
-    搜尋列註解：
-    - `.client-nav-search` 為頂欄內的搜尋元件，行動版預設隱藏或縮小以節省空間。
-    - 若想要在 mobile 顯示搜尋欄，調整 `.client-nav-search { display:flex; min-height: 44px; padding: ... }`。
-    - 搜尋結果面板（`.client-nav-search-results`）會在行動版以 full-width 顯示，注意背景與文字對比。
-*/
-.client-nav-search {
-    display: flex;
-    align-items: center;
-    height: 0 !important;
-    padding: 0 !important;
-    display: none !important;
-    background: transparent !important;
-    border-top: none !important;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-}
-
-.client-nav-search i {
-    font-size: 1rem;
-}
-
-.client-nav-search input[type="search"] {
-    font-size: 1rem;
-    color: #f8fafc;
-}
-
-.client-nav-search input[type="search"]::placeholder {
-    color: rgba(248, 250, 252, 0.7);
-}
-
-.client-nav-search button[type="submit"] {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, rgba(148, 196, 165, 0.95), rgba(74, 124, 89, 0.85));
-    color: #0f172a;
-}
-
-.client-nav-search-results {
-    right: auto;
-    left: 0;
-    width: 100%;
-    max-width: none;
-    border-radius: 16px;
-    background: rgba(12, 32, 18, 0.95);
-    border: 1px solid rgba(226, 232, 240, 0.14);
-    box-shadow: 0 20px 42px rgba(15, 23, 42, 0.28);
-    color: #f8fafc;
-}
-
-.client-nav-search-thumb {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    object-fit: cover;
-    object-position: center;
-    flex-shrink: 0;
-    background: rgba(15, 23, 42, 0.28);
-}
-
-.client-search-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1600;
-    display: block;
-}
-
-.client-search-overlay[hidden] {
-    display: none;
-}
-
-.client-search-overlay-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.55);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    z-index: 0;
-}
-
-.client-search-overlay-panel {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-        /* Prevent panel from exceeding viewport height on small devices
-             - 注意：此處使用硬編碼的 72px（預期為頂欄高度），建議改為使用變數 `var(--client-navbar-height)`
-                 以便當你調整頂欄高度時，搜尋面板也會自動同步。 */
-        max-height: calc(100vh - 72px);
-    padding: clamp(18px, 6vw, 32px) clamp(18px, 6vw, 28px);
-    padding-bottom: calc(clamp(22px, 7vw, 32px) + env(safe-area-inset-bottom, 0px));
-    border-radius: 28px 28px 0 0;
-    background: rgba(12, 32, 18, 0.96);
-    box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.42);
-    display: flex;
-    flex-direction: column;
-    gap: clamp(14px, 4vw, 20px);
-    color: #f8fafc;
-    z-index: 1;
-}
-
 /* Compact density overrides: reduce heavy shadows, paddings and large radii for smaller devices.
    These are safe visual overrides that avoid changing HTML structure. */
 @media (max-width: 991.98px) {
+    .desktop-footer { display: none; }
+
+    /* Small gap between fixed topbar and page objects across all pages; add side padding too */
     .client-main {
-        padding: 10px; /* 縮小內距 */
+        padding: 10px 12px 0 12px !important;
         border-radius: 10px; /* 縮小圓角 */
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); /* 減輕陰影 */
     }
@@ -501,8 +210,6 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
 
     /* Reduce card body paddings and shadows for denser lists */
     .card, .member-card, .order-card, .admin-stat-card {
-        border-radius: 10px;
-        box-shadow: 0 6px 14px rgba(15,23,42,0.06);
         border-radius: 8px; /* 縮小卡片圓角 */
         box-shadow: 0 4px 12px rgba(15,23,42,0.05); /* 減輕陰影 */
     }
@@ -510,258 +217,102 @@ body[data-client-mobile-nav="tabbar"] .navbar .client-topbar-right {
         padding: 10px; /* 縮小卡片內距 */
     }
 
-    /* Tame search overlay and nav search visual weight */
-    .client-nav-search {
-        padding: 0.5rem 0.75rem;
-        min-height: 44px;
-        border-radius: 12px;
-        box-shadow: 0 6px 18px rgba(15,23,42,0.08);
-        border-radius: 10px; /* 縮小圓角 */
-        box-shadow: 0 4px 14px rgba(15,23,42,0.07); /* 減輕陰影 */
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
-    }
-
-    /* Slimmer bottom tabbar and FAB (hidden - legacy) */
-    .client-mobile-tabbar {
-        display: none !important;
-        height: 0 !important;
-        padding: 0 !important;
-        box-shadow: none !important;
-        border-top-width: 0 !important;
-        display: none !important; /* 保持隱藏 */
-    }
-    .client-tabbar-fab {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        font-size: 0.98rem;
-        box-shadow: 0 8px 18px rgba(74,124,89,0.12);
-        width: 38px; /* 縮小按鈕 */
-        height: 38px; /* 縮小按鈕 */
-        border-radius: 8px; /* 縮小圓角 */
-        font-size: 0.95rem;
-        box-shadow: 0 6px 16px rgba(74,124,89,0.1); /* 減輕陰影 */
-    }
-
-    /* Smaller icons and labels to fit denser layouts */
-    .client-tabbar-item i { font-size: 1.02rem; }
-    .client-tabbar-item { font-size: 0.72rem; padding: 2px 4px; }
-
     /* Client footer styles removed from mobile CSS */
 
     /* Simplify card header spacing in order list */
-    .order-card .card-header { padding: 10px 12px; }
-    .order-card .card-body { padding: 10px 12px; }
     .order-card .card-header { padding: 8px 10px; } /* 縮小訂單卡片標頭內距 */
     .order-card .card-body { padding: 8px 10px; } /* 縮小訂單卡片內容內距 */
-}
 
-/* Make search submit button visually consistent with other topbar buttons */
-.client-nav-search button[type="submit"] {
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.14);
-    color: #ffffff;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Disable legacy mobile footer block: use unified .client-footer instead */
-.client-footer-mobile { display: none !important; }
-@media (max-width: 991.98px) {
-    .desktop-footer { display: none; }
-
-
-    /* Make main content full-bleed as well so page items touch edges */
-    .client-main {
-        margin: 0 !important;
-        padding: 0 !important;
+    /* Product listing: make category select and search input sit side-by-side on mobile
+       Targets the first row inside #listing-section (uses .row.mb-3 in HTML structure). */
+    /* Make category select and search input sit side-by-side. Use stronger selector and
+       conservative ratios so gutters don't cause wrapping. Falls back to wrap if needed. */
+    #listing-section .row.mb-3 {
+        display: flex !important;
+        gap: 8px !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important; /* 強制不換行，確保在同一列 */
+        margin-bottom: 12px !important;
+    }
+    #listing-section .row.mb-3 > .col-md-3 {
+        flex: 0 0 38% !important; /* 稍微加寬分類選單，避免文字被切斷 */
+        max-width: 38% !important;
+        padding-right: 2px !important;
+    }
+    #listing-section .row.mb-3 > .col-md-9 {
+        flex: 1 1 auto !important; /* 讓搜尋框自動填滿右側剩餘空間 */
+        max-width: none !important;
+        padding-left: 2px !important;
+    }
+    /* Ensure form controls fill their column */
+    #listing-section .row.mb-3 select,
+    #listing-section .row.mb-3 input[type="text"],
+    #listing-section .row.mb-3 .form-control {
         width: 100% !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
+        box-sizing: border-box !important;
+        font-size: 0.9rem !important; /* 縮小字體讓輸入框能容納更多內容 */
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
     }
 
-    /* Small gap between fixed topbar and page objects across all pages; add side padding too */
-    .client-main { padding: 10px 12px 0 12px !important; }
+    /* Client footer background and mobile layout removed */
+
+    /* --- 商品列表優化 (Grid View) --- */
+    .product-card {
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        height: 100%; /* 確保卡片等高 */
+    }
+    .product-card .card-body {
+        padding: 10px;
+        justify-content: flex-start;
+    }
+    .product-card .card-title {
+        font-size: 0.9rem;
+        line-height: 1.35;
+        height: 2.7em; /* 固定高度限制為兩行 */
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2; /* 標準屬性，消除相容性警告 */
+        -webkit-box-orient: vertical;
+        margin-bottom: 6px;
+    }
+    .product-card .price {
+        font-size: 1rem;
+        margin-top: auto; /* 將價格推到底部對齊 */
+        font-weight: 700;
+    }
+
+    /* --- 管理端/表格列表優化 (Table View) --- */
+    /* 若管理端使用表格顯示商品，此設定可避免版面爆掉 */
+    .table { font-size: 0.85rem !important; }
+    .table th, .table td { padding: 0.6rem 0.4rem !important; vertical-align: middle; }
+    .table img { width: 36px !important; height: 36px !important; object-fit: cover; border-radius: 6px; }
+    .table .btn { padding: 0.25rem 0.5rem !important; font-size: 0.75rem !important; }
+    .table-responsive { border: 0; }
+
+    /* --- 管理端精選商品區塊優化 --- */
+    /* 修正管理端使用 "card p-3 d-flex flex-column" 時的排版，使其在手機上呈現雙欄網格 */
+    .card.p-3.d-flex.flex-column {
+        display: contents !important; /* 使用 display: contents 讓外層容器在視覺上"消失"，直接呈現內部內容 */
+    }
+    .card.p-3.d-flex.flex-column .row {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin: 0 !important;
+    }
+    /* 強制重設欄位寬度以適應網格，避免 Bootstrap col-* 樣式干擾 */
+    .card.p-3.d-flex.flex-column .col-md-3,
+    .card.p-3.d-flex.flex-column .col-6 { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+
 }
 
 /* Ensure topbar member card and sidebar profile are visible on mobile with high specificity */
 @media (max-width: 991.98px) {
     .client-sidebar-profile .client-sidebar-profile-link { display: flex !important; }
 }
-
-.client-search-overlay-header {
-    display: flex;
-    align-items: center;
-    gap: 8px; /* slightly reduced after removing close button so form sits closer to left edge */
-    padding-left: 12px; /* nudge content a bit so the form fits nicely inside the rounded corner */
-    padding-right: 12px;
-}
-
-.client-search-overlay-close {
-    flex: 0 0 auto;
-    width: 44px;
-    height: 44px;
-    border-radius: 16px;
-    border: none;
-    display: grid;
-    place-items: center;
-    background: rgba(248, 250, 252, 0.1);
-    color: #f8fafc;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
-}
-
-/* 若在某些裝置上出現奇怪位置的關閉按鈕（小叉），先隱藏它以免覆蓋其它互動元素 */
-.client-search-overlay-close { display: none !important; }
-
-.client-search-overlay-close i {
-    font-size: 1.1rem;
-}
-
-.client-search-overlay-form {
-    flex: 1 1 auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.55rem 0.65rem; /* slightly smaller so the form fits within panel */
-    border-radius: 14px;
-    background: rgba(15, 23, 42, 0.55);
-    border: 1px solid rgba(226, 232, 240, 0.14);
-    box-shadow: inset 0 0 0 1px rgba(148, 196, 165, 0.12);
-}
-
-.client-search-overlay-form i {
-    color: rgba(226, 232, 240, 0.7);
-    font-size: 1.05rem;
-}
-
-.client-search-overlay-form input[type="search"] {
-    flex: 1 1 auto;
-    border: none;
-    background: transparent;
-    color: #f8fafc;
-    font-size: 1rem;
-    min-width: 0;
-}
-
-.client-search-overlay-form input[type="search"]::placeholder {
-    color: rgba(226, 232, 240, 0.7);
-}
-
-.client-search-overlay-form button[type="submit"] {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    border: none;
-    display: grid;
-    place-items: center;
-    background: linear-gradient(135deg, rgba(148, 196, 165, 0.95), rgba(74, 124, 89, 0.85));
-    color: #0f172a;
-}
-
-.client-search-overlay-body {
-    flex: 1 1 auto;
-    min-height: 180px;
-    overflow-y: auto;
-    padding-right: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.client-search-overlay-empty {
-    text-align: center;
-    color: rgba(226, 232, 240, 0.82);
-    font-size: 0.95rem;
-    padding: 16px 8px;
-}
-
-.client-search-overlay-results {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.client-search-overlay-item {
-    width: 100%;
-    border: none;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 12px;
-    border-radius: 18px;
-    background: rgba(15, 23, 42, 0.55);
-    color: #f8fafc;
-    text-align: left;
-    cursor: pointer;
-    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.24);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-}
-
-.client-search-overlay-item:hover,
-.client-search-overlay-item:focus-visible {
-    transform: translateY(-2px);
-    background: rgba(15, 23, 42, 0.75);
-    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.32);
-}
-
-.client-search-overlay-item:focus-visible {
-    outline: 2px solid rgba(148, 196, 165, 0.6);
-    outline-offset: 2px;
-}
-
-.client-search-overlay-thumb {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-    overflow: hidden;
-    flex-shrink: 0;
-    display: grid;
-    place-items: center;
-    background: rgba(248, 250, 252, 0.1);
-}
-
-.client-search-overlay-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-}
-
-.client-search-overlay-thumb.is-placeholder i {
-    color: rgba(226, 232, 240, 0.7);
-    font-size: 1.35rem;
-}
-
-.client-search-overlay-info {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.client-search-overlay-info .title {
-    font-size: 1.02rem;
-    font-weight: 600;
-}
-
-.client-search-overlay-info .meta {
-    font-size: 0.9rem;
-    color: rgba(226, 232, 240, 0.78);
-}
-
-.client-search-overlay-item i.fa-chevron-right {
-    color: rgba(226, 232, 240, 0.6);
-    font-size: 0.9rem;
-}
-
-
 
 /* --- 5. 側欄浮層 --- */
 /*
@@ -1016,84 +567,6 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     gap: 1rem;
 }
 
-.mobile-product-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-    padding: 0.85rem;
-    border-radius: 20px;
-    background: #ffffff;
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.16);
-    text-decoration: none;
-    color: inherit;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.mobile-product-card:hover,
-.mobile-product-card:focus-visible {
-    transform: translateY(-4px);
-    box-shadow: 0 24px 44px rgba(15, 23, 42, 0.22);
-}
-
-.mobile-product-card__thumb {
-    position: relative;
-    border-radius: 16px;
-    overflow: hidden;
-    aspect-ratio: 4 / 3;
-    background: #f1f5f9;
-}
-
-.mobile-product-card__thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-.mobile-product-card__body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-}
-
-.mobile-product-card__name {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #0f172a;
-    line-height: 1.3;
-    min-height: 2.6em;
-}
-
-.mobile-product-card__meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.9rem;
-    color: #475569;
-}
-
-.mobile-product-card__price {
-    font-weight: 700;
-    font-size: 1rem;
-    color: #0f9d58;
-}
-
-.mobile-product-card__category {
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
-    background: rgba(74, 124, 89, 0.12);
-    color: #2f5f3a;
-    font-size: 0.78rem;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.product-grid {
-    grid-template-columns: repeat(2, 1fr); /* 預設兩欄，更緊湊 */
-    gap: 1rem;
-}
-
 .product-card {
     min-height: 0;
 }
@@ -1161,10 +634,6 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
         --client-tabbar-height: 74px;
     }
 
-    body[data-client-mobile-nav="tabbar"] {
-        --client-navbar-height: 88px;
-    }
-
     .client-main {
         margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 56px);
         padding: clamp(18px, 6vw, 24px);
@@ -1172,10 +641,6 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
     .home-carousel-wrapper #homeCarousel .carousel-item img {
         height: 240px;
-    }
-
-    .product-grid {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
 
     h1 {
@@ -1204,10 +669,6 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     - 注意 `body[data-client-mobile-nav="sidebar"]` 可能會覆寫 `--client-navbar-height`，此為切換導覽模式的快捷方式。
 */
 @media (max-width: 576px) {
-    :root {
-        --client-tabbar-height: 70px;
-    }
-
     /*
       小螢幕 main margin 說明：
       - 這裡在最窄裝置上給 `.client-main` 一個上方 margin，確保內容不會被固定頂欄遮蓋。
@@ -1216,37 +677,6 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
     .client-main {
         margin: 10px var(--client-main-gutter) calc(env(safe-area-inset-bottom, 0px) + 46px); /* 移除重複的導覽列高度計算 */
     }
-
-    .client-mobile-tabbar {
-        padding: 8px clamp(16px, 7vw, 28px) calc(8px + env(safe-area-inset-bottom, 0px));
-    }
-
-    .client-tabbar-item {
-        gap: 4px;
-        font-size: 0.7rem;
-    }
-
-    .client-tabbar-item i {
-        font-size: 1.18rem;
-    }
-
-    .client-tabbar-fab {
-        width: 46px;
-        height: 46px;
-        font-size: 1.25rem;
-    }
-
-/* Normalize any remaining FAB styles so tab icons stay uniform on mobile */
-.client-tabbar-fab {
-    width: auto !important;
-    height: auto !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    font-size: 1.02rem !important;
-    color: inherit !important;
-}
 
     .client-nav-search {
         padding: 0.6rem 0.9rem;
@@ -1266,18 +696,6 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
         gap: 0.85rem;
     }
 
-    .mobile-product-card__thumb {
-        aspect-ratio: 3 / 2;
-    }
-
-    .mobile-product-card__name {
-        font-size: 0.95rem;
-    }
-
-    .product-card .product-image-wrapper {
-        height: 200px;
-    }
-
     .product-card .card-title {
         font-size: 1rem;
     }
@@ -1288,10 +706,6 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
 
     .home-carousel-wrapper #homeCarousel .carousel-item img {
         height: 220px;
-    }
-
-    .client-nav-cart-items {
-        max-height: calc(70vh - 190px);
     }
 }
 
@@ -1306,16 +720,8 @@ body.client-sidebar-expanded .client-sidebar-backdrop {
         --client-main-gutter: clamp(16px, 7vw, 22px);
     }
 
-    body[data-client-mobile-nav="sidebar"] {
-        --client-navbar-height: 84px;
-    }
-
     .navbar {
         padding-bottom: 12px;
-    }
-
-    .client-topbar-left {
-        grid-template-columns: auto auto;
     }
 
     .client-topbar-left .brand-signature {
