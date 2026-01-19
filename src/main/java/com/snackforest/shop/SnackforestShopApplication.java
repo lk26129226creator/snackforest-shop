@@ -40,6 +40,7 @@ public class SnackforestShopApplication {
                 System.out.println("✅ ShippingMethods Table 串接成功! 目前運送方式數量: " + shippingMethodRepository.count());
                 System.out.println("✅ PaymentMethods Table 串接成功! 目前付款方式數量: " + paymentMethodRepository.count());
                 System.out.println("✅ Employee Table 串接成功! 目前員工數量: " + employeeRepository.count());
+                System.out.println("👉 若發生欄位錯誤，請訪問: https://snackforest-shop.up.railway.app/api/fix-db 進行修復");
             } catch (Exception e) {
                 System.err.println("❌ Database connection failed: " + e.getMessage());
             }
