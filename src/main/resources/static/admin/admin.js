@@ -2,6 +2,8 @@ const API_URL = '/api/admin/products';
 const PUBLIC_API_URL = '/api/products'; // 用於讀取列表
 let productModal;
 
+let allProducts = []; // 在記憶體中儲存一份商品列表
+
 document.addEventListener('DOMContentLoaded', () => {
     productModal = new bootstrap.Modal(document.getElementById('productModal'));
     loadProducts();
@@ -12,16 +14,17 @@ function loadProducts() {
     fetch(PUBLIC_API_URL)
         .then(res => res.json())
         .then(products => {
+            allProducts = products; // 儲存到全域變數
             const tbody = document.getElementById('product-list');
             tbody.innerHTML = '';
             products.forEach(p => {
                 tbody.innerHTML += `
                     <tr>
                         <td><img src="${p.imageUrl || 'https://via.placeholder.com/50'}" class="product-img-thumb"></td>
-                        <td>${p.productName}</td>
+                        <td>${p.name}</td>
                         <td>$${p.price}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-primary me-2" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
+                            <button class="btn btn-sm btn-outline-primary me-2" onclick="editProduct(${p.id})">
                                 <i class="bi bi-pencil"></i> 編輯
                             </button>
                             <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${p.id})">
@@ -46,7 +49,7 @@ function openModal(product = null) {
     if (product) {
         title.textContent = '編輯商品';
         idInput.value = product.id;
-        nameInput.value = product.productName;
+        nameInput.value = product.name;
         priceInput.value = product.price;
     } else {
         title.textContent = '新增商品';
@@ -59,8 +62,9 @@ function openModal(product = null) {
 }
 
 // 觸發編輯
-function editProduct(product) {
-    openModal(product);
+function editProduct(productId) {
+    const productToEdit = allProducts.find(p => p.id === productId);
+    if (productToEdit) openModal(productToEdit);
 }
 
 // 儲存商品 (新增或更新)
@@ -83,8 +87,11 @@ function saveProduct() {
             if (res.ok) {
                 productModal.hide();
                 loadProducts();
-            } else alert('儲存失敗');
-        });
+            } else {
+                return res.text().then(text => alert('儲存失敗: ' + text));
+            }
+        })
+        .catch(err => alert('網路錯誤: ' + err));
 }
 
 // 刪除商品

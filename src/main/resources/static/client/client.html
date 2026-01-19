@@ -45,11 +45,23 @@
             <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"></button>
         </div>
         <div class="offcanvas-body">
-            <div class="list-group list-group-flush">
-                <a href="#" class="list-group-item list-group-item-action">所有商品</a>
-                <a href="#" class="list-group-item list-group-item-action">熱銷排行</a>
-                <a href="#" class="list-group-item list-group-item-action">季節限定</a>
-                <a href="#" class="list-group-item list-group-item-action">禮盒系列</a>
+            <!-- 會員功能區 -->
+            <div class="list-group list-group-flush mb-4">
+                <a href="member.html" class="list-group-item list-group-item-action list-group-item-light fw-bold text-success">
+                    <i class="bi bi-person-circle me-2"></i>會員中心
+                </a>
+                <a href="cart.html" class="list-group-item list-group-item-action">
+                    <i class="bi bi-cart-fill me-2"></i>購物車
+                </a>
+                <a href="/logout" class="list-group-item list-group-item-action text-danger">
+                    <i class="bi bi-box-arrow-right me-2"></i>登出
+                </a>
+            </div>
+            
+            <h6 class="text-muted border-bottom pb-2 mb-2">商品分類</h6>
+            <div class="list-group list-group-flush" id="category-list">
+                <!-- JS 將會在這裡插入分類連結 -->
+                <div class="text-center text-muted small">載入中...</div>
             </div>
         </div>
     </div>

@@ -30,6 +30,12 @@ public class Customer {
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
 
+    @PrePersist // 在新建時自動設定
+    @PreUpdate  // 在更新時自動設定
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
     // Getters and Setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }

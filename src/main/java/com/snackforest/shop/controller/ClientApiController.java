@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 public class ClientApiController {
 
     @Autowired private CustomerRepository customerRepository;
+    @Autowired private ProductRepository productRepository; // 新增：用於查詢商品真實價格
     @Autowired private CategoryRepository categoryRepository;
     @Autowired private ShippingMethodRepository shippingMethodRepository;
     @Autowired private PaymentMethodRepository paymentMethodRepository;
@@ -47,7 +49,6 @@ public class ClientApiController {
             customer.setCustomerName(body.get("name"));
             customer.setEmail(body.get("email"));
             customer.setPhone(body.get("phone"));
-            customer.setUpdatedAt(LocalDateTime.now());
             
             customerRepository.save(customer);
             return ResponseEntity.ok("註冊成功");
@@ -78,18 +79,45 @@ public class ClientApiController {
 
     // 3. 提交訂單 (需登入)
     @PostMapping("/orders")
-    public String createOrder(@RequestBody OrderRequest request) {
+    public ResponseEntity<String> createOrder(@RequestBody OrderRequest request) {
         // 取得當前登入的會員
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String account = auth.getName();
         Customer customer = customerRepository.findByAccount(account)
                 .orElseThrow(() -> new RuntimeException("找不到會員資料"));
 
+        // 驗證訂單內容
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            return ResponseEntity.badRequest().body("訂單內容不能為空");
+        }
+
+        // --- 安全性修正：由後端計算總金額，不信任前端傳來的價格 ---
+        int calculatedTotal = 0;
+        List<OrderDetail> detailsToSave = new ArrayList<>();
+
+        for (OrderItem item : request.getItems()) {
+            Product product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new RuntimeException("商品不存在 ID: " + item.getProductId()));
+            
+            int quantity = item.getQuantity();
+            if (quantity <= 0) continue;
+
+            // 使用資料庫中的真實價格
+            int realPrice = product.getPrice(); 
+            calculatedTotal += (realPrice * quantity);
+
+            OrderDetail detail = new OrderDetail();
+            detail.setProductId(product.getId());
+            detail.setQuantity(quantity);
+            detail.setUnitPrice(realPrice); // 記錄當下購買的真實單價
+            detailsToSave.add(detail);
+        }
+
         // 建立訂單主檔
         Order order = new Order();
         order.setCustomerId(customer.getId());
         order.setOrderDate(LocalDateTime.now());
-        order.setTotalAmount(request.getTotalAmount());
+        order.setTotalAmount(calculatedTotal); // 使用後端計算的總金額
         order.setStatus("Pending");
         order.setShippingMethodId(request.getShippingMethodId());
         order.setPaymentMethodId(request.getPaymentMethodId());
@@ -99,17 +127,13 @@ public class ClientApiController {
         
         Order savedOrder = orderRepository.save(order);
 
-        // 建立訂單明細
-        for (OrderItem item : request.getItems()) {
-            OrderDetail detail = new OrderDetail();
+        // 儲存訂單明細
+        for (OrderDetail detail : detailsToSave) {
             detail.setOrderId(savedOrder.getId());
-            detail.setProductId(item.getProductId());
-            detail.setQuantity(item.getQuantity());
-            detail.setUnitPrice(item.getUnitPrice());
             orderDetailRepository.save(detail);
         }
 
-        return "訂單提交成功，單號：" + savedOrder.getId();
+        return ResponseEntity.ok("訂單提交成功，單號：" + savedOrder.getId());
     }
 
     // 內部類別：接收訂單 JSON 格式

@@ -48,11 +48,11 @@ function fetchCategories() {
     fetch('/api/categories')
         .then(res => res.json())
         .then(data => {
-            const list = document.querySelector('#sidebarMenu .list-group');
+            const list = document.getElementById('category-list');
             if(list && data.length > 0) {
                 list.innerHTML = '<a href="#" class="list-group-item list-group-item-action">所有商品</a>';
                 data.forEach(c => {
-                    list.innerHTML += `<a href="#" class="list-group-item list-group-item-action">${c.categoryName}</a>`;
+                    list.innerHTML += `<a href="#" class="list-group-item list-group-item-action" onclick="alert('篩選功能開發中: ${c.categoryName}')">${c.categoryName}</a>`;
                 });
             }
         });
@@ -65,9 +65,9 @@ function createProductCard(product) {
     return `
         <div class="col-md-3 col-sm-6">
             <div class="card h-100 product-card border-0 shadow-sm">
-                <img src="${imgUrl}" class="card-img-top" alt="${product.productName}" style="height: 200px; object-fit: cover;">
+                <img src="${imgUrl}" class="card-img-top" alt="${product.name}" style="height: 200px; object-fit: cover;">
                 <div class="card-body text-center">
-                    <h5 class="card-title fs-6">${product.productName}</h5>
+                    <h5 class="card-title fs-6">${product.name}</h5>
                     <p class="card-text text-danger fw-bold">$${product.price}</p>
                     <button class="btn btn-sm btn-outline-success w-100" onclick='addToCart(${JSON.stringify(product).replace(/'/g, "&#39;")})'>加入購物車</button>
                 </div>
@@ -85,7 +85,7 @@ function addToCart(product) {
     } else {
         cart.push({
             id: product.id,
-            name: product.productName,
+            name: product.name,
             price: product.price,
             quantity: 1
         });
@@ -151,13 +151,17 @@ function removeItem(index) {
 }
 
 function loadOptions() {
-    fetch('/api/shipping-methods').then(res => res.json()).then(data => {
+    fetch('/api/shipping-methods')
+        .then(res => res.ok ? res.json() : [])
+        .then(data => {
         const el = document.getElementById('shippingMethod');
-        if(el) el.innerHTML = data.map(s => `<option value="${s.id}">${s.methodName}</option>`).join('');
+        if(el && Array.isArray(data)) el.innerHTML = data.map(s => `<option value="${s.id}">${s.methodName}</option>`).join('');
     });
-    fetch('/api/payment-methods').then(res => res.json()).then(data => {
+    fetch('/api/payment-methods')
+        .then(res => res.ok ? res.json() : [])
+        .then(data => {
         const el = document.getElementById('paymentMethod');
-        if(el) el.innerHTML = data.map(p => `<option value="${p.id}">${p.methodName}</option>`).join('');
+        if(el && Array.isArray(data)) el.innerHTML = data.map(p => `<option value="${p.id}">${p.methodName}</option>`).join('');
     });
 }
 
@@ -175,9 +179,16 @@ function submitOrder() {
         items: cart.map(item => ({
             productId: item.id,
             quantity: item.quantity,
-            unitPrice: item.price
+            unitPrice: item.price // 雖然傳了，但後端會忽略，改用資料庫價格
         }))
     };
+
+    // 防止重複點擊
+    const submitBtn = document.querySelector('button[onclick="submitOrder()"]');
+    if(submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = '處理中...';
+    }
 
     fetch('/api/orders', {
         method: 'POST',
@@ -186,7 +197,8 @@ function submitOrder() {
     })
     .then(res => {
         if (res.ok) return res.text();
-        throw new Error('請先登入會員');
+        // 嘗試讀取後端回傳的錯誤訊息
+        return res.text().then(text => { throw new Error(text || '訂單送出失敗'); });
     })
     .then(msg => {
         alert(msg);
@@ -196,5 +208,12 @@ function submitOrder() {
     .catch(err => {
         alert(err.message);
         window.location.href = 'login.html';
+    })
+    .finally(() => {
+        // 恢復按鈕狀態
+        if(submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = '提交訂單';
+        }
     });
 }

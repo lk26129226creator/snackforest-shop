@@ -3,10 +3,10 @@ package com.snackforest.shop.controller;
 import com.snackforest.shop.model.Product;
 import com.snackforest.shop.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.Base64;
-import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/admin/products")
@@ -17,47 +17,61 @@ public class AdminProductController {
 
     // 新增商品 (包含圖片上傳)
     @PostMapping
-    public Product createProduct(@RequestParam("name") String name,
-                                 @RequestParam("price") Integer price,
-                                 @RequestParam(value = "image", required = false) MultipartFile image) throws IOException {
-        Product product = new Product();
-        product.setProductName(name);
-        product.setPrice(price);
-        // ⚠️ 注意：這裡暫時將分類 ID 設為 1，請確保您的資料庫 category 表中至少有一筆 ID 為 1 的資料
-        product.setCategoriesId(1); 
+    public ResponseEntity<?> createProduct(@RequestParam("name") String name,
+                                           @RequestParam("price") Integer price,
+                                           @RequestParam(value = "image", required = false) MultipartFile image) {
+        try {
+            Product product = new Product();
+            product.setName(name); // 修正：配合前端欄位名稱 (productName -> name)
+            product.setPrice(price);
+            product.setCategoryId(1); // 修正：命名慣例 (CategoriesId -> CategoryId)
 
-        if (image != null && !image.isEmpty()) {
-            // 將圖片轉為 Base64 字串存入資料庫
-            String base64 = Base64.getEncoder().encodeToString(image.getBytes());
-            String dataUri = "data:" + (image.getContentType() != null ? image.getContentType() : "image/jpeg") + ";base64," + base64;
-            product.setImageUrl(dataUri);
+            if (image != null && !image.isEmpty()) {
+                String base64 = Base64.getEncoder().encodeToString(image.getBytes());
+                String dataUri = "data:" + (image.getContentType() != null ? image.getContentType() : "image/jpeg") + ";base64," + base64;
+                product.setImageUrl(dataUri);
+            }
+
+            productRepository.save(product);
+            return ResponseEntity.ok("商品新增成功");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("新增失敗: " + e.getMessage());
         }
 
-        return productRepository.save(product);
     }
     
     // 更新商品
     @PutMapping("/{id}")
-    public Product updateProduct(@PathVariable Integer id,
-                                 @RequestParam("name") String name,
-                                 @RequestParam("price") Integer price,
-                                 @RequestParam(value = "image", required = false) MultipartFile image) throws IOException {
-        Product product = productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
-        product.setProductName(name);
-        product.setPrice(price);
-        
-        if (image != null && !image.isEmpty()) {
-            String base64 = Base64.getEncoder().encodeToString(image.getBytes());
-            String dataUri = "data:" + (image.getContentType() != null ? image.getContentType() : "image/jpeg") + ";base64," + base64;
-            product.setImageUrl(dataUri);
-        }
-        
-        return productRepository.save(product);
+    public ResponseEntity<?> updateProduct(@PathVariable Integer id,
+                                           @RequestParam("name") String name,
+                                           @RequestParam("price") Integer price,
+                                           @RequestParam(value = "image", required = false) MultipartFile image) {
+        return productRepository.findById(id).map(product -> {
+            try {
+                product.setName(name);
+                product.setPrice(price);
+                
+                if (image != null && !image.isEmpty()) {
+                    String base64 = Base64.getEncoder().encodeToString(image.getBytes());
+                    String dataUri = "data:" + (image.getContentType() != null ? image.getContentType() : "image/jpeg") + ";base64," + base64;
+                    product.setImageUrl(dataUri);
+                }
+                
+                productRepository.save(product);
+                return ResponseEntity.ok("商品更新成功");
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body("更新失敗: " + e.getMessage());
+            }
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     // 刪除商品
     @DeleteMapping("/{id}")
-    public void deleteProduct(@PathVariable Integer id) {
-        productRepository.deleteById(id);
+    public ResponseEntity<?> deleteProduct(@PathVariable Integer id) {
+        if (productRepository.existsById(id)) {
+            productRepository.deleteById(id);
+            return ResponseEntity.ok("刪除成功");
+        }
+        return ResponseEntity.notFound().build();
     }
 }
