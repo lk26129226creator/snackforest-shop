@@ -27,6 +27,7 @@ public class SecurityConfig {
                 // 開放靜態資源 (CSS, JS, 圖片) 與 前台頁面
                 .requestMatchers("/client/**", "/css/**", "/js/**", "/images/**", "/").permitAll() // 開放 client 資料夾下所有檔案
                 .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN") // 保護 admin 資料夾與後台 API
+                .requestMatchers("/api/register", "/api/categories", "/api/shipping-methods", "/api/payment-methods", "/api/me").permitAll() // 開放前台 API
                 .requestMatchers("/api/products/**", "/api/hello").permitAll() // 公開路徑
                 .anyRequest().authenticated() // 其他都需要登入
             )
@@ -36,7 +37,12 @@ public class SecurityConfig {
                 .successHandler(authenticationSuccessHandler()) // 使用自訂的成功處理器
                 .failureUrl("/client/login.html?error=true") // 失敗跳轉 (路徑變更)
                 .permitAll()
-            ) // 啟用表單登入
+            )
+            .logout(logout -> logout
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/client/client.html") // 登出後導回首頁
+                .permitAll()
+            ) // 啟用登出功能
             .httpBasic(basic -> {}); // 啟用 Basic Auth (方便 Postman 測試)
 
         return http.build();
