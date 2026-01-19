@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnackForest 點心之森</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- 1. 上方導覽列 (Navbar) -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
+        <div class="container">
+            <!-- 側邊欄觸發按鈕 -->
+            <button class="btn btn-outline-secondary me-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">
+                <i class="bi bi-list"></i>
+            </button>
+
+            <a class="navbar-brand fw-bold text-success" href="client.html">🌲 SnackForest</a>
+            
+            <div class="d-flex align-items-center ms-auto">
+                <a href="cart.html" class="btn btn-light position-relative me-2">
+                    <i class="bi bi-cart-fill"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        0
+                    </span>
+                </a>
+                <a href="member.html" class="btn btn-outline-success">
+                    <i class="bi bi-person-circle"></i> 會員
+                </a>
+                <a href="login.html" class="btn btn-sm btn-link text-decoration-none ms-2">登入</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 2. 側邊展開容器 (Sidebar / Offcanvas) -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarMenu">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title">商品分類</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="list-group list-group-flush">
+                <a href="#" class="list-group-item list-group-item-action">所有商品</a>
+                <a href="#" class="list-group-item list-group-item-action">熱銷排行</a>
+                <a href="#" class="list-group-item list-group-item-action">季節限定</a>
+                <a href="#" class="list-group-item list-group-item-action">禮盒系列</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Hero 區塊 (大圖) -->
+    <header class="hero-section text-center text-white d-flex align-items-center justify-content-center mt-5">
+        <div class="container mt-5">
+            <h1 class="display-4 fw-bold">探索森林裡的美味</h1>
+            <p class="lead">精選天然食材，為您帶來最純粹的點心體驗</p>
+            <a href="#new-arrivals" class="btn btn-light btn-lg mt-3">立即選購</a>
+        </div>
+    </header>
+
+    <!-- 4. 輪播圖 (Carousel) -->
+    <div class="container my-5">
+        <h3 class="text-center mb-4">本季主打</h3>
+        <div id="mainCarousel" class="carousel slide rounded overflow-hidden shadow" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                <div class="carousel-item active">
+                    <div class="d-flex justify-content-center align-items-center bg-secondary text-white" style="height: 300px;">
+                        <h2>主打活動 A：滿千免運</h2>
+                    </div>
+                </div>
+                <div class="carousel-item">
+                    <div class="d-flex justify-content-center align-items-center bg-success text-white" style="height: 300px;">
+                        <h2>主打活動 B：新會員優惠</h2>
+                    </div>
+                </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#mainCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#mainCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 5. 商品展示區 (熱銷 & 新款) -->
+    <div class="container mb-5" id="new-arrivals">
+        <ul class="nav nav-tabs mb-4" id="productTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active text-success" id="hot-tab" data-bs-toggle="tab" data-bs-target="#hot" type="button">🔥 熱銷商品</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-success" id="new-tab" data-bs-toggle="tab" data-bs-target="#new" type="button">✨ 新款上市</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content">
+            <!-- 熱銷商品區塊 -->
+            <div class="tab-pane fade show active" id="hot">
+                <div class="row g-4" id="product-list-hot">
+                    <!-- JS 將會在這裡插入商品卡片 -->
+                    <div class="col-12 text-center text-muted">載入中...</div>
+                </div>
+            </div>
+            <!-- 新款商品區塊 -->
+            <div class="tab-pane fade" id="new">
+                <div class="row g-4" id="product-list-new">
+                    <!-- JS 將會在這裡插入商品卡片 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. 頁腳 (Footer) -->
+    <footer class="bg-dark text-white py-4 mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>SnackForest</h5>
+                    <p class="small text-muted">享受生活中的每一口甜蜜。</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>快速連結</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-white-50 text-decoration-none">關於我們</a></li>
+                        <li><a href="#" class="text-white-50 text-decoration-none">聯絡客服</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5>追蹤我們</h5>
+                    <i class="bi bi-facebook me-2"></i>
+                    <i class="bi bi-instagram me-2"></i>
+                </div>
+            </div>
+            <div class="text-center mt-3 pt-3 border-top border-secondary small">
+                &copy; 2024 SnackForest. All Rights Reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- JS Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
