@@ -15,6 +15,12 @@ public class SnackforestShopApplication {
         SpringApplication.run(SnackforestShopApplication.class, args);
     }
 
+    // 設定 Hibernate 命名策略為 "原樣使用"，避免將駝峰命名 (如 idCustomers) 自動轉為蛇形命名 (如 id_customers)
+    @Bean
+    public org.hibernate.boot.model.naming.PhysicalNamingStrategy physicalNamingStrategy() {
+        return new org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl();
+    }
+
     @Bean
     public CommandLineRunner testConnection(DataSource dataSource,
                                             ProductRepository productRepository,
