@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>購物車 - SnackForest</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="client.css">
+</head>
+<body>
+    <nav class="navbar navbar-light bg-white shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-success" href="client.html">🌲 SnackForest</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2 class="mb-4">🛒 您的購物車</h2>
+        <div class="row">
+            <div class="col-md-8">
+                <table class="table">
+                    <thead><tr><th>商品</th><th>單價</th><th>數量</th><th>小計</th><th>操作</th></tr></thead>
+                    <tbody id="cart-items"></tbody>
+                </table>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <h4>結帳資訊</h4>
+                    <div class="mb-3">
+                        <label>運送方式</label>
+                        <select class="form-select" id="shippingMethod"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label>付款方式</label>
+                        <select class="form-select" id="paymentMethod"></select>
+                    </div>
+                    <hr>
+                    <div class="mb-3"><label>收件人姓名</label><input type="text" class="form-control" id="recName"></div>
+                    <div class="mb-3"><label>電話</label><input type="text" class="form-control" id="recPhone"></div>
+                    <div class="mb-3"><label>地址</label><input type="text" class="form-control" id="recAddr"></div>
+                    <h3 class="text-end text-danger">總計: $<span id="totalPrice">0</span></h3>
+                    <button class="btn btn-success w-100 mt-3" onclick="submitOrder()">提交訂單</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="client.js"></script>
+</body>
+</html>

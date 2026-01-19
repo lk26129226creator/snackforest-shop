@@ -1,111 +1,99 @@
-let allProducts = []; // 1. 宣告全域變數暫存商品資料
+const API_URL = '/api/admin/products';
+const PUBLIC_API_URL = '/api/products'; // 用於讀取列表
+let productModal;
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener('DOMContentLoaded', () => {
+    productModal = new bootstrap.Modal(document.getElementById('productModal'));
     loadProducts();
 });
 
+// 載入商品列表
 function loadProducts() {
-    fetch('/api/products') // 載入商品列表
+    fetch(PUBLIC_API_URL)
         .then(res => res.json())
-        .then(data => {
-            allProducts = data; // 2. 將資料存入全域變數
-            const tbody = document.getElementById('product-table-body');
-            if (!tbody) return;
-            
-            tbody.innerHTML = data.map(p => `
-                <tr>
-                    <td>${p.id}</td>
-                    <td><img src="${p.imageUrl || 'https://via.placeholder.com/50'}" width="50" height="50" class="rounded object-fit-cover"></td>
-                    <td>${p.productName || '未命名'}</td>
-                    <td>$${p.price}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editProduct(${p.id})">編輯</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${p.id})">刪除</button>
-                    </td>
-                </tr>
-            `).join('');
-        }).catch(err => console.error('無法載入商品', err));
+        .then(products => {
+            const tbody = document.getElementById('product-list');
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><img src="${p.imageUrl || 'https://via.placeholder.com/50'}" class="product-img-thumb"></td>
+                        <td>${p.productName}</td>
+                        <td>$${p.price}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-2" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
+                                <i class="bi bi-pencil"></i> 編輯
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${p.id})">
+                                <i class="bi bi-trash"></i> 刪除
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
 }
 
-// 點擊編輯按鈕
-function editProduct(id) {
-    const p = allProducts.find(item => item.id === id);
-    if (p) {
-        document.getElementById('pId').value = p.id;
-        document.getElementById('pName').value = p.productName;
-        document.getElementById('pPrice').value = p.price;
-        document.getElementById('pImgFile').value = ''; // 檔案無法預設，需重新上傳
-        
-        // 開啟 Modal
-        const modal = new bootstrap.Modal(document.getElementById('productModal'));
-        modal.show();
+// 開啟 Modal (新增或編輯)
+function openModal(product = null) {
+    const title = document.getElementById('modalTitle');
+    const idInput = document.getElementById('pId');
+    const nameInput = document.getElementById('pName');
+    const priceInput = document.getElementById('pPrice');
+    const imageInput = document.getElementById('pImage');
+
+    // 清空或填入資料
+    if (product) {
+        title.textContent = '編輯商品';
+        idInput.value = product.id;
+        nameInput.value = product.productName;
+        priceInput.value = product.price;
+    } else {
+        title.textContent = '新增商品';
+        idInput.value = '';
+        nameInput.value = '';
+        priceInput.value = '';
+        imageInput.value = '';
     }
+    productModal.show();
 }
 
-// 點擊新增按鈕時重置表單
-function resetForm() {
-    document.getElementById('pId').value = '';
-    document.getElementById('pName').value = '';
-    document.getElementById('pPrice').value = '';
-    document.getElementById('pImgFile').value = '';
+// 觸發編輯
+function editProduct(product) {
+    openModal(product);
 }
 
-// 儲存商品 (新增或修改)
+// 儲存商品 (新增或更新)
 function saveProduct() {
     const id = document.getElementById('pId').value;
-    const name = document.getElementById('pName').value;
-    const price = document.getElementById('pPrice').value;
-    const fileInput = document.getElementById('pImgFile');
-    
     const formData = new FormData();
-    formData.append('name', name);
-    formData.append('price', price);
-    if (fileInput.files[0]) {
-        formData.append('image', fileInput.files[0]);
+    formData.append('name', document.getElementById('pName').value);
+    formData.append('price', document.getElementById('pPrice').value);
+    
+    const imageFile = document.getElementById('pImage').files[0];
+    if (imageFile) {
+        formData.append('image', imageFile);
     }
 
-    // 判斷是新增 (POST) 還是修改 (PUT)
-    const url = id ? '/api/admin/products/' + id : '/api/admin/products';
     const method = id ? 'PUT' : 'POST';
+    const url = id ? `${API_URL}/${id}` : API_URL;
 
-    fetch(url, {
-        method: method,
-        body: formData
-    })
-    .then(response => {
-        if (response.ok) {
-            alert(id ? '修改成功' : '新增成功');
-            location.reload(); // 重新整理頁面
-        } else {
-            alert('操作失敗');
-        }
-    })
-    .catch(error => console.error('Error:', error));
+    fetch(url, { method: method, body: formData })
+        .then(res => {
+            if (res.ok) {
+                productModal.hide();
+                loadProducts();
+            } else alert('儲存失敗');
+        });
 }
 
 // 刪除商品
 function deleteProduct(id) {
-    if (!confirm('確定要刪除此商品嗎？')) return;
-    
-    fetch('/api/admin/products/' + id, { method: 'DELETE' })
-        .then(response => {
-            if (response.ok) loadProducts();
-            else alert('刪除失敗');
-        });
-}
-
-// 切換分頁功能
-function showSection(sectionId, linkElement) {
-    // 隱藏所有區塊
-    document.querySelectorAll('.content > div').forEach(div => div.classList.add('d-none'));
-    
-    // 顯示選定區塊
-    const targetSection = document.getElementById('section-' + sectionId);
-    if (targetSection) {
-        targetSection.classList.remove('d-none');
+    if (confirm('確定要刪除此商品嗎？')) {
+        fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+            .then(res => {
+                if (res.ok) loadProducts();
+                else alert('刪除失敗');
+            });
     }
-
-    // 更新 Sidebar 狀態
-    document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
-    linkElement.classList.add('active');
 }
