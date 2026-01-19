@@ -47,6 +47,7 @@ public class ClientApiController {
             customer.setCustomerName(body.get("name"));
             customer.setEmail(body.get("email"));
             customer.setPhone(body.get("phone"));
+            customer.setUpdatedAt(LocalDateTime.now());
             
             customerRepository.save(customer);
             return ResponseEntity.ok("註冊成功");
