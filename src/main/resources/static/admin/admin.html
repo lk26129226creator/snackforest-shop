@@ -17,9 +17,12 @@
             </a>
             <hr>
             <ul class="nav nav-pills flex-column mb-auto">
-                <li class="nav-item"><a href="#" class="active"><i class="bi bi-box-seam me-2"></i>商品管理</a></li>
-                <!-- 預留功能 -->
-                <li><a href="#"><i class="bi bi-receipt me-2"></i>訂單管理 (開發中)</a></li>
+                <li class="nav-item">
+                    <a href="#" id="nav-products" class="nav-link active" onclick="switchView('products')"><i class="bi bi-box-seam me-2"></i>商品管理</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" id="nav-orders" class="nav-link text-white" onclick="switchView('orders')"><i class="bi bi-receipt me-2"></i>訂單管理</a>
+                </li>
             </ul>
             <hr>
             <div class="dropdown">
@@ -31,7 +34,9 @@
 
         <!-- 主要內容區 -->
         <div class="flex-grow-1 p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <!-- 商品管理區塊 -->
+            <div id="view-products">
+                <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>商品列表</h2>
                 <button class="btn btn-success" onclick="openModal()">
                     <i class="bi bi-plus-lg"></i> 新增商品
@@ -53,6 +58,34 @@
                             <!-- JS 渲染列表 -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+            </div>
+
+            <!-- 訂單管理區塊 (預設隱藏) -->
+            <div id="view-orders" class="d-none">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>訂單管理</h2>
+                    <button class="btn btn-outline-secondary" onclick="loadOrders()">
+                        <i class="bi bi-arrow-clockwise"></i> 重新整理
+                    </button>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>訂單編號</th>
+                                    <th>收件人</th>
+                                    <th>總金額</th>
+                                    <th>狀態</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="order-list"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -86,6 +119,27 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-primary" onclick="saveProduct()">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 訂單詳情 Modal -->
+    <div class="modal fade" id="orderModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">訂單詳情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="order-details-content">載入中...</div>
+                    <hr>
+                    <h5>訂單商品</h5>
+                    <table class="table table-sm">
+                        <thead><tr><th>商品</th><th>單價</th><th>數量</th><th>小計</th></tr></thead>
+                        <tbody id="order-items-list"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
