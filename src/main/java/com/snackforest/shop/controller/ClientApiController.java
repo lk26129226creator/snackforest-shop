@@ -29,20 +29,31 @@ public class ClientApiController {
     // 1. 會員註冊
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody Map<String, String> body) {
-        String account = body.get("account");
-        if (customerRepository.findByAccount(account).isPresent()) {
-            return ResponseEntity.status(409).body("帳號已存在");
-        }
+        try {
+            String account = body.get("account");
+            String password = body.get("password");
 
-        Customer customer = new Customer();
-        customer.setAccount(account);
-        customer.setPasswordHash(passwordEncoder.encode(body.get("password"))); // 加密密碼
-        customer.setCustomerName(body.get("name"));
-        customer.setEmail(body.get("email"));
-        customer.setPhone(body.get("phone"));
-        
-        customerRepository.save(customer);
-        return ResponseEntity.ok("註冊成功");
+            // 基本防呆驗證
+            if (account == null || account.trim().isEmpty()) return ResponseEntity.badRequest().body("帳號不能為空");
+            if (password == null || password.trim().isEmpty()) return ResponseEntity.badRequest().body("密碼不能為空");
+
+            if (customerRepository.findByAccount(account).isPresent()) {
+                return ResponseEntity.status(409).body("帳號已存在");
+            }
+
+            Customer customer = new Customer();
+            customer.setAccount(account);
+            customer.setPasswordHash(passwordEncoder.encode(password)); // 加密密碼
+            customer.setCustomerName(body.get("name"));
+            customer.setEmail(body.get("email"));
+            customer.setPhone(body.get("phone"));
+            
+            customerRepository.save(customer);
+            return ResponseEntity.ok("註冊成功");
+        } catch (Exception e) {
+            e.printStackTrace(); // 在後端 Console 印出詳細錯誤，方便除錯
+            return ResponseEntity.status(500).body("註冊失敗: " + e.getMessage());
+        }
     }
     
     // 2. 取得基礎資料 (分類、運送、付款)
