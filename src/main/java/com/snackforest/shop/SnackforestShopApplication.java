@@ -6,13 +6,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.boot.CommandLineRunner;
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.util.Properties;
 
 import com.snackforest.shop.repository.*;
 
 @SpringBootApplication
 public class SnackforestShopApplication {
     public static void main(String[] args) {
-        SpringApplication.run(SnackforestShopApplication.class, args);
+        SpringApplication app = new SpringApplication(SnackforestShopApplication.class);
+        Properties props = new Properties();
+        props.put("spring.jpa.hibernate.ddl-auto", "update"); // 強制讓 Hibernate 自動建立缺少的表格
+        app.setDefaultProperties(props);
+        app.run(args);
     }
 
     // 設定 Hibernate 命名策略為 "原樣使用"，避免將駝峰命名 (如 idCustomers) 自動轉為蛇形命名 (如 id_customers)
