@@ -28,10 +28,10 @@ public class ClientApiController {
 
     // 1. 會員註冊
     @PostMapping("/register")
-    public String register(@RequestBody Map<String, String> body) {
+    public ResponseEntity<String> register(@RequestBody Map<String, String> body) {
         String account = body.get("account");
         if (customerRepository.findByAccount(account).isPresent()) {
-            throw new RuntimeException("帳號已存在");
+            return ResponseEntity.status(409).body("帳號已存在");
         }
 
         Customer customer = new Customer();
@@ -42,7 +42,7 @@ public class ClientApiController {
         customer.setPhone(body.get("phone"));
         
         customerRepository.save(customer);
-        return "註冊成功";
+        return ResponseEntity.ok("註冊成功");
     }
     
     // 2. 取得基礎資料 (分類、運送、付款)
