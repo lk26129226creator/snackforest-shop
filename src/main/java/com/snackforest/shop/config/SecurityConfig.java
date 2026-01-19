@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .requestMatchers("/client/**", "/css/**", "/js/**", "/images/**", "/").permitAll() // 開放 client 資料夾下所有檔案
                 .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN") // 保護 admin 資料夾與後台 API
                 .requestMatchers("/api/register", "/api/categories", "/api/shipping-methods", "/api/payment-methods", "/api/me", "/error", "/favicon.ico").permitAll() // 開放前台 API 與錯誤頁面
-                .requestMatchers("/api/products/**", "/api/hello").permitAll() // 公開路徑 (已移除 /api/fix-db)
+                .requestMatchers("/api/products/**", "/api/hello", "/api/fix-schema").permitAll() // 公開路徑
                 .anyRequest().authenticated() // 其他都需要登入
             )
             .formLogin(form -> form

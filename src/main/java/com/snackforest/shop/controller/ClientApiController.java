@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -70,11 +71,44 @@ public class ClientApiController {
 
     // 4. 檢查登入狀態
     @GetMapping("/me")
-    public ResponseEntity<?> checkLogin(Authentication auth) {
+    public ResponseEntity<Map<String, Object>> checkLogin(Authentication auth) {
+        Map<String, Object> response = new HashMap<>();
         if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
-            return ResponseEntity.ok().build();
+            response.put("loggedIn", true);
+            response.put("account", auth.getName());
+            // 順便回傳會員資料供前端使用
+            customerRepository.findByAccount(auth.getName()).ifPresent(c -> {
+                response.put("name", c.getCustomerName());
+                response.put("email", c.getEmail());
+                response.put("phone", c.getPhone());
+            });
+            return ResponseEntity.ok(response);
         }
-        return ResponseEntity.status(401).build();
+        response.put("loggedIn", false);
+        return ResponseEntity.ok(response);
+    }
+
+    // 5. 更新會員資料
+    @PutMapping("/me")
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> body) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(401).body("請先登入");
+        }
+
+        return customerRepository.findByAccount(auth.getName()).map(customer -> {
+            if (body.containsKey("name")) customer.setCustomerName(body.get("name"));
+            if (body.containsKey("email")) customer.setEmail(body.get("email"));
+            if (body.containsKey("phone")) customer.setPhone(body.get("phone"));
+            
+            String newPassword = body.get("password");
+            if (newPassword != null && !newPassword.trim().isEmpty()) {
+                customer.setPasswordHash(passwordEncoder.encode(newPassword));
+            }
+            
+            customerRepository.save(customer);
+            return ResponseEntity.ok("更新成功");
+        }).orElse(ResponseEntity.status(404).body("找不到會員資料"));
     }
 
     // 3. 提交訂單 (需登入)

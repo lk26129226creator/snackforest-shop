@@ -55,7 +55,8 @@ function fetchCategories() {
                     list.innerHTML += `<a href="#" class="list-group-item list-group-item-action" onclick="alert('篩選功能開發中: ${c.categoryName}')">${c.categoryName}</a>`;
                 });
             }
-        });
+        })
+        .catch(err => console.error('載入分類失敗:', err));
 }
 
 function createProductCard(product) {
@@ -104,15 +105,17 @@ function updateCartBadge() {
 
 // 檢查登入狀態 (需要後端提供 /api/me 接口)
 function checkLoginState() {
-    fetch('/api/me').then(res => {
-        if(res.ok) {
-            const loginBtn = document.getElementById('login-btn');
-            if(loginBtn) {
-                loginBtn.textContent = '登出';
-                loginBtn.href = '/logout';
+    fetch('/api/me')
+        .then(res => res.json())
+        .then(data => {
+            if(data.loggedIn) {
+                const loginBtn = document.getElementById('login-btn');
+                if(loginBtn) {
+                    loginBtn.textContent = '登出';
+                    loginBtn.href = '/logout';
+                }
             }
-        }
-    }).catch(() => {});
+        }).catch(() => {});
 }
 
 // --- 以下為購物車頁面功能 ---
